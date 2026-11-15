@@ -48,6 +48,7 @@ import com.chethan616.clearpdf.ui.AppViewModel
 import com.chethan616.clearpdf.ui.LucideIcons
 import com.chethan616.clearpdf.ui.OpenDocument
 import com.chethan616.clearpdf.ui.PdfSheet
+import com.chethan616.clearpdf.ui.SheetHeader
 import com.chethan616.clearpdf.ui.pdfColors
 import kotlinx.coroutines.launch
 
@@ -112,25 +113,24 @@ fun VoiceSheet(vm: AppViewModel, prompt: VoicePrompt) {
     DisposableEffect(prompt) { onDispose { player.release() } }
 
     PdfSheet(onDismiss = ::close, dim = true) {
-        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.voice_record_comment), color = c.text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-            com.chethan616.clearpdf.ui.glass.GlassTextAction(
-                stringResource(R.string.common_post),
-                {
-                    player.release()
-                    vm.postVoice(prompt, file)
-                },
-                enabled = recorded, primary = true,
-            )
-        }
-        Text(
-            when {
+        SheetHeader(
+            title = stringResource(R.string.voice_record_comment),
+            subtitle = when {
                 recorder.recording -> stringResource(R.string.voice_recording)
                 player.playing -> stringResource(R.string.voice_playing)
                 recorded -> stringResource(R.string.voice_listen_first)
-                else -> ""
+                else -> null
             },
-            color = c.textSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 20.dp),
+            trailing = {
+                com.chethan616.clearpdf.ui.glass.GlassTextAction(
+                    stringResource(R.string.common_post),
+                    {
+                        player.release()
+                        vm.postVoice(prompt, file)
+                    },
+                    enabled = recorded, primary = true,
+                )
+            },
         )
         Spacer(Modifier.height(12.dp))
         if (!recorded) {

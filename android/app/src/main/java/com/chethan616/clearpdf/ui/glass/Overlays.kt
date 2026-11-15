@@ -356,6 +356,11 @@ fun MenuCard(modifier: Modifier = Modifier, shape: androidx.compose.ui.graphics.
 
 @Composable
 fun GlassMenu(anchor: Rect, onDismiss: () -> Unit, items: List<GlassMenuItem>) {
+    // opened from a round glass button: that button's glass becomes the menu (MorphButtonSurface)
+    if (isMorphAnchor(anchor, LocalDensity.current)) {
+        MorphButtonSurface(anchor, open = true, onDismiss = onDismiss, onGone = {}, items = items)
+        return
+    }
     var closing by remember { mutableStateOf(false) }
     GlassMenuLayout(anchor, onDismiss) {
         Spacer(Modifier.height(6.dp))

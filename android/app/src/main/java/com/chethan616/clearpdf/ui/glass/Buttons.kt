@@ -1,5 +1,15 @@
 package com.chethan616.clearpdf.ui.glass
 
+import androidx.compose.ui.draw.drawWithContent
+
+import androidx.compose.runtime.setValue
+
+import androidx.compose.ui.graphics.graphicsLayer
+
+import androidx.compose.ui.layout.boundsInWindow
+
+import androidx.compose.ui.layout.onGloballyPositioned
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -338,9 +348,26 @@ fun GlassCircle(
 ) {
     // over a document the glyph takes dark or white ink from the page around it, as the old app's
     val probe = if (tint.isSpecified) InkProbe(Modifier, Color.White) else rememberGlassInk(if (ink.isSpecified) ink else clear.ink)
+    // where it is, so a menu it opens can grow out of it (MorphButtonSurface) and it can step aside meanwhile
+    var at by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    val glyph by androidx.compose.runtime.rememberUpdatedState(content)
+    val inkNow = probe.color
+    androidx.compose.runtime.DisposableEffect(at) {
+        val r = at
+        if (r != null) {
+            MorphAnchors.register(r) { CompositionLocalProvider(LocalGlassInk provides inkNow) { glyph() } }
+            MorphAnchors.setTint(r, tint)
+        }
+        onDispose { if (r != null) MorphAnchors.unregister(r) }
+    }
     CompositionLocalProvider(LocalGlassInk provides probe.color) {
         Box(
-            modifier.then(probe.modifier).size(size).glassControl(CircleShape, onClick, onLongClick, tint, surface, 2.dp, label, tap = tap, bloom = true, candyBase = false),
+            modifier.then(probe.modifier)
+                .onGloballyPositioned { at = it.boundsInWindow() }
+                // stepped aside while its glass is a menu: not drawn at all (a layer's alpha alone left it in
+                // the copy of the screen the menu's glass bends, where the lens smeared its glyph)
+                .drawWithContent { if (at?.let { MorphAnchors.hides(it) } != true) drawContent() }
+                .size(size).glassControl(CircleShape, onClick, onLongClick, tint, surface, 2.dp, label, tap = tap, bloom = true, candyBase = false),
             contentAlignment = Alignment.Center,
         ) { content() }
     }

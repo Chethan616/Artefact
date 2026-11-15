@@ -146,6 +146,11 @@ internal class Smudge(val kind: Int, val width: Float) : Mark() {
     val points = ArrayList<PointF>()
 }
 
+/** A pen stroke in [color]: freehand marking. Normalized like [Smudge]; [width] is a share of the long side. */
+internal class Pen(val color: Int, val width: Float) : Mark() {
+    val points = ArrayList<PointF>()
+}
+
 /**
  * Words on the picture: centred at ([x], [y]) of the turned picture, [size] a share of its long
  * side, turned [rotation] degrees, in [color] and one of the fonts and styles ([style]: 0 plain
@@ -169,6 +174,7 @@ internal const val LABEL_STYLES = 3
 internal fun Mark.turn() {
     when (this) {
         is Smudge -> points.forEach { val x = it.x; it.x = 1f - it.y; it.y = x }
+        is Pen -> points.forEach { val x = it.x; it.x = 1f - it.y; it.y = x }
         is Label -> {
             val x0 = x
             x = 1f - y
@@ -182,6 +188,7 @@ internal fun Mark.turn() {
 internal fun Mark.mirror() {
     when (this) {
         is Smudge -> points.forEach { it.x = 1f - it.x }
+        is Pen -> points.forEach { it.x = 1f - it.x }
         is Label -> {
             x = 1f - x
             rotation = -rotation
@@ -444,6 +451,35 @@ internal fun paintMarks(canvas: Canvas, place: Placement, marks: List<Mark>, fx:
                 canvas.drawBitmap(if (kind == SMUDGE_BLUR) fx.blur else fx.pixels, null, whole, over)
                 canvas.restoreToCount(layer)
             }
+        }
+    }
+    // pen strokes lie over the blur and under the words
+    val pens = marks.filterIsInstance<Pen>()
+    if (pens.isNotEmpty()) {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        val dot = Paint(Paint.ANTI_ALIAS_FLAG)
+        val path = Path()
+        val pt = PointF()
+        for (pen in pens) {
+            val width = pen.width * place.long
+            paint.color = pen.color
+            dot.color = pen.color
+            paint.strokeWidth = width
+            if (pen.points.size == 1) {
+                place.out(pen.points[0].x, pen.points[0].y, pt)
+                canvas.drawCircle(pt.x, pt.y, width / 2f, dot)
+                continue
+            }
+            path.reset()
+            pen.points.forEachIndexed { i, p ->
+                place.out(p.x, p.y, pt)
+                if (i == 0) path.moveTo(pt.x, pt.y) else path.lineTo(pt.x, pt.y)
+            }
+            canvas.drawPath(path, paint)
         }
     }
     for (l in marks) if (l is Label) drawLabel(canvas, place, l, l === chosen)

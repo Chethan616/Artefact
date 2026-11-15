@@ -60,6 +60,7 @@ import com.chethan616.clearpdf.ui.OpenDocument
 import com.chethan616.clearpdf.ui.PdfSheet
 import com.chethan616.clearpdf.ui.PdfSwitch
 import com.chethan616.clearpdf.ui.SheetBackHeader
+import com.chethan616.clearpdf.ui.SheetHeader
 import com.chethan616.clearpdf.ui.GroupDivider
 import com.chethan616.clearpdf.ui.SheetDivider
 import com.chethan616.clearpdf.ui.SheetRow
@@ -84,7 +85,15 @@ import java.util.Date
  * reference's order. Drill-in rows (with a chevron) open their own sheet.
  */
 @Composable
-fun MoreSheet(vm: AppViewModel, doc: OpenDocument, anchor: Rect) {
+fun MoreSheet(
+    vm: AppViewModel,
+    doc: OpenDocument,
+    anchor: Rect,
+    /** Opened from the More circle: that circle opens into the menu ([com.chethan616.clearpdf.ui.glass.MorphButtonSurface]). */
+    fromButton: Boolean = false,
+    /** The circle is back in the bar (the glass has folded into it). */
+    onGone: () -> Unit = {},
+) {
     val ctl = doc.controller
     val bookmarked = vm.bookmarks.isBookmarked(doc, doc.viewer.currentPage)
     val starred = vm.isStarred(doc)
@@ -93,6 +102,7 @@ fun MoreSheet(vm: AppViewModel, doc: OpenDocument, anchor: Rect) {
         add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(if (bookmarked) R.string.sheet_remove_bookmark else R.string.sheet_add_bookmark), if (bookmarked) LucideIcons.BookmarkMinus else LucideIcons.BookmarkPlus) { vm.toggleBookmark(doc) })
         add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_read_aloud), LucideIcons.Volume2) { vm.startReadAloud(doc) })
         if (doc.isSlides) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_present), LucideIcons.Presentation) { vm.presenting = doc })
+        if (doc.isSlides) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_slide_notes), LucideIcons.FileText) { ctl.sheet = ViewerSheet.SlideNotes })
         else if (!doc.isOffice) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_edit_pdf), LucideIcons.FilePenLine) { vm.enterTool(doc, ViewerTool.Edit) })
         add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_print), LucideIcons.Printer) { vm.print(doc) })
         add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_view_settings), LucideIcons.Glasses) { ctl.sheet = ViewerSheet.ViewSettings })
@@ -121,7 +131,13 @@ fun MoreSheet(vm: AppViewModel, doc: OpenDocument, anchor: Rect) {
         doc.info.undo?.let { label -> add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_undo_action, label), LucideIcons.Undo2) { vm.undo(doc) }) }
         doc.info.redo?.let { label -> add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_redo_action, label), LucideIcons.Redo2) { vm.redo(doc) }) }
     }
-    com.chethan616.clearpdf.ui.glass.GlassMenu(anchor, { ctl.sheet = ViewerSheet.None }, items)
+    if (fromButton) {
+        com.chethan616.clearpdf.ui.glass.MorphButtonSurface(anchor, open = true, onDismiss = { ctl.sheet = ViewerSheet.None }, onGone = onGone, items = items) {
+            com.chethan616.clearpdf.ui.glass.GlassIcon(LucideIcons.Ellipsis, null, Modifier.size(21.dp))
+        }
+    } else {
+        com.chethan616.clearpdf.ui.glass.GlassMenu(anchor, { ctl.sheet = ViewerSheet.None }, items)
+    }
 }
 
 /** A PDF as a little paper in a sheet's header: grey lines and the red PDF corner. */
@@ -566,6 +582,83 @@ fun MoreToolsSheet(vm: AppViewModel, doc: OpenDocument, anchor: Rect) {
 
 
 /** Save as: the formats the document's engine writes, each saved to Downloads. */
+/** What the document is: its name, kind, size, pages, where it lives, and what it says about itself. */
+@Composable
+fun DocumentInfoSheet(vm: AppViewModel, doc: OpenDocument) {
+    val ctl = doc.controller
+    val c = pdfColors
+    val info = doc.info
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val location = remember(doc.source) { doc.source?.toString()?.let { vm.locationOfDocument(it) } }
+    val kind = stringResource(com.chethan616.clearpdf.engine.DocumentTypes.kindOf(info.name).short)
+    val first = info.pages.firstOrNull()
+    @Composable
+    fun line(label: String, value: String?) {
+        if (value.isNullOrBlank()) return
+        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.Top) {
+            Text(label, color = c.textSecondary, fontSize = 15.sp, modifier = Modifier.weight(0.42f))
+            Text(value, color = c.text, fontSize = 15.sp, modifier = Modifier.weight(0.58f), textAlign = TextAlign.End)
+        }
+    }
+    PdfSheet(onDismiss = { ctl.sheet = ViewerSheet.None }, maxHeightFraction = 0.8f) {
+        SheetHeader(doc.title, subtitle = kind)
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            SheetSection(inset = 16.dp) {
+                Column {
+                    line(stringResource(R.string.info_kind), kind + (if (info.pdfVersion.isNotBlank() && !doc.isOffice) " " + info.pdfVersion else ""))
+                    line(stringResource(R.string.info_size), android.text.format.Formatter.formatShortFileSize(context, info.fileSize.toLong()))
+                    line(stringResource(if (doc.isSlides) R.string.info_slides else R.string.info_pages), doc.pageCount.toString())
+                    if (first != null && !doc.isSheets) line(stringResource(R.string.info_page_size), "%.0f × %.0f pt".format(first.width, first.height))
+                    line(stringResource(R.string.info_where), location)
+                }
+            }
+            SheetSection(inset = 16.dp) {
+                Column {
+                    line(stringResource(R.string.info_title), info.title)
+                    line(stringResource(R.string.info_author), info.author)
+                    line(stringResource(R.string.info_subject), info.subject)
+                    line(stringResource(R.string.info_keywords), info.keywords)
+                    line(stringResource(R.string.info_creator), info.creator)
+                    line(stringResource(R.string.info_producer), info.producer)
+                }
+            }
+            SheetSection(inset = 16.dp) {
+                Column {
+                    val yes = stringResource(R.string.info_yes)
+                    val no = stringResource(R.string.info_no)
+                    line(stringResource(R.string.info_protected), if (info.encrypted) yes else no)
+                    if (!doc.isOffice) {
+                        line(stringResource(R.string.info_signed), if (info.signed) yes else no)
+                        line(stringResource(R.string.info_tagged), if (info.tagged) yes else no)
+                        if (info.fields > 0u) line(stringResource(R.string.info_fields), info.fields.toString())
+                        if (info.attachments > 0u) line(stringResource(R.string.info_attachments), info.attachments.toString())
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+    }
+}
+
+/** The speaker notes of the slide in view. */
+@Composable
+fun SlideNotesSheet(vm: AppViewModel, doc: OpenDocument) {
+    val ctl = doc.controller
+    val c = pdfColors
+    val page = doc.viewer.currentPage
+    var notes by remember(page) { mutableStateOf<String?>(null) }
+    LaunchedEffect(page, doc.id) { notes = vm.engine?.let { e -> runCatching { e.command { slideNotes(doc.id, page.toUInt()) } }.getOrNull() }.orEmpty() }
+    PdfSheet(onDismiss = { ctl.sheet = ViewerSheet.None }, maxHeightFraction = 0.6f) {
+        SheetHeader(stringResource(R.string.office_slide_notes), subtitle = stringResource(R.string.office_slide_n, page + 1), onBack = { ctl.sheet = ViewerSheet.More })
+        val text = notes
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 8.dp)) {
+            if (text.isNullOrBlank()) Text(stringResource(R.string.office_slide_notes_none), color = c.textSecondary, fontSize = 15.sp)
+            else Text(text, color = c.text, fontSize = 16.sp)
+        }
+        Spacer(Modifier.height(10.dp))
+    }
+}
+
 @Composable
 fun SaveAsSheet(vm: AppViewModel, doc: OpenDocument) {
     val ctl = doc.controller

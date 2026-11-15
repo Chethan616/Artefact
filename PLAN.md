@@ -87,18 +87,44 @@ bot-avatars) for empty, waiting and error states only.
 
 ## Next (UI first)
 
-- [ ] Viewer: check every tool sheet against the new sheet parts (VoiceSheet, NoteSheet, ReadAloud,
-      DigitalSign, FillSign still use their own layouts inside `PdfSheet`); CommentList, Pages screens.
-- [ ] (2026-11-14, `fast` 3.0.0-beta.10 on the OnePlus: welcome, desk, + fan, Files, Tools, viewer and the Fill & Sign bar all drew and animated correctly; Crystal style, Jelly mic and the long-press sheet not yet looked at) Device check of the four 2026-11-06 passes on the `fast` build (pass 4: Crystal + / welcome page 2 / Jelly mic / long-press sheet) (no phone was attached): welcome swipe
+- [x] Viewer: every tool sheet checked against the new sheet parts (2026-11-15): VoiceSheet now uses
+      `SheetHeader`, DigitalSign's list is a `SheetSection`, FillSign has a `SheetTitle`; CommentList,
+      Pages, Save as already used them; NoteSheet, ReadAloud and CommentPanel are docked bars, not
+      sheets. Built and installed; [ ] not yet looked at on the phone.
+- [ ] (2026-11-14, `fast` 3.0.0-beta.10 on the OnePlus: welcome, desk, + fan, Files, Tools, viewer and the Fill & Sign bar all drew and animated correctly; Crystal style and Jelly mic not yet looked at; 2026-11-15: the file row's sheet in Files drew correctly on the `fast` build, as did the dark sheet viewer) Device check of the four 2026-11-06 passes on the `fast` build (pass 4: Crystal + / welcome page 2 / Jelly mic / long-press sheet) (no phone was attached): welcome swipe
       smoothness, + fan with a busy desk, menu/dialog/sheet/toast springs, recorder pill expand/shrink
       bounce (tune `GlassMotion.shape` stiffness if still too quick/slow), GlassChip rows, dark theme.
 - [x] Files / Tools / Settings checked against the mocks on the phone (2026-11-14): same glass, type and
       colour as the mocks, nothing to change.
-- [ ] Collection deck (mock 2) for Pdf & notes.
 - [x] Signature validation badges drawn by the viewer (Acrobat-style tick), never in the file.
 - [x] Translations: ar, de, es, fr, it, pt-BR complete + **pt** and **ru**.
 - [x] Folder restructure, README/NOTICE/ATTRIBUTION/fastlane to Artefact (9 store languages).
 - [ ] Release build, `master` branch on GitHub, "Building the version 2" issue + discussion.
+      (2026-11-15: [x] the arm64 release APK builds and is signed with the Play upload key, 95 MB, from
+      this branch; the issue/discussion text is drafted locally; [ ] nothing pushed or published.)
+
+- [x] Home screen widgets (2026-11-15): **Thought of the day / Notes** (square, 2×2 to 3×3), **To-Do** and
+      **Recent** (square, 2×2 to 3×3, opening at 3×3 where the desk card shows whole). Each is the desk's own composable (`ListCard`, `NoteCard`,
+      `RecentCard`, real liquid glass, the user's glass settings) rendered off screen on a private
+      virtual display (`widget/ComposeSnapshot.kt`) at the widget's own size, Apple style: never
+      scaled, the content adapts (fewer pills + "N more"; the note's body gives way to the date; the
+      fan of pages shrinks). To-Do pills tick from the home screen (tap targets over the real pills,
+      press ripple, the app's ToggleOn/Off haptic, ticks go through the app's live notes when it runs).
+      Recent is drawn by the app when its recents change (thumbnails live there) and kept in cache.
+      Seen on the phone. A widget can't run live glass or its press springs: home screens only show
+      pictures and send taps.
+- [x] `MorphButton` (2026-11-15, `ui/glass/MorphButton.kt` + `LiquidMorph.kt`; GlassMenu left as it was): the
+      viewer's ⋯ circle itself becomes its menu, as liquid glass (iOS 26 GlassEffectContainer idea, from
+      StewartLynch/Liquid-Glass-Controls-And-Views `Completed`): one shape made of the circle and a rounded
+      rectangle melted by a smooth minimum of their distance fields (AGSL refraction + surface shaders on
+      that outline). Three springs, each starting as the one before settles: drip (a narrower drop runs
+      ~1 cm down out of the circle, joined by a liquid neck), spread (to the menu's width), pour (to its
+      height; the circle melts away, only the menu is left over the button's place). ~0.7 s; close runs it
+      back. Ink adapts to what is behind (white over Night mode). Android 13+; older phones get the plain
+      rounded-rectangle expansion. Seen on the phone, frame by frame at 10x animator scale.
+- [ ] Widgets left to look at on the phone: To-Do's scrolling list (`RemoteCollectionItems` of the real
+      pills; card hugs title + pills, scrolls past the widget's height; seen hugging, ticks through the
+      list not yet tried), Recent drawn at the desk card's exact size and fitted (built, not seen).
 
 ## Folder layout
 
@@ -145,12 +171,12 @@ all three → editing, one format at a time, each built and run on the phone bef
       .xlsx/.xlsb/.ods/.csv (recalculated on open) and serves tabs, axes, cell windows with looks,
       merges, find; `ui/sheets/SheetViewer.kt` draws the grid on a canvas (pan, pinch zoom, heading
       strips, frozen panes, cells in 50×20 blocks) under glass. [x] seen on the phone 2026-11-14 (an .xlsx and a Cyrillic .xls: merges, fills, borders, bars); [x] search UI
-      (bridge `sheet_find` is there); [ ] charts (gridcraft-chart) and pictures on sheets.
+      (bridge `sheet_find` is there); [x] charts (gridcraft-chart, `SheetCharts.kt`) and pictures on sheets (`sheetPictures`) are in the code; [ ] not yet seen on the phone.
 - [x] **Pictures in notes** (lightcraft `8a0b91a`, 2026-11-07, built and host-tested): `photo.rs`
       (`PhotoEditor`: decode, develop with LightCraft's `DevelopSettings` JSON, export JPEG; codecs,
       develop, pipeline only: no GPU, faces or catalog). Tap a note's picture: glass editor with
       Exposure, Contrast, Highlights, Shadows, Vibrance, Saturation and rotate; Done saves a new JPEG.
-      [ ] seen on the phone; [ ] crop; [ ] markup.
+      [x] seen on the phone 2026-11-15 (opens from Files with Adjust, Crop, Blur, Draw, Text); [x] crop (`PhotoEditor.kt`, LightCraft's crop model; not yet seen on the phone); [x] markup: a freehand **Draw** pen (width, ten colours, undo; `Pen` mark in `PhotoMarks.kt`, saved with the picture; stroke drawing seen on the phone, saving not tried).
 - [x] **Export and print for all three** (2026-11-07): `export_office(doc, format, path)` /
       `export_formats(doc)`: Word → pdf, docx, odt, rtf, html, md, txt; slides → pdf, pptx; sheets →
       pdf (gridcraft's `file.exportPdf`, every sheet), xlsx, csv. Office bars: Word = Read aloud ·
@@ -159,7 +185,11 @@ all three → editing, one format at a time, each built and run on the phone bef
       [x] checked gridcraft's PDF with non-Latin text 2026-11-14: **fails**. A Cyrillic .xls exports with
       the text missing (digits and Latin show). gridcraft's `pdf` crate uses the 14 standard fonts and,
       for anything WinAnsi lacks, a non-embedded Adobe CID font, which the viewer cannot draw. Needs
-      embedded fonts in the export (a patch to the vendored crate); not done.
+      embedded fonts in the export: **fixed 2026-11-15** by vendoring `gridcraft-pdf` with Source Sans 3
+      subsets embedded (Cyrillic, Greek, Latin Extended; CJK/Arabic/Indic still use the old fallback).
+      [x] seen on the phone 2026-11-15: a Cyrillic + Greek .csv exports (17.5 KB) and the PDF shows all
+      the text in the viewer. Sheets in the dark theme use Google Sheets' neutral greys (#1F1F1F ground,
+      #3C4043 lines, #2D2E30 headings) instead of the indigo.
 - [x] **Editing, first pass** (2026-11-07, built, host-tested, not yet seen on the phone):
       Word: Edit → tap places the caret, the keyboard types, glass dock (undo, redo, bold, italic,
       underline, bullets, numbering, align, heading, body); saved in its own format. Sheets: tap a
@@ -167,6 +197,14 @@ all three → editing, one format at a time, each built and run on the phone bef
       (bold, italic, fill, align, wrap, %, thousands, insert row/column, clear, undo, redo); ⋯ menu:
       Export PDF, Save as, Print, Share; Quick Preview shows the real grid. `.xls` opens; `.ppt`
       explains itself (DeckCraft has no 97-2003 reader). Selection menu = the desk menu's frosted glass.
+- [x] Word's navigation pane (2026-11-15): a document's headings (outline levels) fill Bookmarks &
+      Contents with their pages (`headings_of` in `word.rs`, `OfficeDoc::outline`); seen on the phone
+      (the sample's Summary, Figures, Next year; tapping one jumps to its page). Test:
+      `a_word_document_lists_its_headings_with_their_pages`.
+- [x] Slide notes and thumbnails (2026-11-15): More ▸ Speaker notes opens a sheet with the slide in
+      view's notes (`slide_notes` in the bridge, `SlideNotesSheet`); the sheet seen on the phone on a
+      21-slide deck (that deck has no notes, so only the empty state was seen; the notes text is
+      covered by `a_slide_reports_its_speaker_notes`). Thumbnails: More ▸ Pages already lists slides.
 - [ ] Map each engine's remaining features into the UI, one format at a time (they are large: Word
       422 commands, slides 320, sheets 313, LightCraft's develop panel): next are Word's navigation
       pane (headings), slide notes and thumbnails, sheet charts and pictures, LightCraft crop,

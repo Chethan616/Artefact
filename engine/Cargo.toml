@@ -157,6 +157,10 @@ krilla = { git = "https://github.com/storytold/craft-libs", rev = "c5a1cbfb5f904
 [patch."https://github.com/storytold/wordcraft"]
 wordcraft-fonts = { path = "vendor/wordcraft-fonts" }
 
+# gridcraft crates we carry a patch for (see vendor/README.md).
+[patch."https://github.com/storytold/gridcraft"]
+gridcraft-pdf = { path = "vendor/gridcraft-pdf" }
+
 # deckcraft crates we carry a patch for (see vendor/README.md).
 [patch."https://github.com/storytold/deckcraft"]
 deckcraft-fonts = { path = "vendor/deckcraft-fonts" }

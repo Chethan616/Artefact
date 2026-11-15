@@ -550,6 +550,21 @@ fn deck_file(title: &str, name: &str) -> String {
 }
 
 #[test]
+fn a_slide_reports_its_speaker_notes() {
+    let mut p = deckcraft_model::defaults::new_presentation(None);
+    let slide = std::sync::Arc::make_mut(p.slides.first_mut().unwrap());
+    slide.notes = deckcraft_model::text::TextBody::from_text("Say hello, then show the chart.");
+    let path = scratch().join("Notes.pptx");
+    std::fs::write(&path, deckcraft_pptx::export(&p).unwrap()).unwrap();
+    let s = MobileSession::new();
+    let id = s.open(path.to_string_lossy().into_owned(), None).unwrap().id;
+    assert!(s.slide_notes(id, 0).unwrap().contains("Say hello"), "{:?}", s.slide_notes(id, 0));
+    assert_eq!(s.slide_notes(id, 99).unwrap(), "", "no such slide: empty");
+    let pdf = s.open(blank_pdf(1), None).unwrap().id;
+    assert_eq!(s.slide_notes(pdf, 0).is_err(), true, "a PDF has no slide notes");
+}
+
+#[test]
 fn opens_a_presentation_as_slides() {
     let s = MobileSession::new();
     let info = s.open(deck_file("Quarterly results", "Deck.pptx"), None).unwrap();
@@ -653,6 +668,48 @@ fn office_documents_export_to_pdf_and_their_own_formats() {
         }
         assert!(s.export_office(id, "exe".into(), dir.join("x").to_string_lossy().into_owned()).is_err());
     }
+}
+
+#[test]
+fn a_word_document_lists_its_headings_with_their_pages() {
+    let s = MobileSession::new();
+    let id = s.open(word_file("Overview
+Some body text here.
+Details
+More body text.", "Outline.docx"), None).unwrap().id;
+    assert!(!s.document(id).unwrap().has_outline, "no headings yet");
+    assert!(s.outline(id).unwrap().is_empty());
+    s.word_command(id, "caret.docStart".into(), "{}".into()).unwrap();
+    s.word_command(id, "para.heading1".into(), "{}".into()).unwrap();
+    s.word_command(id, "caret.docEnd".into(), "{}".into()).unwrap();
+    s.word_command(id, "caret.up".into(), "{}".into()).unwrap();
+    s.word_command(id, "para.heading2".into(), "{}".into()).unwrap();
+    let doc = s.document(id).unwrap();
+    assert!(doc.has_outline);
+    let heads = s.outline(id).unwrap();
+    assert_eq!(heads.iter().map(|h| h.title.as_str()).collect::<Vec<_>>(), ["Overview", "Details"], "{heads:?}");
+    assert_eq!((heads[0].level, heads[1].level), (0, 1), "Heading 2 nests under Heading 1");
+    assert_eq!(heads[0].children, 1);
+    assert_eq!(heads[0].page, Some(0));
+}
+
+#[test]
+fn a_sheet_with_cyrillic_text_exports_to_a_pdf_that_shows_it() {
+    // gridcraft's PDF writer is vendored with embedded faces: non-Latin text used to be a
+    // non-embedded CID font that the viewer could not draw.
+    let s = MobileSession::new();
+    let path = book_file("Привет,мир
+Γειά,Hello
+", "Cyr.xlsx");
+    let id = s.open(path, None).unwrap().id;
+    let out = scratch().join("cyr.pdf").to_string_lossy().into_owned();
+    s.export_office(id, "pdf".into(), out.clone()).unwrap();
+    let raw = std::fs::read(&out).unwrap();
+    let raw = String::from_utf8_lossy(&raw);
+    assert!(raw.contains("/FontFile2") && !raw.contains("STSong-Light"), "Cyrillic is embedded");
+    let pdf = s.open(out, None).unwrap().id;
+    let text = s.page_plain_text(pdf, 0).unwrap();
+    assert!(text.contains("Привет") && text.contains("Γειά") && text.contains("Hello"), "{text}");
 }
 
 #[test]

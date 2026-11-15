@@ -642,10 +642,16 @@ impl MobileSession {
         self.with_doc(doc, document_info)
     }
 
+    /// The speaker notes of slide `page` (0-based) of presentation `doc`; empty when it has none.
+    pub fn slide_notes(&self, doc: u64, page: u32) -> Result<String, MobileError> {
+        let d = self.office(doc).ok_or(MobileError::NoDocument(doc))?;
+        Ok(d.notes(page).unwrap_or_default())
+    }
+
     /// Document `doc`'s bookmarks, flattened in reading order (at most as many as the engine reads).
     pub fn outline(&self, doc: u64) -> Result<Vec<OutlineEntry>, MobileError> {
-        if self.office(doc).is_some() {
-            return Ok(Vec::new());
+        if let Some(d) = self.office(doc) {
+            return Ok(d.outline());
         }
         self.with_doc(doc, |d| {
             let mut out = Vec::new();

@@ -100,6 +100,9 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
     val view = LocalView.current
     val context = LocalContext.current
     var moreMenuAnchor by remember { mutableStateOf(Rect.Zero) }
+    // More opened from its circle: the circle itself becomes the menu (MorphButtonSurface), hidden in the bar meanwhile
+    var moreFromButton by remember { mutableStateOf(false) }
+    var moreMorphUp by remember { mutableStateOf(false) }
     var moreToolsMenuAnchor by remember { mutableStateOf(Rect.Zero) }
 
     // The system bars go with the viewer's bars.
@@ -405,10 +408,8 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
                             },
                             onUndo = { vm.undo(doc) },
                             onRedo = { vm.redo(doc) },
-                            onTitle = { anchor ->
-                                moreMenuAnchor = anchor
-                                ctl.sheet = if (ctl.sheet == ViewerSheet.More) ViewerSheet.None else ViewerSheet.More
-                            },
+                            // the title opens what the document is (as iOS Files' title); the commands are in ⋯
+                            onTitle = { _ -> ctl.sheet = if (ctl.sheet == ViewerSheet.Info) ViewerSheet.None else ViewerSheet.Info },
                             onSearch = if (vm.readingMode) null else ({
                                 selection.clear()
                                 ctl.searching = true
@@ -417,8 +418,15 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
                             onShare = { vm.share(doc) },
                             onMore = { anchor ->
                                 moreMenuAnchor = anchor
-                                ctl.sheet = if (ctl.sheet == ViewerSheet.More) ViewerSheet.None else ViewerSheet.More
+                                if (ctl.sheet == ViewerSheet.More) {
+                                    ctl.sheet = ViewerSheet.None
+                                } else if (!moreMorphUp) {
+                                    moreFromButton = true
+                                    moreMorphUp = true
+                                    ctl.sheet = ViewerSheet.More
+                                }
                             },
+                            moreHidden = moreMorphUp,
                             contentAlpha = 1f - sp.value,
                             undoLabel = if (doc.localUndo != null) stringResource(R.string.viewer_undo_drawing) else doc.info.undo,
                             redoLabel = if (doc.localUndo != null) stringResource(R.string.viewer_undo_drawing) else doc.info.redo,
@@ -497,13 +505,15 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
         // Sheets and dialogs.
         SheetHost(ctl.sheet.takeIf { it != ViewerSheet.None }) { sheet ->
             when (sheet) {
-                ViewerSheet.More -> MoreSheet(vm, doc, moreMenuAnchor)
+                ViewerSheet.More -> MoreSheet(vm, doc, moreMenuAnchor, fromButton = moreFromButton, onGone = { moreMorphUp = false })
                 ViewerSheet.ViewSettings -> ViewSettingsSheet(vm, doc)
                 ViewerSheet.Bookmarks -> BookmarksSheet(vm, doc)
                 ViewerSheet.Attachments -> AttachmentsSheet(vm, doc)
                 ViewerSheet.Comments -> Unit
                 ViewerSheet.MoreTools -> MoreToolsSheet(vm, doc, moreToolsMenuAnchor)
                 ViewerSheet.SaveAs -> SaveAsSheet(vm, doc)
+                ViewerSheet.SlideNotes -> SlideNotesSheet(vm, doc)
+                ViewerSheet.Info -> DocumentInfoSheet(vm, doc)
                 ViewerSheet.Signatures -> SignaturesSheet(vm, doc)
                 ViewerSheet.None -> Unit
             }

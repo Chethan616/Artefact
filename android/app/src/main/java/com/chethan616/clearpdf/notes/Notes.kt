@@ -55,6 +55,13 @@ data class Note(
  * after each change, atomically). Media sits beside it in `files/notes/media`.
  */
 class Notes(private val context: Context, private val scope: CoroutineScope) {
+    companion object {
+        /** The app's notes while its view model lives: widget ticks go through them. */
+        @Volatile
+        var live: Notes? = null
+            private set
+    }
+
     private val dir = File(context.filesDir, "notes").apply { mkdirs() }
     private val media = File(dir, "media").apply { mkdirs() }
     private val store = File(dir, "notes.json")
@@ -67,6 +74,7 @@ class Notes(private val context: Context, private val scope: CoroutineScope) {
     private var saveJob: Job? = null
 
     init {
+        live = this
         scope.launch {
             val list = withContext(Dispatchers.IO) { runCatching { read() }.getOrDefault(emptyList()) }
             all = list
@@ -136,6 +144,20 @@ class Notes(private val context: Context, private val scope: CoroutineScope) {
         saveJob = scope.launch(Dispatchers.IO) {
             delay(250)
             runCatching { write(snapshot) }
+            // the home screen widgets show these notes too
+            runCatching { com.chethan616.clearpdf.widget.Widgets.refreshSoon(context) }
+        }
+    }
+
+    /** Whether these notes still belong to a living view model (its scope not cancelled). */
+    val isActive: Boolean get() = scope.coroutineContext[Job]?.isActive != false
+
+    /** Read the file again (a home screen widget may have ticked an item while the app was away). */
+    fun reload() {
+        if (saveJob?.isActive == true) return
+        scope.launch {
+            val list = withContext(Dispatchers.IO) { runCatching { read() }.getOrNull() } ?: return@launch
+            if (saveJob?.isActive != true && list != all) all = list
         }
     }
 
@@ -210,5 +232,48 @@ fun waveOf(levels: List<Float>, bars: Int = 48): List<Float> {
         val to = ((i + 1) * levels.size / bars).coerceAtLeast(from + 1).coerceAtMost(levels.size)
         val v = levels.subList(from.coerceAtMost(levels.size - 1), to).max() / peak
         (0.12f + 0.88f * v).coerceIn(0.12f, 1f)
+    }
+}
+
+/** The notes file read and changed without the app running: what the home screen widgets use. */
+object NoteFile {
+    /** Tick [itemId] through the app's notes when they are loaded (so the app never writes over it), else in the file. */
+    fun toggleLive(c: Context, noteId: String, itemId: String) {
+        val notes = Notes.live
+        if (notes != null && notes.loaded) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post { notes.toggle(noteId, itemId) }
+        } else {
+            toggle(c, noteId, itemId)
+        }
+    }
+
+    private fun store(c: Context) = File(File(c.filesDir, "notes"), "notes.json")
+
+    fun read(c: Context): List<Note> {
+        val f = store(c)
+        if (!f.exists()) return emptyList()
+        return runCatching {
+            val arr = JSONArray(f.readText())
+            (0 until arr.length()).mapNotNull { i -> runCatching { arr.getJSONObject(i).toNote() }.getOrNull() }
+        }.getOrDefault(emptyList())
+    }
+
+    /** Tick or untick [itemId] of [noteId]; false when either is gone. */
+    @Synchronized
+    fun toggle(c: Context, noteId: String, itemId: String): Boolean {
+        val all = read(c)
+        val n = all.firstOrNull { it.id == noteId } ?: return false
+        if (n.items.none { it.id == itemId }) return false
+        val changed = n.copy(items = n.items.map { if (it.id == itemId) it.copy(done = !it.done) else it }, updated = System.currentTimeMillis())
+        val arr = JSONArray()
+        (all.map { if (it.id == noteId) changed else it }).forEach { arr.put(it.toJson()) }
+        val dir = File(c.filesDir, "notes")
+        val tmp = File(dir, "notes.json.tmp")
+        tmp.writeText(arr.toString())
+        if (!tmp.renameTo(store(c))) {
+            store(c).delete()
+            tmp.renameTo(store(c))
+        }
+        return true
     }
 }

@@ -96,6 +96,11 @@ impl SlideDeck {
 }
 
 impl OfficeDoc for SlideDeck {
+    fn notes(&self, page: u32) -> Option<String> {
+        let slide = self.pres.slides.get(page as usize)?;
+        Some(slide.notes.text().trim().to_string())
+    }
+
     fn info(&self, id: u64) -> DocumentInfo {
         let p = &self.pres;
         let (w, h) = (p.slide_size.width as f32, p.slide_size.height as f32);

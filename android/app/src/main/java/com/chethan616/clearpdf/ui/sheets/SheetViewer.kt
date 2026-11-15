@@ -437,11 +437,11 @@ fun SheetGrid(
     onRange: (() -> Unit)? = null,
 ) {
     val c = pdfColors
-    val sheetSurface = if (c.dark) Color(0xFF18192F) else Color.White
+    val sheetSurface = if (c.dark) Color(0xFF1F1F1F) else Color.White
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer(cacheSize = 8)
     val l = state.layout
-    Box(modifier.fillMaxSize().background(c.surface)) {
+    Box(modifier.fillMaxSize().background(if (c.dark) Color(0xFF1F1F1F) else c.surface)) {
         if (l == null) {
             Box(Modifier.fillMaxSize().padding(top = with(density) { top.toDp() } + 40.dp), contentAlignment = Alignment.TopCenter) { GlassLoader(size = 64.dp) }
             return@Box
@@ -657,7 +657,7 @@ fun SheetGrid(
                 },
         ) {
             translate(top = top) {
-                drawSheet(l, state, px * state.scale, texts, sheetSurface, c.text, c.dark)
+                drawSheet(l, state, px * state.scale, texts, sheetSurface, if (c.dark) Color(0xFFE3E3E3) else c.text, c.dark)
             }
         }
     }
@@ -1126,7 +1126,7 @@ private fun DrawScope.drawSheet(
     // text is laid out at zoom 1 and drawn scaled
     val zoom = k / density
     val accent = Color(0xFF0A84FF)
-    val gridLine = if (dark) Color(0xFF343650) else Color(0xFFE1E4EA)
+    val gridLine = if (dark) Color(0xFF3C4043) else Color(0xFFE1E4EA)
     val dashes = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(3f * k, 2f * k))
     val dots = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(1f * k, 1.2f * k))
     val shown = ArrayList<DrawCell>(512)
@@ -1371,17 +1371,17 @@ private fun DrawScope.drawSheet(
             }
         }
     }
-    val frozenDivider = if (dark) Color(0xFF777D9A) else Color(0xFF9AA3B2)
+    val frozenDivider = if (dark) Color(0xFF5F6368) else Color(0xFF9AA3B2)
     if (fr > 0) drawLine(frozenDivider, Offset(head.x, head.y + frozenH), Offset(size.width, head.y + frozenH), density)
     if (fc > 0) drawLine(frozenDivider, Offset(head.x + frozenW, head.y), Offset(head.x + frozenW, size.height), density)
     // the heading strips: only the letters and numbers in view, each measured once
-    val strip = if (dark) Color(0xFF20213B) else Color(0xFFF2F4F8)
+    val strip = if (dark) Color(0xFF2D2E30) else Color(0xFFF2F4F8)
     val chosen = accent.copy(alpha = if (dark) 0.30f else 0.16f)
     val labelZoom = min(zoom, 1.5f)
     val label = TextStyle(color = ink.copy(alpha = 0.6f), fontSize = (11 / fontScale).sp)
     drawRect(strip, Offset(0f, 0f), Size(size.width, head.y))
     drawRect(strip, Offset(0f, 0f), Size(head.x, size.height))
-    val lineC = if (dark) Color(0xFF343650) else Color(0xFFD5D9E0)
+    val lineC = if (dark) Color(0xFF444746) else Color(0xFFD5D9E0)
     clipRect(head.x, 0f, size.width, head.y) {
         fun columns(from: Int, to: Int, shift: Float, clipFrom: Float) {
             if (from >= to) return
