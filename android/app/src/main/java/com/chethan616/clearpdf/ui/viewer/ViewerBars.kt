@@ -123,6 +123,8 @@ fun ViewerTopBar(
     contentAlpha: Float = 1f,
     undoLabel: String? = null,
     redoLabel: String? = null,
+    /** More has become its menu ([com.chethan616.clearpdf.ui.glass.MorphButtonSurface]): the circle is that glass now. */
+    moreHidden: Boolean = false,
 ) {
     Row(
         Modifier.fillMaxWidth().height(TopBarHeight).padding(horizontal = 12.dp),
@@ -177,7 +179,7 @@ fun ViewerTopBar(
                 onClick = { if (contentAlpha > 0.5f) onMore(moreAnchor) },
                 label = stringResource(R.string.common_more_options),
                 modifier = Modifier.onGloballyPositioned { moreAnchor = it.boundsInWindow() }
-                    .graphicsLayer { alpha = contentAlpha.coerceIn(0f, 1f) },
+                    .graphicsLayer { alpha = if (moreHidden) 0f else contentAlpha.coerceIn(0f, 1f) },
             ) {
                 GlassIcon(LucideIcons.Ellipsis, null, Modifier.size(21.dp))
             }

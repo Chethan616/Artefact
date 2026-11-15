@@ -460,12 +460,15 @@ private fun Header(
                 }
             }
             if (ready != null || picture != null || map != null) {
-                QuietButton(
-                    { menu = true }, stringResource(R.string.common_more_options),
-                    Modifier.onGloballyPositioned { anchor = it.boundsInWindow() },
-                ) { Icon(LucideIcons.Ellipsis, null, tint = c.ink, modifier = Modifier.size(20.dp)) }
+                // the app's liquid glass buttons (More opens its menu out of itself, as everywhere)
+                com.chethan616.clearpdf.ui.glass.GlassCircle(
+                    onClick = { menu = true }, size = 38.dp, label = stringResource(R.string.common_more_options), ink = c.ink,
+                    modifier = Modifier.onGloballyPositioned { anchor = it.boundsInWindow() },
+                ) { com.chethan616.clearpdf.ui.glass.GlassIcon(LucideIcons.Ellipsis, null, Modifier.size(20.dp)) }
             }
-            QuietButton(onClose, stringResource(R.string.preview_close)) { Icon(LucideIcons.X, null, tint = c.ink, modifier = Modifier.size(18.dp)) }
+            com.chethan616.clearpdf.ui.glass.GlassCircle(onClick = onClose, size = 38.dp, label = stringResource(R.string.preview_close), ink = c.ink) {
+                com.chethan616.clearpdf.ui.glass.GlassIcon(LucideIcons.X, null, Modifier.size(18.dp))
+            }
         }
     }
     if (menu) {

@@ -185,6 +185,7 @@ private enum class Mode(val label: Int, val icon: ImageVector) {
     Adjust(R.string.photo_adjust, LucideIcons.SlidersHorizontal),
     Crop(R.string.photo_crop, LucideIcons.Crop),
     Blur(R.string.photo_blur, Icons.Rounded.BlurOn),
+    Draw(R.string.photo_draw, LucideIcons.PenLine),
     Text(R.string.photo_text, LucideIcons.Type),
 }
 
@@ -242,6 +243,7 @@ private fun decodeMutable(file: File): Bitmap {
  *  - Crop: a frame with corner and edge handles to drag, a dial to straighten it (±45°), quarter
  *    turns, a mirror, and the usual shapes;
  *  - Blur: paint over what should not be seen, blurred or pixelated (an eraser takes it back);
+ *  - Draw: a pen in any of the colours, with a width, for marking up the picture (undo takes a stroke back);
  *  - Text: tap to write on it; drag words to move them, pinch to size and turn them.
  * Developing is LightCraft's (its own crop model, so the frame shown is the frame saved); the
  * brush strokes and words are laid on its output, the same way for the preview and for the save.
@@ -297,6 +299,8 @@ private fun PhotoEditScreen(
     val marks = remember(name) { mutableStateListOf<Mark>() }
     var marksVersion by remember { mutableIntStateOf(0) }
     var brush by remember { mutableFloatStateOf(0.06f) }
+    var penWidth by remember { mutableFloatStateOf(0.012f) }
+    var penInk by remember { mutableIntStateOf(Candy.Tomato.toArgb()) }
     var smudgeKind by remember { mutableIntStateOf(SMUDGE_BLUR) }
     var brushAt by remember { mutableStateOf<Offset?>(null) }
     var chosen by remember { mutableStateOf<Label?>(null) }
@@ -616,6 +620,32 @@ private fun PhotoEditScreen(
                                 } while (event.changes.any { it.pressed })
                                 brushAt = null
                             }
+                            Mode.Draw -> awaitEachGesture {
+                                val down = awaitFirstDown()
+                                val (rect, pl, _) = now
+                                if (rect == null || pl == null || !rect.contains(down.position.x, down.position.y)) return@awaitEachGesture
+                                val scaleK = rect.width() / pl.outW
+                                fun at(o: Offset): PointF = pl.back((o.x - rect.left) / scaleK, (o.y - rect.top) / scaleK)
+                                val pen = Pen(penInk, penWidth)
+                                pen.points.add(at(down.position))
+                                marks.add(pen)
+                                chosen = null
+                                marksVersion++
+                                brushAt = down.position
+                                var last = down.position
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val ch = event.changes.firstOrNull { it.id == down.id } ?: break
+                                    if ((ch.position - last).getDistance() > 2f * density) {
+                                        pen.points.add(at(ch.position))
+                                        last = ch.position
+                                        marksVersion++
+                                    }
+                                    brushAt = ch.position
+                                    ch.consume()
+                                } while (event.changes.any { it.pressed })
+                                brushAt = null
+                            }
                             Mode.Text -> awaitEachGesture {
                                 val down = awaitFirstDown()
                                 val (rect, pl, _) = now
@@ -767,7 +797,7 @@ private fun PhotoEditScreen(
                             }
                             brushAt?.let { at ->
                                 val pl = place ?: return@let
-                                val radius = brush * pl.long * k / 2f
+                                val radius = (if (mode == Mode.Draw) penWidth else brush) * pl.long * k / 2f
                                 drawCircle(Color.White.copy(alpha = 0.9f), radius, at, style = Stroke(1.5f * density))
                                 drawCircle(Color.Black.copy(alpha = 0.25f), radius + 1.5f * density, at, style = Stroke(1f * density))
                             }
@@ -899,6 +929,33 @@ private fun PhotoEditScreen(
                                     val strokes = marksVersion >= 0 && marks.any { it is Smudge }
                                     RoundTool(LucideIcons.Undo2, stringResource(R.string.common_undo), enabled = strokes) {
                                         marks.lastOrNull { it is Smudge }?.let { marks.remove(it) }
+                                        marksVersion++
+                                        feel(Feel.Tick)
+                                    }
+                                }
+                            }
+                            Mode.Draw -> {
+                                Row(bar().height(72.dp).glassBar().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    ValueReadout(stringResource(R.string.photo_pen), "${(penWidth * 1000).roundToInt()}", false, ink.color)
+                                    FeltSlider(penWidth, 0.004f..0.04f, ink.color, Modifier.weight(1f), key = "pen") { penWidth = it }
+                                    Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+                                        val dot by animateDpAsState((6f + (penWidth - 0.004f) / 0.036f * 26f).dp, Fluid.quick(), label = "penDot")
+                                        Box(Modifier.size(dot).clip(CircleShape).background(Color(penInk)))
+                                    }
+                                }
+                                Row(bar().height(62.dp).glassBar().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    for (c in INKS) {
+                                        val on = penInk == c.toArgb()
+                                        Box(
+                                            Modifier.size(if (on) 30.dp else 24.dp).clip(CircleShape).background(c)
+                                                .border(if (on) 2.dp else 1.dp, if (on) Color.White else Color.Black.copy(alpha = 0.25f), CircleShape)
+                                                .pressable({ penInk = c.toArgb(); feel(Feel.Tick) }, pressedScale = 0.88f),
+                                        )
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    val strokes = marksVersion >= 0 && marks.any { it is Pen }
+                                    RoundTool(LucideIcons.Undo2, stringResource(R.string.common_undo), enabled = strokes) {
+                                        marks.lastOrNull { it is Pen }?.let { marks.remove(it) }
                                         marksVersion++
                                         feel(Feel.Tick)
                                     }
@@ -1089,7 +1146,7 @@ private fun exifFrame(file: File): PhotoFrame {
     return PhotoFrame(turns = turns, mirror = mirror)
 }
 
-/** The switch between Adjust, Crop, Blur and Text: a lit capsule slides to the one in use. */
+/** The switch between Adjust, Crop, Blur, Draw and Text: a lit capsule slides to the one in use. */
 @Composable
 private fun ModeSwitch(mode: Mode, modifier: Modifier, onPick: (Mode) -> Unit) {
     val ink = rememberGlassInk(Color.White)

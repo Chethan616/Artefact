@@ -1,5 +1,8 @@
 package com.chethan616.clearpdf.ui.home
 
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+
 import android.graphics.BitmapFactory
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -134,9 +137,19 @@ fun shortDate(t: Long): String = DateFormat.getDateInstance(DateFormat.MEDIUM).f
 
 /** A list: its name in dot-matrix type, then its first items as glass pills you can tick right here. */
 @Composable
-fun ListCard(note: Note, onOpen: () -> Unit, onLong: () -> Unit, onToggle: (CheckItem) -> Unit, modifier: Modifier = Modifier) {
+fun ListCard(
+    note: Note,
+    onOpen: () -> Unit,
+    onLong: () -> Unit,
+    onToggle: (CheckItem) -> Unit,
+    modifier: Modifier = Modifier,
+    /** Where each item's pill lands (the home screen widget lays its tap targets over them). */
+    onItemPlaced: ((CheckItem, androidx.compose.ui.geometry.Rect) -> Unit)? = null,
+    /** How many items show (the desk shows four; a small widget fewer). */
+    maxItems: Int = 4,
+) {
     val tone = clear.tone(Tone.Sage)
-    val shown = note.items.filter { it.text.isNotBlank() }.take(4)
+    val shown = note.items.filter { it.text.isNotBlank() }.take(maxItems)
     val more = note.items.count { it.text.isNotBlank() } - shown.size
     // the card's paint is its own layer so the glass pills on it refract the card, not the wallpaper
     GlassHost(
@@ -153,7 +166,10 @@ fun ListCard(note: Note, onOpen: () -> Unit, onLong: () -> Unit, onToggle: (Chec
             )
             Spacer(Modifier.height(18.dp))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                shown.forEach { item -> CheckPill(item, tone) { onToggle(item) } }
+                shown.forEach { item ->
+                    val placed = if (onItemPlaced != null) Modifier.onGloballyPositioned { onItemPlaced(item, it.boundsInRoot()) } else Modifier
+                    CheckPill(item, tone, placed) { onToggle(item) }
+                }
             }
             if (more > 0) {
                 Spacer(Modifier.height(8.dp))
@@ -193,7 +209,7 @@ fun WordFitText(text: String, style: androidx.compose.ui.text.TextStyle, modifie
  * Needs a [GlassHost] around it (the card) to refract the card's colour.
  */
 @Composable
-fun CheckPill(item: CheckItem, tone: CardTone, onToggle: () -> Unit) {
+fun CheckPill(item: CheckItem, tone: CardTone, modifier: Modifier = Modifier, onToggle: () -> Unit) {
     val haptics = com.chethan616.clearpdf.ui.glass.LocalHaptics.current
     val dark = clear.dark
     val done = item.done
@@ -204,7 +220,7 @@ fun CheckPill(item: CheckItem, tone: CardTone, onToggle: () -> Unit) {
     val tick by animateFloatAsState(if (done) 1f else 0f, com.chethan616.clearpdf.ui.glass.Fluid.quick(), label = "tick")
     GlassChip(
         onClick = { haptics?.play(if (done) com.chethan616.clearpdf.ui.glass.Feel.ToggleOff else com.chethan616.clearpdf.ui.glass.Feel.ToggleOn); onToggle() },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().then(modifier),
         height = 40.dp,
         fill = { wash },
         contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
@@ -228,7 +244,14 @@ fun CheckPill(item: CheckItem, tone: CardTone, onToggle: () -> Unit) {
 
 /** A note: frosted white paper, its title big and bold in the note's blue, the date in the corner. */
 @Composable
-fun NoteCard(note: Note, onOpen: () -> Unit, onLong: () -> Unit, modifier: Modifier = Modifier) {
+fun NoteCard(
+    note: Note,
+    onOpen: () -> Unit,
+    onLong: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Laid out at a fixed size (a home screen widget): the body takes only the lines that fit above the date. */
+    fitHeight: Boolean = false,
+) {
     val tone = clear.tone(Tone.Paper)
     val title = note.title.ifBlank { note.body.lineSequence().firstOrNull { it.isNotBlank() }?.trim()?.removePrefix("# ").orEmpty() }
     val body = if (note.title.isBlank()) "" else note.body.lineSequence().filter { it.isNotBlank() }.joinToString(" ") { it.trim().removePrefix("# ").replace("**", "") }
@@ -238,7 +261,7 @@ fun NoteCard(note: Note, onOpen: () -> Unit, onLong: () -> Unit, modifier: Modif
         WordFitText(title.ifBlank { stringResource(R.string.notes_untitled_note) }, ClearType.CardTitle.copy(color = tone.accent), maxLines = 4)
         if (body.isNotBlank() && title.length < 40) {
             Spacer(Modifier.height(8.dp))
-            Text(body, style = ClearType.Label, color = tone.ink.copy(alpha = 0.62f), maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(body, style = ClearType.Label, color = tone.ink.copy(alpha = 0.62f), maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = if (fitHeight) Modifier.weight(1f, fill = false) else Modifier)
         }
         note.images.firstOrNull()?.let { name ->
             Spacer(Modifier.height(12.dp))
@@ -317,8 +340,10 @@ fun ThoughtCard(onOpen: () -> Unit, modifier: Modifier = Modifier) {
 @Composable
 fun NoteImage(name: String, modifier: Modifier, maxPx: Int = 720) {
     val vm = LocalHomeVm.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     var img by remember(name) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(name) { img = withContext(Dispatchers.IO) { decodeScaled(vm?.notes?.file(name), maxPx) } }
+    // outside the desk (a home screen widget) there is no view model: the notes' media folder directly
+    LaunchedEffect(name) { img = withContext(Dispatchers.IO) { decodeScaled(vm?.notes?.file(name) ?: File(File(File(ctx.filesDir, "notes"), "media"), name), maxPx) } }
     Box(modifier.background(Color.White.copy(alpha = 0.2f))) {
         img?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
     }
@@ -585,7 +610,14 @@ fun BoxScope.PageFill(vm: AppViewModel, path: String?) {
  * sky card (the newest in front, opening it), "Recent" and when, and "+N" / PDFs chips for the rest.
  */
 @Composable
-fun RecentCard(vm: AppViewModel, rows: List<FileRow>, onAll: () -> Unit, modifier: Modifier = Modifier) {
+fun RecentCard(
+    vm: AppViewModel,
+    rows: List<FileRow>,
+    onAll: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** The fan of pages at this size (a small home screen widget draws it smaller to keep clear of the title and chips). */
+    pagesScale: Float = 1f,
+) {
     val tone = clear.tone(Tone.Sky)
     val top = rows.first()
     Box(modifier.height(226.dp).pressable(top.open, { vm.fileSheet = top to true }, pressedScale = 0.95f)) {
@@ -602,7 +634,7 @@ fun RecentCard(vm: AppViewModel, rows: List<FileRow>, onAll: () -> Unit, modifie
                 }
                 // up to three first pages, fanned; the newest on top
                 val shown = rows.take(3)
-                Box(Modifier.align(Alignment.Center).padding(top = 18.dp).size(140.dp, 132.dp)) {
+                Box(Modifier.align(Alignment.Center).padding(top = 18.dp).size(140.dp, 132.dp).graphicsLayer { scaleX = pagesScale; scaleY = pagesScale }) {
                     shown.indices.reversed().forEach { i ->
                         val r = shown[i]
                         val tilt = listOf(-4f, 7f, -12f)[i]

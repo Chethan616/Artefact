@@ -8,7 +8,7 @@ use kurbo::Affine;
 use pdfcraft_render::{PageText, TextGlyph};
 
 use wordcraft_engine::Session;
-use wordcraft_engine::doc::Document;
+use wordcraft_engine::doc::{Block, Document};
 use wordcraft_engine::layout::display::{DisplayOptions, Draw, page_display};
 use wordcraft_engine::layout::{DocLayout, Page};
 use wordcraft_engine::render::RenderOptions;
@@ -201,7 +201,7 @@ impl OfficeDoc for WordDocument {
             undo: s.session.undo_label().map(str::to_string),
             redo: s.session.redo_label().map(str::to_string),
             fields: 0,
-            has_outline: false,
+            has_outline: !headings_of(&doc, &layout).is_empty(),
             attachments: 0,
             signed: false,
             comments_hidden: false,
@@ -270,6 +270,11 @@ impl OfficeDoc for WordDocument {
         Ok(())
     }
 
+    fn outline(&self) -> Vec<crate::OutlineEntry> {
+        let (doc, layout, _) = self.snapshot();
+        headings_of(&doc, &layout)
+    }
+
     fn as_word(&self) -> Option<&WordDocument> {
         Some(self)
     }
@@ -278,6 +283,39 @@ impl OfficeDoc for WordDocument {
     fn release_memory(&self) {
         *self.texts.lock().unwrap_or_else(PoisonError::into_inner) = (0, Vec::new());
     }
+}
+
+/// The document's headings (paragraphs with an outline level, as its Navigation Pane lists them) in
+/// reading order, each with the page it starts on.
+fn headings_of(doc: &Document, layout: &DocLayout) -> Vec<crate::OutlineEntry> {
+    use wordcraft_engine::layout::outline::{BODY, levels};
+    let mut found: Vec<(u8, String, Option<u32>)> = Vec::new();
+    for (i, (level, block)) in levels(doc).into_iter().zip(doc.body.iter()).enumerate() {
+        if level >= BODY {
+            continue;
+        }
+        let Block::Para(p) = &**block else { continue };
+        let text = p.plain_text().replace(['\u{FFFC}', '\n', '\r'], " ").trim().to_string();
+        if text.is_empty() {
+            continue;
+        }
+        let page = layout.pages.iter().rposition(|pg| pg.first_block <= i).and_then(|n| u32::try_from(n).ok());
+        found.push((level, text, page));
+    }
+    // the shallowest level present is the top, so a document that starts at Heading 2 still nests sensibly
+    let top = found.iter().map(|f| f.0).min().unwrap_or(1);
+    (0..found.len())
+        .map(|k| {
+            let (level, ref title, page) = found[k];
+            let children = found[k + 1..].iter().take_while(|n| n.0 > level).count();
+            crate::OutlineEntry {
+                title: title.clone(),
+                level: u32::from(level - top),
+                page,
+                children: u32::try_from(children).unwrap_or(u32::MAX),
+            }
+        })
+        .collect()
 }
 
 fn page_of(layout: &DocLayout, page: u32) -> Result<&Page, MobileError> {

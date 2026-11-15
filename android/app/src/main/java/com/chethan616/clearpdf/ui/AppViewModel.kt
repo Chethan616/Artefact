@@ -120,6 +120,8 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
                     runCatching { files.pruneCopies(list.map { it.uri }, open) }
                 }
             }
+            // the home screen's Recent widget is the desk's Recent card
+            runCatching { com.chethan616.clearpdf.widget.Widgets.refreshRecent(this@AppViewModel) }
         }
     }
 
@@ -3087,7 +3089,16 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
     }
 
     /** Back from the access page (or the app resumed): look again. */
+    /** A note a home screen widget asked for, opened once the notes have loaded. */
+    fun openNoteFromWidget(id: String) {
+        viewModelScope.launch {
+            snapshotFlow { notes.loaded }.first { it }
+            if (notes.get(id) != null) openNote = id
+        }
+    }
+
     fun onResumed() {
+        notes.reload()
         val had = hasFileAccess
         hasFileAccess = com.chethan616.clearpdf.engine.LocalFiles.hasAccess(getApplication())
         if (hasFileAccess && !had) scanLocal(force = true)
@@ -3141,6 +3152,9 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         val all = localRows() + recentRows()
         return all.filter { q in it.name.lowercase() }.distinctBy { it.key }.distinctBy { sameFile(it.name, it.size) }
     }
+
+    /** Where [uri] lives, as Files names it ("Downloads", "This device" …). */
+    fun locationOfDocument(uri: String): String = locationOf(uri)
 
     private fun locationOf(uri: String): String = runCatching { files.displayLocation(Uri.parse(uri)) }.getOrDefault(text(R.string.files_location_this_device))
 

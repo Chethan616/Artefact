@@ -535,6 +535,8 @@ fun SignaturesSheet(vm: AppViewModel, doc: OpenDocument) {
             if (list.isEmpty()) {
                 Text(stringResource(R.string.sign_none), color = c.textSecondary, fontSize = 15.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
             }
+            if (list.isNotEmpty()) com.chethan616.clearpdf.ui.SheetSection(inset = 52.dp) {
+              Column {
             for (s in list) {
                 val (icon, tint) = statusIcon(s)
                 Row(
@@ -556,9 +558,10 @@ fun SignaturesSheet(vm: AppViewModel, doc: OpenDocument) {
                     }
                     Icon(if (open == s.field) LucideIcons.ChevronUp else LucideIcons.ChevronDown, null, tint = c.icon, modifier = Modifier.size(20.dp))
                 }
-                SheetDivider()
             }
-            SheetRow(LucideIcons.ShieldCheck, stringResource(R.string.sign_add_signature), { close(); vm.startCertPlacing(doc) })
+              }
+            }
+            com.chethan616.clearpdf.ui.SheetSection { SheetRow(LucideIcons.ShieldCheck, stringResource(R.string.sign_add_signature), { close(); vm.startCertPlacing(doc) }) }
             Spacer(Modifier.height(8.dp))
         }
     }

@@ -138,3 +138,16 @@ of stand-ins in a face a phone has: Source Sans 3, Source Serif 4, Inter and Jet
 faces Artefact bundles, given to the database by `ensure_fonts` in `mobile/src/slides.rs`) and
 Android's Roboto, Noto Serif and Droid Sans Mono. Without it every family fell through to the
 last-resort face on Android, and a deck's fonts all looked replaced (GitHub issue 130).
+
+## GridCraft (Excel PDF export)
+
+`gridcraft-pdf` is storytold/gridcraft's `crates/pdf` at `6a8eb4ff42cfa88b5bdd3eec13c6db3874d95214`
+(the revision the other gridcraft crates are pinned to), a `[patch."https://github.com/storytold/gridcraft"]`
+entry. Upstream sets text WinAnsiEncoding lacks in a non-embedded Adobe CID font, which a phone's PDF
+viewer cannot draw: a Cyrillic or Greek sheet exported with its text missing. `Artefact patch:` in
+`src/embed.rs` and `src/lib.rs` sets such text in Source Sans 3 (Regular, Bold, Italic from
+`engine/assets/fonts`, SIL OFL), embedded as a subset (`subsetter`, `skrifa`) with a CIDToGIDMap and a
+ToUnicode map, and measures it with the face's real widths. Scripts Source Sans lacks (CJK, Arabic,
+Indic) still use the old fallback. Covered by `gridcraft-pdf`'s `cyrillic_text_is_embedded_and_measured`
+and `cjk_text_still_uses_the_fallback`, and `artefact-mobile`'s
+`a_sheet_with_cyrillic_text_exports_to_a_pdf_that_shows_it`.

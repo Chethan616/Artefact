@@ -135,6 +135,13 @@ object GlassSettings {
             tint = p.getFloat("tint", d.tint),
             highlight = p.getFloat("highlight", d.highlight),
         )
+        // this update turns the glass to Crystal once (the owner's choice); after that
+        // the user's own choice stands
+        if (!p.getBoolean("crystal_default_v1", false)) {
+            style = GlassStyle.Crystal
+            p.edit().putBoolean("crystal_default_v1", true).apply()
+            update(context, GlassStyle.Crystal)
+        }
         haptics = p.getBoolean("haptics", true)
         adaptive = p.getBoolean("adaptive", false)
         wallpaper = runCatching { Wallpaper.valueOf(p.getString("wallpaper", null) ?: "Aurora") }.getOrDefault(Wallpaper.Aurora)

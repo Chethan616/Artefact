@@ -154,7 +154,7 @@ fun SignPanel(vm: AppViewModel, doc: OpenDocument, onDismiss: () -> Unit) {
     val version = vm.signaturesChanged
     // over the Fill & Sign bar, which stays in view: two dashed boxes, Add signature and Add initials
     PdfSheet(onDismiss = onDismiss, modifier = Modifier.padding(bottom = BottomBarHeight + 1.dp).navigationBarsPadding(), bottomBand = false) {
-        Spacer(Modifier.height(7.dp))
+        SheetTitle(stringResource(R.string.common_tool_fill_sign))
         for (initials in listOf(false, true)) {
             val file = vm.signatures.fileFor(initials)
             val placeHint = stringResource(if (initials) R.string.fill_tap_place_initials else R.string.fill_tap_place_signature)

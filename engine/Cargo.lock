@@ -2176,7 +2176,10 @@ dependencies = [
 [[package]]
 name = "gridcraft-pdf"
 version = "0.16.0"
-source = "git+https://github.com/storytold/gridcraft?rev=6a8eb4ff42cfa88b5bdd3eec13c6db3874d95214#6a8eb4ff42cfa88b5bdd3eec13c6db3874d95214"
+dependencies = [
+ "skrifa 0.47.0",
+ "subsetter",
+]
 
 [[package]]
 name = "gridcraft-xlsx"

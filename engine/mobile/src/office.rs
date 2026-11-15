@@ -42,6 +42,16 @@ pub(crate) trait OfficeDoc: Send + Sync {
         Err(MobileError::Command("this document can't be edited yet, so there is nothing to save".into()))
     }
 
+    /// The speaker notes of slide `page` (presentations only).
+    fn notes(&self, _page: u32) -> Option<String> {
+        None
+    }
+
+    /// The document's headings, for its outline (Word only).
+    fn outline(&self) -> Vec<crate::OutlineEntry> {
+        Vec::new()
+    }
+
     /// A Word document, which the app edits with WordCraft's commands.
     fn as_word(&self) -> Option<&crate::word::WordDocument> {
         None

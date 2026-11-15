@@ -205,6 +205,9 @@ class MainActivity : ComponentActivity() {
         // from Quick Preview: its own copy when Android didn't pass the original on
         val local = intent?.getStringExtra(EXTRA_LOCAL_COPY)?.let(::File)?.takeIf { it.isFile && it.canonicalPath.startsWith(filesDir.canonicalPath) }
         val fromPreview = intent?.getBooleanExtra(EXTRA_FROM_PREVIEW, false) == true
+        intent?.getStringExtra(com.chethan616.clearpdf.widget.EXTRA_OPEN_NOTE)?.let(vm::openNoteFromWidget)
+        intent?.getStringExtra(com.chethan616.clearpdf.widget.EXTRA_OPEN_RECENT)?.let { vm.open(Uri.parse(it)) }
+        if (intent?.getBooleanExtra(com.chethan616.clearpdf.widget.EXTRA_OPEN_FILES, false) == true) vm.homeTab = com.chethan616.clearpdf.ui.home.HomeTab.Files
         when {
             uri != null -> vm.open(uri, fromOtherApp = true, copy = local, fromPreview = fromPreview)
             local != null -> vm.open(Uri.fromFile(local), fromOtherApp = true, fromPreview = fromPreview)
