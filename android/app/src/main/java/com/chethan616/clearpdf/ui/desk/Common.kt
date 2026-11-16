@@ -203,7 +203,7 @@ fun SettingsButton(vm: AppViewModel) {
 
 /**
  * A file in a list: its paper, its name, when and how big, its star (a tap stars or unstars it, there
- * and then) and its ⋯, whose glass grows into the file's menu ([FileMenu]).
+ * and then) and its ⋯, which opens the file's menu ([FileMenu]).
  */
 @Composable
 fun FileListItem(vm: AppViewModel, r: FileRow, recent: Boolean, modifier: Modifier = Modifier) {
@@ -242,8 +242,6 @@ fun FileListItem(vm: AppViewModel, r: FileRow, recent: Boolean, modifier: Modifi
             Box(
                 Modifier.size(44.dp)
                     .onGloballyPositioned { dots = it.boundsInWindow() }
-                    // stepped aside while its glass is the menu (the menu's own ⋯ is drawn there instead)
-                    .drawWithContent { if (!com.chethan616.clearpdf.ui.glass.MorphAnchors.hides(dots)) drawContent() }
                     .pressable({ if (vm.fileMenu == null) vm.fileMenu = FileMenuAt(r, recent, dots) }, pressedScale = 0.85f),
                 contentAlignment = Alignment.Center,
             ) {

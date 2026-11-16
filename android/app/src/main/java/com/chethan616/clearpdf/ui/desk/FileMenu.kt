@@ -49,8 +49,6 @@ import com.chethan616.clearpdf.ui.glass.GlassMenuItem
 import com.chethan616.clearpdf.ui.glass.GlassMotion
 import com.chethan616.clearpdf.ui.glass.GlassTextField
 import com.chethan616.clearpdf.ui.glass.LocalGlassInk
-import com.chethan616.clearpdf.ui.glass.MorphAnchors
-import com.chethan616.clearpdf.ui.glass.MorphButtonSurface
 import com.chethan616.clearpdf.ui.glass.MorphMenuRow
 import com.chethan616.clearpdf.ui.glass.RoundedRectangle
 import com.chethan616.clearpdf.ui.glass.pressable
@@ -80,34 +78,27 @@ fun cardMenuAnchor(bounds: Rect, density: androidx.compose.ui.unit.Density, side
 }
 
 /**
- * A file's menu as liquid glass, the same glass every round button's menu is: it grows out of the
- * file's ⋯ (or the corner of a long-pressed card) in the morph's four states and settles with the
- * user's bounce. The file at the top with its star, one tap to star or unstar right there (the menu
+ * A file's menu on the app's frosted menu glass, unfolding beside the file's ⋯ (or the corner of a
+ * long-pressed card). The file at the top with its star, one tap to star or unstar right there (the menu
  * stays open and the star pops); four quick actions; then its tools. A row closes the menu, which
  * folds back into the ⋯ before the row's action runs.
  */
 @Composable
 fun FileMenu(vm: AppViewModel, at: FileMenuAt, onGone: () -> Unit) {
-    var open by remember(at) { mutableStateOf(true) }
-    val dots: @Composable () -> Unit = {
-        val ink = LocalGlassInk.current
-        Icon(LucideIcons.EllipsisVertical, null, tint = if (ink.isSpecified) ink else clear.inkSoft, modifier = Modifier.size(20.dp))
+    // the app's glass popover, unfolding beside what was pressed (no glass button grows out of the ⋯)
+    var chosen by remember(at) { mutableStateOf(false) }
+    com.chethan616.clearpdf.ui.glass.GlassMenuLayout(at.anchor, onDismiss = onGone, width = 292.dp, maxHeight = 600.dp) {
+        Spacer(Modifier.height(6.dp))
+        FileMenuBody(vm, at.row, at.recent, chosen) { action ->
+            if (!chosen) {
+                chosen = true
+                onGone()
+                // once the menu has folded away (as GlassMenu's rows wait)
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ action() }, 220L)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
     }
-    // the ⋯ stands in for a round button: the glass folds back into it, and it steps aside meanwhile
-    DisposableEffect(at.anchor, at.ghost) {
-        if (!at.ghost) MorphAnchors.register(at.anchor, dots)
-        onDispose { if (!at.ghost) MorphAnchors.unregister(at.anchor) }
-    }
-    MorphButtonSurface(
-        anchor = at.anchor,
-        open = open,
-        onDismiss = { open = false },
-        onGone = onGone,
-        menuWidth = 292.dp,
-        maxHeight = 600.dp,
-        icon = dots,
-        ghost = at.ghost,
-    ) { shut, choose -> FileMenuBody(vm, at.row, at.recent, shut, choose) }
 }
 
 @Composable

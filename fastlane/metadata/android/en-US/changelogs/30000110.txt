@@ -1,0 +1,10 @@
+Widgets, a deck of thoughts, cards you arrange
+* To-Do widget: the real glass card, ticks land at once; turn to the next list
+* Starred widget; widget taps open Files
+* Star any file from its row; a new file menu
+* Drag desk cards where you want them
+* Bold or italic only the selected words
+* Thought of the day and Today pages
+* New typeface; menus bounce with your Motion setting
+* Scan filters preview before saving
+* A new document info sheet
