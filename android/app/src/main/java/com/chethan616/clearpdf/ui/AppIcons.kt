@@ -163,22 +163,16 @@ object LucideIcons {
 }
 
 private val HighlighterGlyph: ImageVector by lazy {
+    // a solid marker laid at a slant, its nib down-left, over a bar of its ink: the same weight as the
+    // filled Material glyphs it sits among, its ink spanning 3 … 21 so it centres on the row as they do
     ImageVector.Builder("Highlighter", 24.dp, 24.dp, 24f, 24f).apply {
-        // the pen's body and nib (Lucide's highlighter, ISC), then the ink line under it
         addPath(
-            androidx.compose.ui.graphics.vector.PathParser().parsePathString("M9.5,10.5L4.5,15.5V18.5H11.5L14.5,15.5M20.5,10.6L16.6,14.5A1.8,1.8 0,0 1,14.1 14.5L9.6,10A1.8,1.8 0,0 1,9.6 7.5L13.5,3.6").toNodes(),
-            fill = null,
-            stroke = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black),
-            strokeLineWidth = 2.1f,
-            strokeLineCap = androidx.compose.ui.graphics.StrokeCap.Round,
-            strokeLineJoin = androidx.compose.ui.graphics.StrokeJoin.Round,
-        )
-        addPath(
-            androidx.compose.ui.graphics.vector.PathParser().parsePathString("M14,21.5H21").toNodes(),
-            fill = null,
-            stroke = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black),
-            strokeLineWidth = 2.1f,
-            strokeLineCap = androidx.compose.ui.graphics.StrokeCap.Round,
+            androidx.compose.ui.graphics.vector.PathParser().parsePathString(
+                "M14.1,3.6 Q14.8,2.9 15.5,3.6 L19.4,7.5 Q20.1,8.2 19.4,8.9 L11.6,16.7 L6.3,11.4 Z " +
+                    "M5.6,12.2 L10.8,17.4 L9.3,18.9 L5.2,18.9 L3.9,17.6 L3.9,13.9 Z " +
+                    "M12.2,19.4 L20.2,19.4 Q21.2,19.4 21.2,20.4 Q21.2,21.4 20.2,21.4 L12.2,21.4 Z",
+            ).toNodes(),
+            fill = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black),
         )
     }.build()
 }

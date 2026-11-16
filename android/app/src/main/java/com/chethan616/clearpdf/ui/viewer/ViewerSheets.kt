@@ -485,8 +485,14 @@ fun pdfDateMillis(s: String?): Long? {
  */
 @Composable
 private fun ToolTile(icon: ImageVector, label: String, tint: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    ToolTileFace(icon, label, tint, modifier.pressable(onClick, pressedScale = 0.92f).semantics { contentDescription = label })
+}
+
+/** A tool's tile as More tools draws it: its hue's rounded square with the glyph in white, its name under it. */
+@Composable
+internal fun ToolTileFace(icon: ImageVector, label: String, tint: Color, modifier: Modifier = Modifier) {
     Column(
-        modifier.pressable(onClick, pressedScale = 0.92f).padding(vertical = 6.dp).semantics { contentDescription = label },
+        modifier.padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
