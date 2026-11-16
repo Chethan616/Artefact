@@ -99,8 +99,8 @@ enum class QuickTool(val id: String, @StringRes val label: Int, @StringRes val t
     Print("print", R.string.sheet_print, R.string.sheet_print, LucideIcons.Printer, ToolHues.export);
 
     companion object {
-        /** The bar as it comes: the reference's default tools and order. */
-        val DEFAULT_BAR = listOf(Edit, Comment, Highlight, Draw, FillSign, Export)
+        /** The bar as it comes: the reference's default tools and order, the five a phone's bar holds (Export is in More tools). */
+        val DEFAULT_BAR = listOf(Edit, Comment, Highlight, Draw, FillSign)
 
         /** A Word document's bar: its engine reads it aloud, exports and converts it, and prints it. */
         val WORD = listOf(Edit, ReadAloud, ExportPdf, SaveAs, Print)
@@ -120,11 +120,7 @@ enum class QuickTool(val id: String, @StringRes val label: Int, @StringRes val t
 }
 
 /** How many tools fit on the bar beside More tools at a screen [widthDp] wide. */
-fun toolbarSlots(widthDp: Int): Int = when {
-    widthDp >= 768 -> 8
-    widthDp >= 460 -> 7
-    else -> 6
-}
+fun toolbarSlots(widthDp: Int): Int = dockSlots(widthDp)
 
 /** The bar's tools and More tools' order, as the user arranged them (kept in the app's preferences). */
 @Stable

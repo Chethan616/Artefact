@@ -197,8 +197,15 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
     // covers the desk (nothing of it drawn) or has gone.
     val held = remember { arrayOf(fresh) }
     if (vm.deskStill) held[0] = fresh
-    val items = held[0]
+    // the cards in the order the user dragged them to (per shelf), and, while one is carried, as it goes
+    val drag = remember { DeskDrag() }
+    val saved = remember(filter, vm.deskOrderVersion) { vm.deskOrder(filter) }
+    val arranged = remember(held[0], saved) { arrangeDesk(held[0], saved) }
+    val items = drag.live?.let { keys -> keys.mapNotNull { k -> arranged.firstOrNull { it.key == k } } } ?: arranged
     val grid = rememberLazyStaggeredGridState()
+    val feel = com.chethan616.clearpdf.ui.glass.rememberFeel()
+    // the gesture runs from the first frame on: it reads the cards as they are now, not as they were then
+    val itemsNow by androidx.compose.runtime.rememberUpdatedState(items)
     LaunchedEffect(filter) { grid.animateScrollToItem(0) }
     // the cards rise in when the desk (or a chip) first shows them, never while scrolling
     var intro by remember { mutableStateOf(true) }
@@ -223,7 +230,23 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
             columns = StaggeredGridCells.Fixed(2),
             state = grid,
             // glass in the scrolling desk samples the soft wallpaper: while it scrolls, ten times a second is plenty
-            modifier = Modifier.fillMaxSize().throttleBackdrops { grid.isScrollInProgress },
+            modifier = Modifier.fillMaxSize().throttleBackdrops { grid.isScrollInProgress }
+                // a card held and moved goes where it is put, as icons on a home screen
+                .deskDragging(
+                    grid, drag,
+                    draggable = { itemsNow.map { it.key }.toSet() },
+                    order = { itemsNow.map { it.key } },
+                    onLift = {
+                        // the long press's menu gives way to the card being carried
+                        actionsFor = null
+                        vm.fileMenu = null
+                        feel(com.chethan616.clearpdf.ui.glass.Feel.Press)
+                    },
+                    onDrop = { keys ->
+                        feel(com.chethan616.clearpdf.ui.glass.Feel.Confirm)
+                        vm.saveDeskOrder(filter, keys)
+                    },
+                ),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = DeskDockClearance + 40.dp),
             verticalItemSpacing = 12.dp,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -239,7 +262,10 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
                 FilterChips(filter) { filter = it }
             }
             itemsIndexed(items, key = { _, it -> it.key }) { i, item ->
-                val m = Modifier.fillMaxWidth().riseIn(i, active = intro).onGloballyPositioned { bounds[item.key] = it.boundsInWindow() }
+                // the others glide aside as a carried card passes; the carried one follows the finger
+                val m = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = if (drag.key == item.key) null else androidx.compose.animation.core.spring<androidx.compose.ui.unit.IntOffset>(0.82f, 420f))
+                    .carried(drag, item.key, grid)
+                    .fillMaxWidth().riseIn(i, active = intro).onGloballyPositioned { bounds[item.key] = it.boundsInWindow() }
                 val long: (Note) -> Unit = { n -> actionsAnchor = bounds[item.key] ?: Rect.Zero; actionsFor = n }
                 when (item) {
                     is DeskItem.Of -> when (item.note.kind) {

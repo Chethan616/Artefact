@@ -3198,6 +3198,20 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         if (deskPages.isNotEmpty()) deskPages.removeAt(deskPages.lastIndex)
     }
 
+    /** Bumped when the desk's hand-made order changes (the desk reads it again). */
+    var deskOrderVersion by mutableStateOf(0)
+        private set
+
+    /** The order the user dragged [filter]'s cards into (their keys), or empty: the desk's own. */
+    fun deskOrder(filter: com.chethan616.clearpdf.ui.home.DeskFilter): List<String> =
+        appPrefs.getString("deskOrder_${filter.name}", null)?.split('\n')?.filter { it.isNotBlank() }.orEmpty()
+
+    /** Keep [keys] as [filter]'s order (a card dropped in a new place). */
+    fun saveDeskOrder(filter: com.chethan616.clearpdf.ui.home.DeskFilter, keys: List<String>) {
+        appPrefs.edit().putString("deskOrder_${filter.name}", keys.joinToString("\n")).apply()
+        deskOrderVersion++
+    }
+
     /** The desk turns to this shelf (asked from a desk page), then forgets it. */
     var deskShelf by mutableStateOf<com.chethan616.clearpdf.ui.home.DeskFilter?>(null)
 
