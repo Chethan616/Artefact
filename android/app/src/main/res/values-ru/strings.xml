@@ -1206,4 +1206,34 @@
     <string name="kind_short_text">Текст</string>
     <string name="kind_short_images">Фото</string>
     <string name="kind_short_maps">Карты</string>
+    <string name="widget_starred_name">Избранное</string>
+    <string name="widget_starred_description">Избранные документы, самый новый в одно касание.</string>
+    <string name="widget_starred_empty">Отметьте файл звёздочкой, и он появится здесь</string>
+    <string name="widget_next_list">Следующий список</string>
+    <string name="widget_next_note">Следующая заметка</string>
+    <string name="info_about">Сведения</string>
+    <string name="info_tagged_short">Доступный</string>
+    <string name="viewer_bold_not_found">Эти слова здесь нельзя сделать жирными</string>
+    <string name="desk_highlights">Лучшее</string>
+    <string name="desk_snapshots">Снимки</string>
+    <string name="desk_text">Текст</string>
+    <string name="thoughts_create_new">Создать</string>
+    <string name="thoughts_empty">Здесь пока пусто. Создайте ниже.</string>
+    <string name="today_title">Сегодня</string>
+    <string name="today_morning">Доброе утро</string>
+    <string name="today_afternoon">Добрый день</string>
+    <string name="today_evening">Добрый вечер</string>
+    <string name="today_night">Доброй ночи</string>
+    <string name="today_overview">Обзор дня</string>
+    <plurals name="today_left">
+        <item quantity="one">%d дело осталось</item>
+        <item quantity="other">Осталось дел: %d</item>
+    </plurals>
+    <plurals name="today_notes">
+        <item quantity="one">%d заметка сегодня</item>
+        <item quantity="other">Заметок сегодня: %d</item>
+    </plurals>
+    <string name="settings_your_name">Ваше имя</string>
+    <string name="settings_your_name_hint">Показывается над приветствием «Сегодня»</string>
+    <string name="thoughts_audios">Аудио</string>
 </resources>

@@ -96,6 +96,18 @@ fun FilesScreen(vm: AppViewModel, onBrowse: () -> Unit) {
             vm.filesShowLocal = false
         }
     }
+    LaunchedEffect(vm.filesShowRecent) {
+        if (vm.filesShowRecent) {
+            tab = 0
+            vm.filesShowRecent = false
+        }
+    }
+    LaunchedEffect(vm.filesShowStarred) {
+        if (vm.filesShowStarred) {
+            tab = 1
+            vm.filesShowStarred = false
+        }
+    }
     LaunchedEffect(tab) { if (tab == 2) vm.scanLocal() }
     BackHandler(enabled = vm.selectedFiles.isNotEmpty()) { vm.selectedFiles.clear() }
     BackHandler(enabled = vm.selectedFiles.isEmpty() && query.isNotEmpty()) { query = "" }

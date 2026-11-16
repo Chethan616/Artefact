@@ -603,10 +603,17 @@ impl Automation {
                 let r = |x: f32| (x as f64 * 100.0).round() / 100.0;
                 let current = doc.text_blocks(page);
                 let id = doc.id;
+                // the page's lines, read only when a paragraph mixes lines (its runs' styles come from them)
+                let lines = if current.iter().any(|b| b.spans.iter().any(|(_, l)| Some(*l) != b.spans.first().map(|(_, f)| *f))) {
+                    doc.text_lines(page)
+                } else {
+                    Vec::new()
+                };
                 let blocks: Vec<Value> = current
                     .iter()
                     .enumerate()
                     .map(|(i, b)| {
+                        let runs = style_runs(b, &lines);
                         let (u, v) = (info.user_to_view(b.rect[0] as f32, b.rect[1] as f32), info.user_to_view(b.rect[2] as f32, b.rect[3] as f32));
                         json!({
                             "paragraph": i + 1,
@@ -619,6 +626,9 @@ impl Automation {
                             "size": (b.size * 100.0).round() / 100.0,
                             "bold": b.bold,
                             "italic": b.italic,
+                            // Where the paragraph's weight or slant changes (a bold word in a plain
+                            // line): UTF-8 byte ranges of editor_text; empty when it is all one style.
+                            "runs": runs,
                             // Passing this back as text_edit's color keeps the source's own colour
                             // operators (any colour space).
                             "color": format!("#{:02x}{:02x}{:02x}", (b.color[0] * 255.0).round() as u8, (b.color[1] * 255.0).round() as u8, (b.color[2] * 255.0).round() as u8),
@@ -2891,6 +2901,26 @@ fn write_atomic_synced(
     // any step removes it and leaves the destination as it was.
     pdfcraft_platform::staging::write_atomically_with(path, bytes, StagingName::SuffixThenTag, suffixes, sync)
         .map_err(|e| failed(format!("{}: {e}", path.display())))
+}
+
+/// A paragraph's bold and italic runs over its `editor_text` (byte ranges), adjacent runs of one
+/// style merged; empty when the whole paragraph is one style (or its lines were not read).
+fn style_runs(b: &pdfcraft_engine::TextBlock, lines: &[pdfcraft_engine::TextLine]) -> Vec<Value> {
+    if lines.is_empty() {
+        return Vec::new();
+    }
+    let mut runs: Vec<(usize, usize, bool, bool)> = Vec::new();
+    for (range, line) in &b.spans {
+        let (bold, italic) = lines.get(*line).map(|l| (l.bold, l.italic)).unwrap_or((b.bold, b.italic));
+        match runs.last_mut() {
+            Some(last) if last.2 == bold && last.3 == italic && last.1 <= range.start => last.1 = range.end,
+            _ => runs.push((range.start, range.end, bold, italic)),
+        }
+    }
+    if runs.iter().all(|r| r.2 == runs[0].2 && r.3 == runs[0].3) {
+        return Vec::new();
+    }
+    runs.into_iter().map(|(s, e, bold, italic)| json!({ "range": [s, e], "bold": bold, "italic": italic })).collect()
 }
 
 #[cfg(test)]

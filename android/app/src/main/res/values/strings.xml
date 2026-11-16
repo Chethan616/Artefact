@@ -1648,4 +1648,34 @@
     <string name="kind_short_text">Text</string>
     <string name="kind_short_images">Photos</string>
     <string name="kind_short_maps">Maps</string>
+    <string name="widget_starred_name">Starred</string>
+    <string name="widget_starred_description">Your starred documents, the newest one a tap away.</string>
+    <string name="widget_starred_empty">Star a file and it shows here</string>
+    <string name="widget_next_list">Next list</string>
+    <string name="widget_next_note">Next note</string>
+    <string name="info_about">About</string>
+    <string name="info_tagged_short">Accessible</string>
+    <string name="viewer_bold_not_found">Those words can\'t be made bold here</string>
+    <string name="desk_highlights">Highlights</string>
+    <string name="desk_snapshots">Snapshots</string>
+    <string name="desk_text">Text</string>
+    <string name="thoughts_create_new">Create new</string>
+    <string name="thoughts_empty">Nothing here yet. Create one below.</string>
+    <string name="today_title">Today</string>
+    <string name="today_morning">Good Morning</string>
+    <string name="today_afternoon">Good Afternoon</string>
+    <string name="today_evening">Good Evening</string>
+    <string name="today_night">Good Night</string>
+    <string name="today_overview">Daily Overview</string>
+    <plurals name="today_left">
+        <item quantity="one">%d to-do left</item>
+        <item quantity="other">%d to-dos left</item>
+    </plurals>
+    <plurals name="today_notes">
+        <item quantity="one">%d note today</item>
+        <item quantity="other">%d notes today</item>
+    </plurals>
+    <string name="settings_your_name">Your name</string>
+    <string name="settings_your_name_hint">Shown above Today\'s greeting</string>
+    <string name="thoughts_audios">Audios</string>
 </resources>

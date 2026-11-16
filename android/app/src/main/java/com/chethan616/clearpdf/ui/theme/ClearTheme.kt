@@ -175,6 +175,18 @@ private fun jakarta(weight: Int, italic: Boolean = false) = FontFamily(
     ),
 )
 
+/** Outfit (OFL), the interface's face (the mock's): a geometric sans at one weight of its variable axis. */
+private fun outfit(weight: Int) = FontFamily(
+    Font(R.font.outfit, FontWeight(weight), FontStyle.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(weight))),
+)
+
+/** The whole Outfit family, every weight the text styles ask for (it has no italic: slants are synthesized). */
+val Outfit: FontFamily = FontFamily(
+    listOf(300, 400, 500, 600, 700, 800).map { w ->
+        Font(R.font.outfit, FontWeight(w), FontStyle.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(w)))
+    },
+)
+
 /** The whole Jakarta family, every weight the text styles ask for. */
 val Jakarta: FontFamily = FontFamily(
     listOf(300, 400, 500, 600, 700, 800).flatMap { w ->
@@ -223,19 +235,19 @@ private fun display(family: FontFamily, size: TextUnit, line: TextUnit, tracking
     TextStyle(fontFamily = family, fontSize = size, lineHeight = line, letterSpacing = tracking, lineHeightStyle = Trim)
 
 /**
- * The type scale, all Plus Jakarta Sans: heavy and tight for heroes and titles (Apple's display
+ * The type scale, all Outfit (the mock's face): heavy and tight for heroes and titles (Apple's display
  * sizes, a touch rounder), plain for reading. [Serif] and [Doto] are the playful accents on cards.
  */
 object ClearType {
-    val Hero = display(jakarta(700), 54.sp, 56.sp, (-1.4).sp)
-    val Display = display(jakarta(600), 42.sp, 46.sp, (-1.0).sp)
-    val Headline = display(jakarta(700), 26.sp, 30.sp, (-0.5).sp)
-    val Title = display(jakarta(700), 18.sp, 22.sp, (-0.2).sp)
-    val Tile = display(jakarta(700), 17.sp, 20.sp, (-0.2).sp)
-    val Number = display(jakarta(700), 22.sp, 24.sp, 0.sp).copy(fontFeatureSettings = "tnum")
+    val Hero = display(outfit(700), 54.sp, 56.sp, (-1.4).sp)
+    val Display = display(outfit(600), 42.sp, 46.sp, (-1.0).sp)
+    val Headline = display(outfit(700), 26.sp, 30.sp, (-0.5).sp)
+    val Title = display(outfit(700), 18.sp, 22.sp, (-0.2).sp)
+    val Tile = display(outfit(700), 17.sp, 20.sp, (-0.2).sp)
+    val Number = display(outfit(700), 22.sp, 24.sp, 0.sp).copy(fontFeatureSettings = "tnum")
 
     /** A note card's title: bold, tight, in the note's blue. */
-    val CardTitle = display(jakarta(800), 27.sp, 29.sp, (-0.6).sp)
+    val CardTitle = display(outfit(800), 27.sp, 29.sp, (-0.6).sp)
     /** A collection card's word ("Files"). */
     val SerifWord = display(Serif, 52.sp, 52.sp, (-1.2).sp)
     /** A list card's title. */
@@ -248,7 +260,7 @@ object ClearType {
     // title; the desk shrinks that one size (for every title alike) only if a translation is too wide.
     val DeskTitleSize = 44.sp
     val DeskTitleLine = 50.sp
-    val DeskAll = display(bricolage(700, 100f, 96.sp), DeskTitleSize, DeskTitleLine, (-1.4).sp)
+    val DeskAll = display(outfit(500), DeskTitleSize, DeskTitleLine, (-1.0).sp)
     val DeskNotes = display(fraunces(600, 50f, 72.sp), DeskTitleSize, DeskTitleLine, (-0.8).sp)
     val DeskTodo = display(Doto, DeskTitleSize, DeskTitleLine, 0.sp)
     val DeskPdfs = display(Serif, DeskTitleSize, DeskTitleLine, (-0.8).sp)
@@ -260,11 +272,17 @@ object ClearType {
     /** A tool tile's name, set like the desk's "Files" and "Pdf" words. */
     val ToolWord = display(Serif, 31.sp, 33.sp, (-0.6).sp)
 
-    val Eyebrow = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp, lineHeight = 14.sp, letterSpacing = 1.4.sp)
-    val Body = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp)
+    val Eyebrow = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.SemiBold, fontSize = 11.5.sp, lineHeight = 14.sp, letterSpacing = 1.4.sp)
+    val Body = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp)
     val BodyStrong = Body.copy(fontWeight = FontWeight.SemiBold)
-    val Label = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 18.sp)
-    val Caption = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Normal, fontSize = 11.5.sp, lineHeight = 15.sp)
+    val Label = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 18.sp)
+    val Caption = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.Normal, fontSize = 11.5.sp, lineHeight = 15.sp)
+
+    // The Recent card keeps its own Plus Jakarta Sans (its title, when, and chips), set exactly as
+    // before the interface moved to Outfit: the owner's chosen look for that card.
+    val RecentTitle = display(jakarta(700), 17.sp, 22.sp, (-0.2).sp)
+    val RecentWhen = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Normal, fontSize = 10.5.sp, lineHeight = 15.sp)
+    val RecentChip = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 18.sp)
 }
 
 /** A hero title's soft glow, so white type reads on the pale sky. */

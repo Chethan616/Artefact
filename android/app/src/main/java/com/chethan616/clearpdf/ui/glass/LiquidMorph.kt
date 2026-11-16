@@ -51,6 +51,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import com.chethan616.clearpdf.ui.theme.clear
 import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.runtimeShaderEffect
 import kotlin.math.max
 import kotlin.math.min
@@ -184,10 +186,11 @@ internal fun LiquidMorphSurface(
     open: Boolean,
     onDismiss: () -> Unit,
     onGone: () -> Unit,
-    items: List<GlassMenuItem>,
     menuWidth: Dp,
     maxHeight: Dp,
     icon: @Composable () -> Unit,
+    ghost: Boolean,
+    body: @Composable androidx.compose.foundation.layout.ColumnScope.(shut: Boolean, choose: (() -> Unit) -> Unit) -> Unit,
 ) {
     val gone by rememberUpdatedState(onGone)
     GlassOverlay(animatesOut = true) {
@@ -210,7 +213,7 @@ internal fun LiquidMorphSurface(
         // button was. Closing runs it all back into the circle.
         // One motion, not three: a single spring drives the whole morph, and the three movements are
         // overlapping slices of it, so the speed flows from one into the next with no stop between them
-        // (gated springs read as a machine). The spring's swell past 1 lands in the pour, as glass settling.
+        // (gated springs read as a machine). Past rest the spring's swing is the menu's own jelly.
         val p = remember { Animatable(0f) }
         // a row chosen: the menu folds back into its button first, and the row's action runs only once
         // it is the button again (a row that opens Tools, Settings … never leaves glass on the next screen)
@@ -224,16 +227,18 @@ internal fun LiquidMorphSurface(
         val fade = remember { Animatable(1f) }
         LaunchedEffect(shut) {
             if (!shut) {
-                // the very spring the close runs on (the owner liked its states and pace): the opening is
-                // the close played backwards
-                p.animateTo(1f, spring(1f, MotionSettings.stiffness(129f), 0.0005f))
+                // the states and pace the owner liked, now on a spring that bounces at Settings ▸ Motion's
+                // bounce: past the menu and back, jelly-like (see geo: the swing is the menu's own stretch)
+                p.animateTo(1f, GlassMotion.morphOpen())
             } else {
                 // its button gone with its screen: dissolve too, never fold into a place that is no longer there
-                if (MorphAnchors.glyphAt(anchor) == null) fade.animateTo(0f, androidx.compose.animation.core.tween(150))
+                if (!ghost && MorphAnchors.glyphAt(anchor) == null) fade.animateTo(0f, androidx.compose.animation.core.tween(150))
                 // an option picked: a quicker fold that ends the moment it looks landed (the action waits on
                 // it); dismissed: the unhurried fold
-                else if (chosenAction != null) p.animateTo(0f, spring(1f, MotionSettings.stiffness(260f), 0.03f))
-                else p.animateTo(0f, spring(1f, MotionSettings.stiffness(129f), 0.01f))
+                else if (chosenAction != null) p.animateTo(0f, GlassMotion.morphChosen())
+                else p.animateTo(0f, GlassMotion.morphClose())
+                // no real button under it (a menu opened by a long press): the drop it folded back into melts away
+                if (ghost) fade.animateTo(0f, androidx.compose.animation.core.tween(110))
                 // the glass has landed: the real button takes its place and the morph is gone before the
                 // row's action starts (an action that changes screen would otherwise slide the button away
                 // while the morph's circle stayed put: two circles); then the action
@@ -273,7 +278,8 @@ internal fun LiquidMorphSurface(
         val r0 = min(local.width, local.height) / 2f
         // how far the drop runs down before it spreads: about 1.8 cm (less if the menu is shorter)
         val peek = (androidx.compose.ui.platform.LocalContext.current.resources.displayMetrics.ydpi / 2.54f * 1.8f).coerceAtMost((menuH - local.height).coerceAtLeast(0f))
-        val swellPx = px(6.dp)
+        // room for the jelly: the menu stretches up to a tenth of its height past rest as it settles
+        val swellPx = menuH * JellyStretch * JellyMax + px(6.dp)
         val radius24 = px(24.dp)
         val neckPx = px(22.dp)
         val opening = !shut
@@ -286,25 +292,26 @@ internal fun LiquidMorphSurface(
 
         /** Where everything is this frame (read only in draw and layer blocks). */
         class Geo(val menu: Rect, val radius: Float, val k: Float, val circleR: Float, val motion: Float)
+        // set once the opening spring has first reached the menu: from then on its swing past and back is
+        // the settling of the glass (jelly), not the path running backwards into the drop
+        val arrived = remember { booleanArrayOf(false) }
         fun geo(): Geo {
             val raw = p.value
-            // opening, time runs slow at first (the drop gathers) and then at its normal pace through the
-            // spread and the pour; closing runs straight, as it is
-            // the same path both ways (no slow start on the way out)
-            val pv = raw
+            if (opening && raw >= 1f) arrived[0] = true
+            // the path through the four states (circle, tall drop, wide, menu) runs from 0 to 1; anything
+            // past it is jelly, shown as the menu's own stretch below
+            val pv = if (opening && arrived[0]) 1f else raw.coerceAtMost(1f)
+            val jelly = if (full > 0 && (raw > 1f || (opening && arrived[0]))) (raw - 1f).coerceIn(-JellyMax, JellyMax) else 0f
             val d = ease(pv / 0.38f)
             val sp = ease((pv - 0.16f) / 0.46f)
-            // the pour is left unclamped above, so the spring's settle shows as a swell of a few dp at most
-            val pourV = if (pv >= 1f) 1f + (pv - 1f) / 0.6f else ease((pv - 0.36f) / 0.64f)
-            val swellCap = swellPx / (menuH - local.height).coerceAtLeast(1f)
-            val po = if (full > 0) (if (pourV > 1f) 1f + min(pourV - 1f, swellCap) else pourV) else 0f
+            val po = if (full > 0) ease((pv - 0.36f) / 0.64f) else 0f
             // the drop is born inside the circle (a small core at its middle) and grows out of it, and sinks
             // back into it the same way: it never sits beside the circle as a bubble of its own
             val dc = d.coerceIn(0f, 1f)
             val dropW = lerp(local.width * 0.5f, local.width * 0.86f, dc)
             val rl = lerp(local.center.x - dropW / 2f, endL, sp)
             val rr = lerp(local.center.x + dropW / 2f, endR, sp)
-            val menu = if (below) {
+            val path = if (below) {
                 val top = lerp(local.center.y - local.height * 0.25f, endT, sp)
                 val bottom = lerp(local.center.y + local.height * 0.25f, local.bottom + peek, d) + (endB - local.bottom - peek) * po
                 Rect(rl, min(top, bottom - 1f), rr, max(bottom, top + 1f))
@@ -313,17 +320,37 @@ internal fun LiquidMorphSurface(
                 val top = lerp(local.center.y - local.height * 0.25f, local.top - peek, d) - (local.top - peek - endT) * po
                 Rect(rl, min(top, bottom - 1f), rr, max(bottom, top + 1f))
             }
+            // jelly: past rest the menu runs on away from its button and draws in at the sides (taller and
+            // narrower, a tall ellipse's moment), then swings back squat and wide, settling; it stays held
+            // at the button's corner, as a drop of gel hangs from what it is stuck to
+            val menu = if (jelly == 0f) path else {
+                val h = path.height * (1f + JellyStretch * jelly)
+                val w = path.width * (1f - JellySqueeze * jelly)
+                val l = if (fromRight) path.right - w else path.left
+                val t = if (below) path.top else path.bottom - h
+                Rect(l, t, l + w, t + h)
+            }
             val radius = min(min(menu.width, menu.height) / 2f, lerp(r0, radius24, po.coerceIn(0f, 1f)))
             // a liquid neck joins the circle and the drop while the drop is out of it, and fades as the
             // circle melts into the menu
             val apart = (d / 0.35f).coerceIn(0f, 1f)
             val k = neckPx * apart * apart * (3f - 2f * apart) * (1f - po.coerceIn(0f, 1f))
             val circleR = r0 * (1f - po.coerceIn(0f, 1f)).coerceAtLeast(0f)
+            // how lively the lens and frost are: through the morph's path only, easing out as it lands. (Tied to
+            // the jelly's swing it pulsed with every wobble, and the page behind (a white title on the dark
+            // theme) flickered sharp and blurred, bent and straight, with it.)
             val motion = kotlin.math.sin(Math.PI.toFloat() * ((d + sp + po) / 3f).coerceIn(0f, 1f))
             return Geo(menu, radius, k, circleR, motion)
         }
 
         val luminance = rememberGlassLuminance(enabled = true)
+        // Adaptive luminance on: at the button's end the glass is the button's own adaptive glass (its
+        // reading of what is around it, its frost, colour and milk or smoke), so neither the opening nor
+        // the landing ever shows a moment of plain glass where the adaptive button was
+        val adaptiveOn = GlassSettings.adaptive
+        val around = if (adaptiveOn) MorphAnchors.surroundAt(anchor) else null
+        val fallbackLum = if (clear.dark) 0.14f else 0.86f
+        fun aroundLum(): Float = around?.value ?: luminance?.value ?: fallbackLum
         val ink = adaptiveInk(luminance, clear.ink)
         val style = GlassSettings.style
         val dark = clear.dark
@@ -351,8 +378,10 @@ internal fun LiquidMorphSurface(
                     shape = { RectangleShape },
                     effects = {
                         val g = geo()
-                        // the button's own colour and frost (as GlassCircle's), never a different tone
-                        glassEffects(style, px(lerp(2f, 12f, washIn()).dp), 0f, 0f)
+                        // adaptive blur: the button's clear glass frosts to a menu's as it opens, so rows read
+                        // over a busy page (as MenuCard's), more over a bright page than a dark one, and a
+                        // touch more while the glass is on the move
+                        morphEffects(if (adaptiveOn) style.adaptiveBase else style, luminance?.value ?: if (dark) 0.14f else 0.86f, dark, washIn(), g.motion, px(1.dp), if (adaptiveOn) aroundLum() else null)
                         runtimeShaderEffect("LiquidMorphRefraction", LiquidRefractionShader, "content") {
                             setFloatUniform("offset", -padding, -padding)
                             // the button's own lens (12 / 24 dp at the user's style), a little livelier while it moves
@@ -373,8 +402,15 @@ internal fun LiquidMorphSurface(
                         val g = geo()
                         val w = washIn()
                         val lum = luminance?.value ?: if (dark) 0.14f else 0.86f
-                        val plain = adaptiveWash(lum).glassTint(style).let { it.copy(alpha = it.alpha * w) }
-                        val wash = if (tint.isSpecified) androidx.compose.ui.graphics.lerp(tint.copy(alpha = 0.75f), plain, w) else plain
+                        // the milk or smoke a menu wears, thicker than a button's, so its rows read
+                        val menuWash = adaptiveWash(lum).let { it.copy(alpha = (it.alpha * 1.7f).coerceAtMost(0.55f)) }.glassTint(style)
+                        val plain = menuWash.let { it.copy(alpha = it.alpha * w) }
+                        val wash = when {
+                            tint.isSpecified -> androidx.compose.ui.graphics.lerp(tint.copy(alpha = 0.75f), plain, w)
+                            // the adaptive button's own wash at its end, the menu's as it opens
+                            adaptiveOn -> androidx.compose.ui.graphics.lerp(adaptiveWash(aroundLum()).let { it.copy(alpha = it.alpha * 0.7f) }, menuWash, w)
+                            else -> plain
+                        }
                         surface.setFloatUniform("wash", wash.red, wash.green, wash.blue, wash.alpha)
                         surface.setFloatUniform("rimAlpha", rimAlpha)
                         surface.shapeUniforms(g)
@@ -396,14 +432,20 @@ internal fun LiquidMorphSurface(
                 .drawBackdrop(
                     backdrop = LocalBackdrop.current,
                     shape = { androidx.compose.foundation.shape.CircleShape },
-                    effects = { glassEffects(style, px(2.dp), px(12.dp), px(24.dp)) },
-                    highlight = { glassHighlight(style) },
+                    // exactly as GlassCircle draws itself, adaptive or not
+                    effects = {
+                        if (adaptiveOn) adaptiveGlassEffects(style.adaptiveBase, aroundLum(), px(2.dp), px(12.dp), px(24.dp))
+                        else glassEffects(style, px(2.dp), px(12.dp), px(24.dp))
+                    },
+                    highlight = { glassHighlight(if (adaptiveOn) style.adaptiveBase else style) },
                     shadow = null,
                     onDrawSurface = {
-                        // as GlassCircle paints a tinted button
+                        // as GlassCircle paints a tinted button, or its adaptive milk or smoke
                         if (tint.isSpecified) {
                             drawRect(tint, blendMode = androidx.compose.ui.graphics.BlendMode.Hue)
                             drawRect(tint.copy(alpha = 0.75f))
+                        } else if (adaptiveOn) {
+                            drawRect(adaptiveWash(aroundLum()).let { it.copy(alpha = it.alpha * 0.7f) })
                         }
                     },
                 ),
@@ -444,7 +486,7 @@ internal fun LiquidMorphSurface(
                 ) {
                     Column(Modifier.heightIn(max = maxHeight).verticalScroll(rememberScrollState())) {
                         Spacer(Modifier.height(6.dp))
-                        items.forEach { item -> MorphMenuRow(item, shut) { chosenAction = item.onClick; onDismiss() } }
+                        body(shut) { action -> if (chosenAction == null) { chosenAction = action; onDismiss() } }
                         Spacer(Modifier.height(6.dp))
                     }
                 }
@@ -458,4 +500,41 @@ internal fun LiquidMorphSurface(
 private class RectClip(private val r: Rect, private val radius: Float) : androidx.compose.ui.graphics.Shape {
     override fun createOutline(size: androidx.compose.ui.geometry.Size, layoutDirection: androidx.compose.ui.unit.LayoutDirection, density: androidx.compose.ui.unit.Density) =
         androidx.compose.ui.graphics.Outline.Rounded(androidx.compose.ui.geometry.RoundRect(r, androidx.compose.ui.geometry.CornerRadius(radius)))
+}
+
+/** How much taller the menu runs per unit of the spring's swing past rest (the jelly). */
+private const val JellyStretch = 0.24f
+
+/** How much it draws in at the sides meanwhile (gel keeps its volume). */
+private const val JellySqueeze = 0.1f
+
+/** The furthest swing shown, either way (Jelly at its springiest). */
+private const val JellyMax = 0.4f
+
+/** [luminance] as -1 (dark) … 1 (light), eased so mid-greys stay near neutral (as AdaptiveGlass's). */
+private fun signedLum(luminance: Float): Float = (luminance * 2f - 1f).let { kotlin.math.sign(it) * it * it }
+
+/**
+ * The morph's colour and frost: at [open] 0 the button's own glass (the user's style, a light frost),
+ * at 1 a menu's frost that answers what is behind it (brighter and more frosted over a light page,
+ * deeper over a dark one, as [MenuCard] with Adaptive luminance). [motion] adds a little frost while
+ * the glass moves, so it reads as liquid rushing rather than a sharp shape sliding. [dp] is one dp.
+ */
+private fun com.kyant.backdrop.BackdropEffectScope.morphEffects(style: GlassStyle, luminance: Float, dark: Boolean, open: Float, motion: Float, dp: Float, buttonLuminance: Float? = null) {
+    val l = signedLum(luminance.coerceIn(0f, 1f))
+    val o = open.coerceIn(0f, 1f)
+    val menuBrightness = if (l > 0f) lerp(0.08f, 0.3f, l) else lerp(if (dark) -0.12f else 0.04f, -0.24f, -l)
+    // the button's end: plain glass, or (Adaptive luminance) the adaptive button's own colour and frost,
+    // as adaptiveGlassEffects sets them from the reading around the button
+    val b = buttonLuminance?.let { signedLum(it.coerceIn(0f, 1f)) }
+    val buttonBrightness = if (b == null) style.brightness else (if (b > 0f) lerp(0.08f, 0.42f, b) else lerp(0.08f, -0.2f, -b)) + style.brightness
+    val buttonContrast = if (b != null && b > 0f) lerp(1f, 0.25f, b) else 1f
+    colorControls(
+        brightness = lerp(buttonBrightness, menuBrightness, o),
+        contrast = lerp(buttonContrast, if (l > 0f) lerp(1f, 0.5f, l) else 1f, o),
+        saturation = lerp(style.saturation, 1.25f, o),
+    )
+    val buttonBlur = 2f * dp * style.blur * (if (b == null) 1f else if (b > 0f) lerp(1f, 1.5f, b) else lerp(1f, 0.6f, -b))
+    val menuBlur = 22f * dp * (if (l > 0f) lerp(1f, 1.35f, l) else lerp(1f, 0.75f, -l))
+    blur(lerp(buttonBlur, menuBlur, o) + 5f * dp * motion.coerceIn(0f, 1f))
 }

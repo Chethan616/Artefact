@@ -86,6 +86,8 @@ fun MorphButton(
     size: Dp = HeaderButtonSize,
     menuWidth: Dp = 236.dp,
     enabled: Boolean = true,
+    /** A wash over the button's glass (unspecified: none). */
+    surface: Color = Color.Unspecified,
     icon: @Composable () -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
@@ -96,6 +98,7 @@ fun MorphButton(
         modifier = modifier.onGloballyPositioned { anchor = it.boundsInWindow() }.graphicsLayer { alpha = if (up) 0f else 1f },
         size = size,
         label = label,
+        surface = surface,
     ) { icon() }
     if (up) MorphButtonSurface(anchor, open, onDismiss = { open = false }, onGone = { up = false }, items = items, menuWidth = menuWidth, icon = icon)
 }
@@ -115,6 +118,27 @@ fun MorphButtonSurface(
     menuWidth: Dp = 236.dp,
     maxHeight: Dp = 480.dp,
     icon: (@Composable () -> Unit)? = null,
+) = MorphButtonSurface(anchor, open, onDismiss, onGone, menuWidth, maxHeight, icon) { shut, choose ->
+    items.forEach { item -> MorphMenuRow(item, shut) { choose(item.onClick) } }
+}
+
+/**
+ * [MorphButtonSurface] holding any menu: [body] lays out its rows, and calls `choose(action)` for a
+ * row that closes the menu (the glass folds back into the button first, then the action runs);
+ * anything else (a star that flips in place) it does itself. [ghost]: no real button sits at
+ * [anchor] (a menu a long press opened): the glass folds back into a drop there that melts away.
+ */
+@Composable
+fun MorphButtonSurface(
+    anchor: Rect,
+    open: Boolean,
+    onDismiss: () -> Unit,
+    onGone: () -> Unit,
+    menuWidth: Dp = 236.dp,
+    maxHeight: Dp = 480.dp,
+    icon: (@Composable () -> Unit)? = null,
+    ghost: Boolean = false,
+    body: @Composable androidx.compose.foundation.layout.ColumnScope.(shut: Boolean, choose: (() -> Unit) -> Unit) -> Unit,
 ) {
     // the round button it grows from is this glass now: hidden until the glass is back in its circle
     // (not cleared when the caller leaves: its menu is still folding back into the button then, in the
@@ -128,9 +152,9 @@ fun MorphButtonSurface(
     val glyph: @Composable () -> Unit = icon ?: MorphAnchors.glyphAt(anchor) ?: {}
     // Android 13+: the liquid version (the glass shaders it needs); before that the plain expansion
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-        LiquidMorphSurface(anchor, open, onDismiss, gone, items, menuWidth, maxHeight, glyph)
+        LiquidMorphSurface(anchor, open, onDismiss, gone, menuWidth, maxHeight, glyph, ghost, body)
     } else {
-        RectMorphSurface(anchor, open, onDismiss, gone, items, menuWidth, maxHeight, glyph)
+        RectMorphSurface(anchor, open, onDismiss, gone, menuWidth, maxHeight, glyph, ghost, body)
     }
 }
 
@@ -166,6 +190,13 @@ object MorphAnchors {
 
     internal fun tintAt(r: Rect): Color? = tints[key(r)]
 
+    private val surrounds = HashMap<Long, SurroundLuminance>()
+
+    /** The adaptive reading around the button at [r] (null: Adaptive luminance is off). */
+    internal fun setSurround(r: Rect, s: SurroundLuminance?) { if (s != null) surrounds[key(r)] = s else surrounds.remove(key(r)) }
+
+    internal fun surroundAt(r: Rect): SurroundLuminance? = surrounds[key(r)]
+
     /** Whether the button laid out at [r] is the one being a menu now. */
     internal fun hides(r: Rect): Boolean {
         val a = active ?: return false
@@ -180,10 +211,11 @@ private fun RectMorphSurface(
     open: Boolean,
     onDismiss: () -> Unit,
     onGone: () -> Unit,
-    items: List<GlassMenuItem>,
-    menuWidth: Dp = 236.dp,
-    maxHeight: Dp = 480.dp,
+    menuWidth: Dp,
+    maxHeight: Dp,
     icon: @Composable () -> Unit,
+    ghost: Boolean,
+    body: @Composable androidx.compose.foundation.layout.ColumnScope.(shut: Boolean, choose: (() -> Unit) -> Unit) -> Unit,
 ) {
     val gone by rememberUpdatedState(onGone)
     GlassOverlay(animatesOut = true) {
@@ -217,17 +249,19 @@ private fun RectMorphSurface(
         LaunchedEffect(shut) {
             if (!shut) {
                 coroutineScope {
-                    launch { drop.animateTo(1f, spring(MotionSettings.damping(0.82f), MotionSettings.stiffness(318f), 0.0005f)) }
+                    // each on a spring at the user's bounce (Settings ▸ Motion), the next joining before the
+                    // last has landed, so the glass swings past each state and the swing flows on
+                    launch { drop.animateTo(1f, spring(maxOf(MotionSettings.damping(0.62f), 0.3f), MotionSettings.stiffness(318f), 0.0005f)) }
                     launch {
-                        androidx.compose.runtime.snapshotFlow { drop.value >= 0.6f }.first { it }
-                        wide.animateTo(1f, spring(MotionSettings.damping(0.8f), MotionSettings.stiffness(272f), 0.0005f))
+                        androidx.compose.runtime.snapshotFlow { drop.value >= 0.45f }.first { it }
+                        wide.animateTo(1f, spring(maxOf(MotionSettings.damping(0.58f), 0.3f), MotionSettings.stiffness(272f), 0.0005f))
                     }
                     launch {
-                        androidx.compose.runtime.snapshotFlow { wide.value >= 0.6f }.first { it }
-                        tall.animateTo(1f, spring(MotionSettings.damping(0.84f), MotionSettings.stiffness(181f), 0.0005f))
+                        androidx.compose.runtime.snapshotFlow { wide.value >= 0.45f }.first { it }
+                        tall.animateTo(1f, spring(maxOf(MotionSettings.damping(0.6f), 0.3f), MotionSettings.stiffness(181f), 0.0005f))
                     }
                 }
-            } else if (MorphAnchors.glyphAt(anchor) == null) {
+            } else if (!ghost && MorphAnchors.glyphAt(anchor) == null) {
                 fade.animateTo(0f, androidx.compose.animation.core.tween(150))
                 gone()
                 presence?.done()
@@ -244,6 +278,7 @@ private fun RectMorphSurface(
                         drop.animateTo(0f, spring(1f, MotionSettings.stiffness(423f), 0.0005f))
                     }
                 }
+                if (ghost) fade.animateTo(0f, androidx.compose.animation.core.tween(110))
                 gone()
                 presence?.done()
                 runChosen()
@@ -263,7 +298,7 @@ private fun RectMorphSurface(
         // corners as round as its height allows while it is a capsule, settling to the menu's as it grows
         // tall, so circle, capsule and menu are one continuous curve
         val menuNow = if (full > 0) full.toFloat() else local.height
-        val curW = lerp(local.width, widthPx, wide.value)
+        val curW = lerp(local.width, widthPx, wide.value.coerceAtMost(MaxSwingWide))
         val curH = morphHeight(local.height, menuNow, peekPx, drop.value, if (full > 0) tall.value else 0f)
         val grown = ((curH - local.height) / (menuNow - local.height).coerceAtLeast(1f)).coerceIn(0f, 1f)
         val radiusPx = min(min(curW, curH) / 2f, lerp(min(local.width, local.height) / 2f, with(density) { MorphMenuRadius.toPx() }, grown)).coerceAtLeast(0f)
@@ -313,7 +348,7 @@ private fun RectMorphSurface(
                         ) {
                             Column(Modifier.heightIn(max = maxHeight).verticalScroll(rememberScrollState())) {
                                 Spacer(Modifier.height(6.dp))
-                                items.forEach { item -> MorphMenuRow(item, shut) { chosenAction = item.onClick; onDismiss() } }
+                                body(shut) { action -> if (chosenAction == null) { chosenAction = action; onDismiss() } }
                                 Spacer(Modifier.height(6.dp))
                             }
                         }
@@ -340,7 +375,7 @@ private fun RectMorphSurface(
             // the menu grows from the button's own corner and rests over the place the button was
             val endL = (if (right) local.right - widthPx else local.left).coerceIn(minX, maxX)
             val endT = (if (below) local.top else local.bottom - menuH).coerceIn(minY, maxY)
-            val gw = wide.value
+            val gw = wide.value.coerceAtMost(MaxSwingWide)
             val gh = if (full > 0) tall.value else 0f
             val l = lerp(local.left, endL, gw)
             val r = lerp(local.right, endL + widthPx, gw)
@@ -388,5 +423,9 @@ internal fun MorphMenuRow(item: GlassMenuItem, shut: Boolean, close: () -> Unit)
 private fun morphHeight(button: Float, menu: Float, peek: Float, drop: Float, tall: Float): Float {
     val first = min(peek, (menu - button).coerceAtLeast(0f))
     val rest = (menu - button - first).coerceAtLeast(0f)
-    return (button + first * drop + rest * tall).coerceAtLeast(1f)
+    return (button + first * drop.coerceAtMost(1.15f) + rest * tall.coerceAtMost(MaxSwingTall)).coerceAtLeast(1f)
 }
+
+/** How far past the menu's width and height the springs may swing the glass (the jelly). */
+private const val MaxSwingWide = 1.05f
+private const val MaxSwingTall = 1.12f

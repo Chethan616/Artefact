@@ -97,7 +97,56 @@ data class Paragraph(
     val bold: Boolean,
     val italic: Boolean,
     val color: String?,
+    /** Where its weight or slant changes (a bold word in a plain line), in characters of [text]; empty: all one style. */
+    val runs: List<StyleRun> = emptyList(),
 )
+
+/** Characters [start] until [end] of a paragraph's text, set [bold] and [italic]. */
+data class StyleRun(val start: Int, val end: Int, val bold: Boolean, val italic: Boolean) {
+    companion object {
+        /** Each character's (bold, italic) in a text of [length], [runs] over a [bold]/[italic] base. */
+        fun perChar(runs: List<StyleRun>, length: Int, bold: Boolean, italic: Boolean): Array<Pair<Boolean, Boolean>> {
+            val out = Array(length) { bold to italic }
+            for (r in runs) for (i in r.start.coerceAtLeast(0) until r.end.coerceAtMost(length)) out[i] = r.bold to r.italic
+            return out
+        }
+
+        /** [chars] back into runs (adjacent characters of one style joined). */
+        fun of(chars: Array<Pair<Boolean, Boolean>>): List<StyleRun> {
+            val out = ArrayList<StyleRun>()
+            var i = 0
+            while (i < chars.size) {
+                var j = i
+                while (j < chars.size && chars[j] == chars[i]) j++
+                out.add(StyleRun(i, j, chars[i].first, chars[i].second))
+                i = j
+            }
+            return if (out.size <= 1) emptyList() else out
+        }
+
+        /**
+         * [runs] after the text changed from [old] to [new]: what is before and after the change keeps
+         * its style; typed characters take the style of the one before them (as a word processor does).
+         */
+        fun shift(runs: List<StyleRun>, old: String, new: String, bold: Boolean, italic: Boolean): List<StyleRun> {
+            if (runs.isEmpty() || old == new) return runs
+            val before = perChar(runs, old.length, bold, italic)
+            var p = 0
+            while (p < old.length && p < new.length && old[p] == new[p]) p++
+            var s = 0
+            while (s < old.length - p && s < new.length - p && old[old.length - 1 - s] == new[new.length - 1 - s]) s++
+            val inherit = if (p > 0) before[p - 1] else before.getOrElse(old.length - s) { bold to italic }
+            val after = Array(new.length) { i ->
+                when {
+                    i < p -> before[i]
+                    i >= new.length - s -> before[old.length - (new.length - i)]
+                    else -> inherit
+                }
+            }
+            return of(after)
+        }
+    }
+}
 
 /** A picture Edit PDF has selected: its number on the page and where it sits (points). */
 data class EditImage(val page: Int, val number: Int, val rect: FloatArray)
@@ -200,14 +249,16 @@ private fun EditFormatBar(vm: AppViewModel, doc: OpenDocument, para: Paragraph) 
             val underline = vm.editUnderline[para.page to para.number] == true
             // the reference draws these as serif T's: heavy, slanted, underlined, and a small t beside a big one
             // with words selected in the paragraph, Bold and Italic change only those; else all of it
-            LetterButton("T", stringResource(R.string.edit_bold), para.bold, weight = FontWeight.Black) {
-                val picked = vm.editRange?.takeIf { vm.editing != null }
-                if (picked != null) vm.styleRange(doc, para, picked, bold = !para.bold, italic = para.italic)
+            // lit for what is selected: the selected words' own weight and slant (#127), else the paragraph's
+            val picked = vm.editRange?.takeIf { vm.editing != null }
+            val boldNow = if (picked != null) vm.rangeStyled(para, picked) else para.bold
+            val italicNow = if (picked != null) vm.rangeStyled(para, picked, italic = true) else para.italic
+            LetterButton("T", stringResource(R.string.edit_bold), boldNow, weight = FontWeight.Black) {
+                if (picked != null) vm.styleRange(doc, para, picked, bold = !boldNow, italic = italicNow)
                 else vm.styleParagraph(doc, para, mapOf("bold" to !para.bold))
             }
-            LetterButton("T", stringResource(R.string.edit_italic), para.italic, italic = true) {
-                val picked = vm.editRange?.takeIf { vm.editing != null }
-                if (picked != null) vm.styleRange(doc, para, picked, bold = para.bold, italic = !para.italic)
+            LetterButton("T", stringResource(R.string.edit_italic), italicNow, italic = true) {
+                if (picked != null) vm.styleRange(doc, para, picked, bold = boldNow, italic = !italicNow)
                 else vm.styleParagraph(doc, para, mapOf("italic" to !para.italic))
             }
             LetterButton("T", stringResource(R.string.edit_underline), underline, underline = true) {
@@ -533,6 +584,22 @@ private fun BoxScope.InlineEditor(vm: AppViewModel, doc: OpenDocument, para: Par
         if (b.y > clear) v.setScroll(v.scrollX, v.scrollY + (b.y - clear))
     }
     LaunchedEffect(value.text) { vm.editDraft = value.text }
+    // the paragraph's bold and italic words, drawn as they are on the page and kept on the words as
+    // they are typed around (#127: a bold word stays the only bold one)
+    LaunchedEffect(para) { vm.editRuns = para.runs }
+    val runs = vm.editRuns
+    val styled = remember(runs) {
+        androidx.compose.ui.text.input.VisualTransformation { t ->
+            if (runs.isEmpty()) return@VisualTransformation androidx.compose.ui.text.input.TransformedText(t, androidx.compose.ui.text.input.OffsetMapping.Identity)
+            val b = androidx.compose.ui.text.AnnotatedString.Builder(t)
+            for (r in runs) {
+                val s = r.start.coerceIn(0, t.length)
+                val e = r.end.coerceIn(s, t.length)
+                if (s < e) b.addStyle(androidx.compose.ui.text.SpanStyle(fontWeight = if (r.bold) FontWeight.Bold else FontWeight.Normal, fontStyle = if (r.italic) FontStyle.Italic else FontStyle.Normal), s, e)
+            }
+            androidx.compose.ui.text.input.TransformedText(b.toAnnotatedString(), androidx.compose.ui.text.input.OffsetMapping.Identity)
+        }
+    }
     // what is selected in the paragraph, for Bold and Italic to take only that
     LaunchedEffect(value.selection) { vm.editRange = value.selection.takeIf { !it.collapsed } }
     androidx.compose.runtime.DisposableEffect(para) { onDispose { vm.editRange = null } }
@@ -563,7 +630,11 @@ private fun BoxScope.InlineEditor(vm: AppViewModel, doc: OpenDocument, para: Par
         ) {
             BasicTextField(
                 value = value,
-                onValueChange = { value = it },
+                onValueChange = {
+                    if (it.text != value.text) vm.editRuns = StyleRun.shift(vm.editRuns, value.text, it.text, para.bold, para.italic)
+                    value = it
+                },
+                visualTransformation = styled,
                 textStyle = TextStyle(
                     color = parseHex(para.color ?: "#000000"), fontSize = sp, lineHeight = sp * 1.2f, fontFamily = family,
                     fontWeight = if (para.bold) FontWeight.Bold else FontWeight.Normal,

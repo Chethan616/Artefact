@@ -1579,4 +1579,34 @@
     <string name="kind_short_text">Testo</string>
     <string name="kind_short_images">Foto</string>
     <string name="kind_short_maps">Mappe</string>
+    <string name="widget_starred_name">Preferiti</string>
+    <string name="widget_starred_description">I tuoi documenti preferiti, il più recente a un tocco.</string>
+    <string name="widget_starred_empty">Aggiungi una stella a un file e apparirà qui</string>
+    <string name="widget_next_list">Elenco successivo</string>
+    <string name="widget_next_note">Nota successiva</string>
+    <string name="info_about">Informazioni</string>
+    <string name="info_tagged_short">Accessibile</string>
+    <string name="viewer_bold_not_found">Queste parole non si possono mettere in grassetto qui</string>
+    <string name="desk_highlights">In evidenza</string>
+    <string name="desk_snapshots">Istantanee</string>
+    <string name="desk_text">Testo</string>
+    <string name="thoughts_create_new">Crea nuovo</string>
+    <string name="thoughts_empty">Ancora niente. Creane uno qui sotto.</string>
+    <string name="today_title">Oggi</string>
+    <string name="today_morning">Buongiorno</string>
+    <string name="today_afternoon">Buon pomeriggio</string>
+    <string name="today_evening">Buonasera</string>
+    <string name="today_night">Buonanotte</string>
+    <string name="today_overview">Panoramica del giorno</string>
+    <plurals name="today_left">
+        <item quantity="one">%d attività da fare</item>
+        <item quantity="other">%d attività da fare</item>
+    </plurals>
+    <plurals name="today_notes">
+        <item quantity="one">%d nota oggi</item>
+        <item quantity="other">%d note oggi</item>
+    </plurals>
+    <string name="settings_your_name">Il tuo nome</string>
+    <string name="settings_your_name_hint">Mostrato sopra il saluto di Oggi</string>
+    <string name="thoughts_audios">Audio</string>
 </resources>

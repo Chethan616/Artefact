@@ -3197,6 +3197,17 @@ kind = "icon"
 usage = "UI icon, embedded via engine/crates/ui-egui/src/icon_data.rs"
 sha256 = "864ab2f19254e6ac7240bc6a98323197332e8f714d4d3f94831f41309e5ef2f7"
 [[asset]]
+path = "android/app/src/main/res/font/outfit.ttf"
+title = "Outfit"
+author = "The Outfit Project Authors"
+source = "https://github.com/Outfitio/Outfit-Fonts"
+licence = "OFL-1.1"
+licence_file = "android/app/src/main/assets/licences/OFL-Outfit.txt"
+kind = "font"
+usage = "Android app UI typeface; source and license are also listed in the app's Licences screen"
+sha256 = "fc7287273e66929776e2ba54f144fe699080bec29f61bf649d70d871468aeade"
+
+[[asset]]
 path = "android/app/src/main/res/font/jakarta.ttf"
 title = "Plus Jakarta Sans Regular"
 author = "The Plus Jakarta Sans Project Authors"

@@ -76,7 +76,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import com.chethan616.clearpdf.R
-import com.chethan616.clearpdf.ui.desk.FileActionsSheet
 import com.chethan616.clearpdf.ui.desk.FilesScreen
 import com.chethan616.clearpdf.ui.desk.SettingsScreen
 import com.chethan616.clearpdf.ui.desk.ToolCatalog
@@ -163,14 +162,16 @@ private fun Shell(vm: AppViewModel, onBrowse: () -> Unit, onPickSignatureImage: 
     BackHandler(enabled = doc != null && vm.toolScreen == null) { vm.closeDocument() }
     BackHandler(enabled = doc == null && vm.onboarded && !vm.settingsOpen && vm.openNote == null && vm.homeTab != HomeTab.Home && vm.toolScreen == null) { vm.homeTab = HomeTab.Home }
     BackHandler(enabled = vm.editingPhoto != null) { vm.editingPhoto = null }
+    BackHandler(enabled = doc == null && vm.onboarded && !vm.settingsOpen && vm.openNote == null && vm.homeTab == HomeTab.Home && vm.deskPages.isNotEmpty() && vm.toolScreen == null) { vm.closeDeskPage() }
 
     val route = when {
         !vm.onboarded -> "welcome"
         vm.settingsOpen -> "settings"
         vm.openNote != null -> "note:" + vm.openNote
+        vm.homeTab == HomeTab.Home && vm.deskPages.isNotEmpty() -> "page:" + vm.deskPages.last().name
         else -> vm.homeTab.name
     }
-    val onDesk = doc == null && route == HomeTab.Home.name && vm.toolScreen == null && vm.signaturePad == null && vm.certSign == null && !vm.idCreate && vm.editingPhoto == null && vm.presenting == null
+    val onDesk = doc == null && (route == HomeTab.Home.name || route == "page:Today") && vm.toolScreen == null && vm.signaturePad == null && vm.certSign == null && !vm.idCreate && vm.editingPhoto == null && vm.presenting == null
     val desk = remember { DeskState(scope) }
     var dockIntoNote by remember { mutableStateOf(false) }
     var dockFromNote by remember { mutableStateOf(false) }
@@ -178,6 +179,8 @@ private fun Shell(vm: AppViewModel, onBrowse: () -> Unit, onPickSignatureImage: 
         route == "welcome" -> AuroraMoods.Welcome
         vm.settingsOpen -> AuroraMoods.Settings
         vm.openNote != null -> AuroraMoods.Note
+        route == "page:Thoughts" -> AuroraMoods.Thoughts
+        route == "page:Today" -> AuroraMoods.Today
         vm.homeTab == HomeTab.Files -> AuroraMoods.Files
         vm.homeTab == HomeTab.Tools -> AuroraMoods.Tools
         else -> AuroraMoods.Desk
@@ -202,6 +205,8 @@ private fun Shell(vm: AppViewModel, onBrowse: () -> Unit, onPickSignatureImage: 
                         r.startsWith("note:") -> NoteEditor(vm, r.removePrefix("note:"))
                         r == HomeTab.Files.name -> FilesScreen(vm, onBrowse)
                         r == HomeTab.Tools.name -> ToolsScreen(vm)
+                        r == "page:Today" -> com.chethan616.clearpdf.ui.home.TodayScreen(vm)
+                        r == "page:Thoughts" -> com.chethan616.clearpdf.ui.home.ThoughtsScreen(vm, desk)
                         else -> HomeScreen(vm, desk)
                     }
                 }
@@ -254,8 +259,10 @@ private fun Shell(vm: AppViewModel, onBrowse: () -> Unit, onPickSignatureImage: 
                 if (vm.noteBarHidden != (intoNote || fromNote)) vm.noteBarHidden = intoNote || fromNote
                 lastRoute[0] = route
             }
-            if ((onDesk || dockIntoNote) && vm.editingPhoto == null && vm.editingImage == null && vm.previewingMap == null && vm.presenting == null) {
-                CreateDock(vm, desk, onBrowse, intoNote = !onDesk, fromNote = onDesk && dockFromNote) {
+            // a voice memo started from Thought of the day records in the dock there too
+            val recordingOnPage = doc == null && route == "page:Thoughts" && desk.recorder != null
+            if ((onDesk || dockIntoNote || recordingOnPage) && vm.editingPhoto == null && vm.editingImage == null && vm.previewingMap == null && vm.presenting == null) {
+                CreateDock(vm, desk, onBrowse, intoNote = !onDesk && !recordingOnPage, fromNote = onDesk && dockFromNote) {
                     dockIntoNote = false
                     dockFromNote = false
                     vm.noteBarHidden = false
@@ -271,7 +278,8 @@ private fun Shell(vm: AppViewModel, onBrowse: () -> Unit, onPickSignatureImage: 
         },
     )
 
-    if (doc == null) vm.fileSheet?.let { (r, recent) -> FileActionsSheet(vm, r, recent) { vm.fileSheet = null } }
+    if (doc == null) vm.fileMenu?.let { at -> androidx.compose.runtime.key(at) { com.chethan616.clearpdf.ui.desk.FileMenu(vm, at) { if (vm.fileMenu == at) vm.fileMenu = null } } }
+    com.chethan616.clearpdf.ui.desk.FileDialogs(vm)
     // the loader only for an open that takes a while: a quick one shouldn't flash a spinner first
     var slowOpen by remember { mutableStateOf(false) }
     LaunchedEffect(vm.opening) {

@@ -155,14 +155,14 @@ internal class WidgetCards(private val ctx: Context, private val w: Int, private
         }
         val more = items.size - spots.size
         if (more > 0) {
-            val p = paint(R.font.jakarta, 11.5f, tone.ink.argb(0.6f), "'wght' 400")
+            val p = paint(R.font.outfit, 11.5f, tone.ink.argb(0.6f), "'wght' 400")
             c.save()
             c.translate(padX + dp(10f), y)
             layout(moreText(more), p, inner, 15f, 1).draw(c)
             c.restore()
         }
         if (items.isEmpty()) {
-            val p = paint(R.font.jakarta, 13f, tone.ink.argb(0.6f), "'wght' 500")
+            val p = paint(R.font.outfit, 13f, tone.ink.argb(0.6f), "'wght' 500")
             c.save()
             c.translate(padX, y)
             layout(empty, p, inner, 18f, 2, Layout.Alignment.ALIGN_CENTER).draw(c)
@@ -225,7 +225,7 @@ internal class WidgetCards(private val ctx: Context, private val w: Int, private
             })
         }
         val textX = left + dp(8f) + dp(24f) + dp(10f)
-        val tp = paint(R.font.jakarta, 14.5f, ink.toArgb(), "'wght' 400")
+        val tp = paint(R.font.outfit, 14.5f, ink.toArgb(), "'wght' 400")
         val room = (right - dp(12f) - textX).toInt()
         val line = layout(item.text, tp, room, 22f, 1)
         c.save()
@@ -247,15 +247,15 @@ internal class WidgetCards(private val ctx: Context, private val w: Int, private
 
         val titleText = title.ifBlank { untitled }
         val variation = "'wght' 800"
-        val base = paint(R.font.jakarta, 27f, tone.accent.toArgb(), variation, -0.6f)
+        val base = paint(R.font.outfit, 27f, tone.accent.toArgb(), variation, -0.6f)
         val k = fitScale(titleText, base, inner)
-        val tp = paint(R.font.jakarta, 27f * k, tone.accent.toArgb(), variation, -0.6f * k)
+        val tp = paint(R.font.outfit, 27f * k, tone.accent.toArgb(), variation, -0.6f * k)
         val tl = layout(titleText, tp, inner, 29f * k, 4)
         c.save(); c.translate(pad, y); tl.draw(c); c.restore()
         y += tl.height
 
         val date = shortDate(note.updated)
-        val dp0 = paint(R.font.jakarta, 10.5f, tone.ink.argb(0.55f), "'wght' 400")
+        val dp0 = paint(R.font.outfit, 10.5f, tone.ink.argb(0.55f), "'wght' 400")
         val dateH = dp0.fontMetrics.let { it.descent - it.ascent }
         val dateTop = h - pad - dateH
         if (body.isNotBlank() && title.length < 40) {
@@ -263,7 +263,7 @@ internal class WidgetCards(private val ctx: Context, private val w: Int, private
             val lines = ((dateTop - dp(12f) - (y + dp(8f))) / sp(18f)).toInt().coerceAtMost(3)
             if (lines >= 1) {
                 y += dp(8f)
-                val bp = paint(R.font.jakarta, 13f, tone.ink.argb(0.62f), "'wght' 500")
+                val bp = paint(R.font.outfit, 13f, tone.ink.argb(0.62f), "'wght' 500")
                 val bl = layout(body, bp, inner, 18f, lines)
                 c.save(); c.translate(pad, y); bl.draw(c); c.restore()
                 y += bl.height

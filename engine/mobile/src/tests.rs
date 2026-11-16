@@ -673,10 +673,19 @@ fn office_documents_export_to_pdf_and_their_own_formats() {
 #[test]
 fn a_word_document_lists_its_headings_with_their_pages() {
     let s = MobileSession::new();
-    let id = s.open(word_file("Overview
+    let id = s
+        .open(
+            word_file(
+                "Overview
 Some body text here.
 Details
-More body text.", "Outline.docx"), None).unwrap().id;
+More body text.",
+                "Outline.docx",
+            ),
+            None,
+        )
+        .unwrap()
+        .id;
     assert!(!s.document(id).unwrap().has_outline, "no headings yet");
     assert!(s.outline(id).unwrap().is_empty());
     s.word_command(id, "caret.docStart".into(), "{}".into()).unwrap();
@@ -698,9 +707,12 @@ fn a_sheet_with_cyrillic_text_exports_to_a_pdf_that_shows_it() {
     // gridcraft's PDF writer is vendored with embedded faces: non-Latin text used to be a
     // non-embedded CID font that the viewer could not draw.
     let s = MobileSession::new();
-    let path = book_file("Привет,мир
+    let path = book_file(
+        "Привет,мир
 Γειά,Hello
-", "Cyr.xlsx");
+",
+        "Cyr.xlsx",
+    );
     let id = s.open(path, None).unwrap().id;
     let out = scratch().join("cyr.pdf").to_string_lossy().into_owned();
     s.export_office(id, "pdf".into(), out.clone()).unwrap();

@@ -1589,4 +1589,34 @@
     <string name="kind_short_text">Text</string>
     <string name="kind_short_images">Bilder</string>
     <string name="kind_short_maps">Mindmaps</string>
+    <string name="widget_starred_name">Favoriten</string>
+    <string name="widget_starred_description">Deine Favoriten, der neueste nur einen Tipp entfernt.</string>
+    <string name="widget_starred_empty">Markiere eine Datei mit einem Stern, dann erscheint sie hier</string>
+    <string name="widget_next_list">Nächste Liste</string>
+    <string name="widget_next_note">Nächste Notiz</string>
+    <string name="info_about">Über</string>
+    <string name="info_tagged_short">Barrierefrei</string>
+    <string name="viewer_bold_not_found">Diese Wörter können hier nicht fett werden</string>
+    <string name="desk_highlights">Highlights</string>
+    <string name="desk_snapshots">Schnappschüsse</string>
+    <string name="desk_text">Text</string>
+    <string name="thoughts_create_new">Neu erstellen</string>
+    <string name="thoughts_empty">Noch nichts hier. Erstelle unten etwas.</string>
+    <string name="today_title">Heute</string>
+    <string name="today_morning">Guten Morgen</string>
+    <string name="today_afternoon">Guten Tag</string>
+    <string name="today_evening">Guten Abend</string>
+    <string name="today_night">Gute Nacht</string>
+    <string name="today_overview">Tagesüberblick</string>
+    <plurals name="today_left">
+        <item quantity="one">%d Aufgabe offen</item>
+        <item quantity="other">%d Aufgaben offen</item>
+    </plurals>
+    <plurals name="today_notes">
+        <item quantity="one">%d Notiz heute</item>
+        <item quantity="other">%d Notizen heute</item>
+    </plurals>
+    <string name="settings_your_name">Dein Name</string>
+    <string name="settings_your_name_hint">Steht über dem Gruß in Heute</string>
+    <string name="thoughts_audios">Audios</string>
 </resources>

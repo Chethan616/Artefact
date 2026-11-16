@@ -134,6 +134,7 @@ private fun SettingsRoot(vm: AppViewModel, openLicences: () -> Unit, openGlass: 
         ?: stringResource(R.string.read_aloud_system_default, Locale.getDefault().getDisplayName(Locale.getDefault()))
     val uri = LocalUriHandler.current
     var leaving by remember { mutableStateOf<String?>(null) }
+    var naming by remember { mutableStateOf(false) }
     var authorDialog by remember { mutableStateOf(false) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item { Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars)) }
@@ -157,7 +158,13 @@ private fun SettingsRoot(vm: AppViewModel, openLicences: () -> Unit, openGlass: 
         }
 
         item(key = "personal") { Section(stringResource(R.string.settings_personalization)) }
-        item(key = "personalpanel") { Panel { WallpaperPicker(context) } }
+        item(key = "personalpanel") {
+            Panel {
+                // the name Today greets (small, above "Good Morning"); empty: none
+                SettingRow(LucideIcons.UserRound, Candy.Tangerine, stringResource(R.string.settings_your_name), { naming = true }, value = vm.ownerName.ifBlank { null }, chevron = true, first = true)
+                WallpaperPicker(context)
+            }
+        }
 
         item(key = "reading") { Section(stringResource(R.string.settings_reading)) }
         item(key = "readingpanel") {
@@ -195,6 +202,14 @@ private fun SettingsRoot(vm: AppViewModel, openLicences: () -> Unit, openGlass: 
         }
         item(key = "credits") { AppFooter(vm) }
         item { Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars)) }
+    }
+    if (naming) {
+        var name by remember { mutableStateOf(vm.ownerName) }
+        GlassDialog(
+            onDismiss = { naming = false }, title = stringResource(R.string.settings_your_name), icon = LucideIcons.UserRound, accent = Candy.Tangerine,
+            confirm = stringResource(R.string.common_done), onConfirm = { vm.updateOwnerName(name); naming = false },
+            dismiss = stringResource(R.string.common_cancel),
+        ) { com.chethan616.clearpdf.ui.glass.GlassTextField(name, { name = it }, stringResource(R.string.settings_your_name_hint)) }
     }
     leaving?.let { url ->
         GlassDialog(
@@ -608,6 +623,7 @@ private fun LicencesPage(onBack: () -> Unit) {
             Credit("JNA", stringResource(R.string.licences_role_bridge), "Apache-2.0 · the JNA authors", "https://github.com/java-native-access/jna"),
         )),
         CreditGroup(R.string.licences_type, listOf(
+            Credit("Outfit", stringResource(R.string.licences_role_ui_font), "OFL-1.1 · The Outfit Project Authors", "https://github.com/Outfitio/Outfit-Fonts", "OFL-Outfit.txt"),
             Credit("Plus Jakarta Sans", stringResource(R.string.licences_role_ui_font), "OFL-1.1 · The Plus Jakarta Sans Project Authors", "https://github.com/tokotype/PlusJakartaSans", "OFL-PlusJakartaSans.txt"),
             Credit("Bricolage Grotesque", stringResource(R.string.licences_role_titles), "OFL-1.1 · The Bricolage Grotesque Project Authors", "https://github.com/ateliertriay/bricolage", "OFL-BricolageGrotesque.txt"),
             Credit("Fraunces", stringResource(R.string.licences_role_titles), "OFL-1.1 · The Fraunces Project Authors", "https://github.com/undercasetype/Fraunces", "OFL-Fraunces.txt"),

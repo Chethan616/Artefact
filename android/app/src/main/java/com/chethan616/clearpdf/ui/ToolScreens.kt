@@ -804,6 +804,8 @@ fun ScanScreen(vm: AppViewModel) {
     var current by remember { mutableStateOf(0) }
     var cropping by remember { mutableStateOf<java.io.File?>(null) }
     var naming by remember { mutableStateOf(false) }
+    // the pages as they will be saved, by page, look and crop
+    val previews = remember { HashMap<String, ImageBitmap>() }
     LaunchedEffect(Unit) { if (pages.isEmpty()) vm.takeScanPhoto() }
     // a page just taken is the one shown
     var seen by remember { mutableStateOf(pages.size) }
@@ -841,7 +843,25 @@ fun ScanScreen(vm: AppViewModel) {
         Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).then(com.chethan616.clearpdf.ui.glass.washPanel()), contentAlignment = Alignment.Center) {
             val page = pages.getOrNull(current.coerceAtMost(pages.lastIndex))
             if (page != null) {
-                ScanPhoto(page.thumb, page.corners, Modifier.fillMaxSize())
+                // the page as it will be saved: cropped, straightened and in the chosen look, made
+                // as soon as a look or a crop is chosen (the photo with its outline until it is ready)
+                val key = "${page.file.name}|${filter.name}|${page.corners.contentHashCode()}"
+                var shown by remember { mutableStateOf<Pair<String, ImageBitmap>?>(null) }
+                LaunchedEffect(key) {
+                    previews[key]?.let { shown = key to it; return@LaunchedEffect }
+                    vm.scanPreview(page, filter)?.let { previews[key] = it; shown = key to it }
+                }
+                val ready = shown?.takeIf { it.first == key }?.second
+                androidx.compose.animation.Crossfade(ready, label = "scanLook") { img ->
+                    if (img != null) {
+                        Image(img, null, Modifier.fillMaxSize().padding(16.dp), contentScale = ContentScale.Fit)
+                    } else {
+                        Box(Modifier.fillMaxSize()) {
+                            ScanPhoto(page.thumb, page.corners, Modifier.fillMaxSize())
+                            com.chethan616.clearpdf.ui.glass.GlassLoader(Modifier.align(Alignment.Center))
+                        }
+                    }
+                }
             } else {
                 Text(stringResource(R.string.tools_scan_empty), color = c.textSecondary)
             }

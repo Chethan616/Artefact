@@ -9278,3 +9278,28 @@ fn page_render_draws_stamps_without_an_appearance() {
     let grey = custom.iter().filter(|p| p[0].abs_diff(p[1]) < 24 && p[1].abs_diff(p[2]) < 24).count();
     assert!(grey > 100 && grey == custom.len(), "an unknown name is a grey placeholder: {grey} of {}", custom.len());
 }
+
+/// #127: bolding one word bolds that word only, and the paragraph listing says where the bold is.
+#[test]
+fn bold_range_is_one_word_and_listed_as_a_run() {
+    let dir = workdir("bold-range");
+    let mut a = auto(&dir);
+    let id = ok(&mut a, "doc_open", json!({"path":"a.pdf"}))["doc"].as_u64().unwrap();
+    ok(
+        &mut a,
+        "text_edit",
+        json!({"doc":id,"page":1,"paragraph":1,"text":"Bold word stays plain","ranges":[{"range":[0,4],"font":"helvetica","bold":true}]}),
+    );
+    let listed = ok(&mut a, "text_paragraphs", json!({"doc":id,"page":1}));
+    let p = &listed["paragraphs"][0];
+    let runs = p["runs"].as_array().unwrap();
+    assert!(runs.len() >= 2, "{listed}");
+    let editor = p["editor_text"].as_str().unwrap();
+    let bold: String = runs
+        .iter()
+        .filter(|r| r["bold"] == true)
+        .map(|r| &editor[r["range"][0].as_u64().unwrap() as usize..r["range"][1].as_u64().unwrap() as usize])
+        .collect();
+    assert_eq!(bold.trim(), "Bold", "{listed}");
+    std::fs::remove_dir_all(dir).unwrap();
+}

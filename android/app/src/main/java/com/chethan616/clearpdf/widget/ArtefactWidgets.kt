@@ -19,12 +19,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.ui.layout.SubcomposeLayout
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -47,12 +44,13 @@ import com.chethan616.clearpdf.ui.glass.Feel
 import com.chethan616.clearpdf.ui.glass.GlassSettings
 import com.chethan616.clearpdf.ui.glass.Haptics
 import com.chethan616.clearpdf.ui.home.CardShape
-import com.chethan616.clearpdf.ui.home.cardPaint
 import com.chethan616.clearpdf.ui.home.ListCard
 import com.chethan616.clearpdf.ui.home.LocalHomeVm
 import com.chethan616.clearpdf.ui.home.NoteCard
 import com.chethan616.clearpdf.ui.home.RecentCard
+import com.chethan616.clearpdf.ui.home.StarredEmptyCard
 import com.chethan616.clearpdf.ui.theme.ClearTheme
+import com.chethan616.clearpdf.ui.theme.Tone
 import com.chethan616.clearpdf.ui.theme.clear
 import java.io.File
 
@@ -65,29 +63,35 @@ const val EXTRA_OPEN_RECENT = "com.chethan616.clearpdf.OPEN_RECENT"
 /** A widget tap that asks for Files (Recent). */
 const val EXTRA_OPEN_FILES = "com.chethan616.clearpdf.OPEN_FILES"
 
+/** A widget tap that asks for Files ▸ Starred. */
+const val EXTRA_OPEN_STARRED = "com.chethan616.clearpdf.OPEN_STARRED"
+
 /**
- * The home screen widgets. Each is the desk's very card: the app's own `ListCard`, `NoteCard` and
- * `RecentCard` composables, liquid glass and all, under the user's glass settings, rendered off
- * screen ([ComposeSnapshot]) at the widget's own size, with tap targets laid exactly over the list's
- * pills. (A home screen can only show a widget's pictures and send its taps; the glass can't run
- * live there, so a tap answers with a press light, the app's haptic and the card redrawn.)
+ * The home screen widgets. Notes, Recent and Starred are the desk's very cards (`NoteCard`,
+ * `RecentCard`), liquid glass and all, rendered off screen ([ComposeSnapshot]) and kept as pictures.
+ * The To-Do list on Android 12+ is the card's picture with real check boxes over it: the home screen
+ * flips a tick itself the moment it is tapped and only tells the app, so nothing is redrawn on the tap.
+ *
+ * Speed rules: a picture is drawn only when what it shows changed (a signature per widget); a resize
+ * shows the last picture scaled whole (never stretched) and redraws once the size has settled; a
+ * render that a newer one replaces is dropped before it starts.
  */
 object Widgets {
     private val main = Handler(Looper.getMainLooper())
-    private val queue = ArrayDeque<() -> Unit>()
+
+    private class Job(val key: String, val run: (next: () -> Unit) -> Unit)
+
+    private val queue = ArrayDeque<Job>()
     private var busy = false
 
-    /** Runs the renders one after another on the main thread (one virtual display at a time). */
-    internal fun enqueue(job: (next: () -> Unit) -> Unit) {
+    /**
+     * Runs the renders one after another on the main thread (one virtual display at a time). A job
+     * queued under [key] replaces one of the same key still waiting: only the newest picture is drawn.
+     */
+    internal fun enqueue(key: String, job: (next: () -> Unit) -> Unit) {
         main.post {
-            queue.addLast {
-                job {
-                    main.post {
-                        busy = false
-                        drain()
-                    }
-                }
-            }
+            queue.removeAll { it.key == key }
+            queue.addLast(Job(key) { next -> job(next) })
             drain()
         }
     }
@@ -96,41 +100,67 @@ object Widgets {
         if (busy) return
         val job = queue.removeFirstOrNull() ?: return
         busy = true
-        job()
+        job.run {
+            main.post {
+                busy = false
+                drain()
+            }
+        }
     }
 
-    private val soon = Runnable { pendingCtx?.let { refreshAll(it) }; pendingCtx = null }
+    /** What each widget shows now (by widget id): it is drawn again only when this changes. */
+    private val shown = java.util.concurrent.ConcurrentHashMap<Int, String>()
+
+    internal fun isShowing(id: Int, sig: String) = shown[id] == sig
+
+    internal fun showing(id: Int, sig: String) { shown[id] = sig }
+
+    internal fun forget(id: Int) { shown.remove(id) }
+
+    private val todoSoon = Runnable { pendingCtx?.let { TodoWidget.syncAll(it) } }
+    private val notesSoon = Runnable { pendingCtx?.let { NoteWidget.refreshChanged(it) } }
     @Volatile private var pendingCtx: Context? = null
 
     /**
-     * Redraw the notes widgets once the notes have been still for a moment: drawing a widget card runs
-     * on the main thread, so doing it on every tick stuttered the very tap that ticked. Any thread.
+     * The notes changed in the app: the lists follow at once (they cost nothing to redraw), the note
+     * cards once the notes have been still for a moment, and only those whose note really changed.
+     * Any thread.
      */
     fun refreshSoon(ctx: Context) {
         val app = ctx.applicationContext
         val mgr = AppWidgetManager.getInstance(app)
-        if (mgr.getAppWidgetIds(ComponentName(app, TodoWidget::class.java)).isEmpty() &&
-            mgr.getAppWidgetIds(ComponentName(app, NoteWidget::class.java)).isEmpty()) return
+        val lists = ids(app, mgr, TodoWidget::class.java)
+        val notes = ids(app, mgr, NoteWidget::class.java)
+        if (lists.isEmpty() && notes.isEmpty()) return
         pendingCtx = app
-        main.removeCallbacks(soon)
-        main.postDelayed(soon, 1500L)
+        if (lists.isNotEmpty()) {
+            main.removeCallbacks(todoSoon)
+            main.postDelayed(todoSoon, 1200L)
+        }
+        if (notes.isNotEmpty()) {
+            main.removeCallbacks(notesSoon)
+            main.postDelayed(notesSoon, 1200L)
+        }
     }
 
-    /** Redraw the notes widgets (the notes changed). Any thread. */
+    /** Redraw every list and note widget (a widget was set to show another one). Any thread. */
     fun refreshAll(ctx: Context, then: (() -> Unit)? = null) {
         val app = ctx.applicationContext
         val mgr = AppWidgetManager.getInstance(app)
-        val todo = mgr.getAppWidgetIds(ComponentName(app, TodoWidget::class.java))
-        val notes = mgr.getAppWidgetIds(ComponentName(app, NoteWidget::class.java))
+        val todo = ids(app, mgr, TodoWidget::class.java)
+        val notes = ids(app, mgr, NoteWidget::class.java)
         var left = todo.size + notes.size
         if (left == 0) {
             then?.invoke()
             return
         }
         val one = { if (--left == 0) then?.invoke() }
-        todo.forEach { id -> TodoWidget.update(app, mgr, id, one) }
-        notes.forEach { id -> NoteWidget.update(app, mgr, id, one) }
+        todo.forEach { id -> forget(id); TodoWidget.update(app, mgr, id, one) }
+        notes.forEach { id -> forget(id); NoteWidget.update(app, mgr, id, one) }
     }
+
+    internal fun ids(ctx: Context, mgr: AppWidgetManager, provider: Class<*>): IntArray =
+        mgr.getAppWidgetIds(ComponentName(ctx, provider))
 
     /** The widget's size in pixels (its current size on the home screen, portrait or landscape). */
     internal fun size(ctx: Context, options: Bundle): Pair<Int, Int> {
@@ -163,6 +193,14 @@ object Widgets {
     internal fun open(ctx: Context, noteId: String?, requestKey: String): PendingIntent =
         activity(ctx, requestKey) { if (noteId != null) putExtra(EXTRA_OPEN_NOTE, noteId) }
 
+    /** A broadcast to [provider] with [action] for widget [id]. */
+    internal fun broadcast(ctx: Context, provider: Class<*>, action: String, id: Int): PendingIntent {
+        val intent = Intent(ctx, provider).setAction(action)
+            .setData(Uri.parse("artefact://widget/$action/$id"))
+            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+        return PendingIntent.getBroadcast(ctx, "$action/$id".hashCode(), intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
     internal fun mediaFile(ctx: Context, name: String) = File(File(File(ctx.filesDir, "notes"), "media"), name)
 
     internal fun cornerPx(ctx: Context) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 30f, ctx.resources.displayMetrics)
@@ -174,12 +212,6 @@ object Widgets {
 
     /** A desk card's width: the desk is two columns, 16 dp from the screen's edges and 12 dp apart. */
     internal fun deskWidth(ctx: Context): Dp = ((ctx.resources.configuration.screenWidthDp - 44) / 2f).coerceIn(120f, 240f).dp
-
-    /** How far [SquareCard] widens a card at each try. */
-    internal fun stepPx(ctx: Context) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 6f, ctx.resources.displayMetrics).toInt().coerceAtLeast(1)
-
-    /** Room to lay a card out in before it is cut to its own height: twice the widget's height. */
-    internal fun canvasHeight(boxH: Int) = boxH * 2
 
     /**
      * The card as the desk lays it out, as wide as the widget and at least as tall, on what the desk
@@ -230,6 +262,20 @@ object Widgets {
         views.setViewLayoutMargin(R.id.card_open, RemoteViews.MARGIN_TOP, f.dy, TypedValue.COMPLEX_UNIT_PX)
     }
 
+    /** The round "next" button in the fitted card's top right corner, or hidden. */
+    internal fun placeNext(ctx: Context, views: RemoteViews, f: Fit?, cardW: Int, onTap: PendingIntent?) {
+        if (f == null || onTap == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            views.setViewVisibility(R.id.card_next, android.view.View.GONE)
+            return
+        }
+        val inset = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10f, ctx.resources.displayMetrics)
+        val side = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 34f, ctx.resources.displayMetrics)
+        views.setViewVisibility(R.id.card_next, android.view.View.VISIBLE)
+        views.setViewLayoutMargin(R.id.card_next, RemoteViews.MARGIN_LEFT, f.dx + cardW * f.scale - inset - side, TypedValue.COMPLEX_UNIT_PX)
+        views.setViewLayoutMargin(R.id.card_next, RemoteViews.MARGIN_TOP, f.dy + inset, TypedValue.COMPLEX_UNIT_PX)
+        views.setOnClickPendingIntent(R.id.card_next, onTap)
+    }
+
     internal val ROWS = intArrayOf(R.id.row0, R.id.row1, R.id.row2, R.id.row3, R.id.row4, R.id.row5, R.id.row6, R.id.row7)
 
     /** A row target laid over [r] (card pixels) of the fitted card. */
@@ -241,208 +287,472 @@ object Widgets {
         views.setViewLayoutMargin(rowId, RemoteViews.MARGIN_TOP, f.dy + r.top * f.scale, TypedValue.COMPLEX_UNIT_PX)
     }
 
-    // ---- Recent: drawn by the app (its thumbnails live there), kept for when the app is away ------
+    // ---- Recent and Starred: drawn by the app (its thumbnails live there), kept for when it is away ----
 
-    private fun recentFile(ctx: Context) = File(ctx.cacheDir, "widget_recent.png")
+    /** One of the two document widgets: which files it shows and where its picture is kept. */
+    internal enum class Shelf(val provider: Class<out AppWidgetProvider>, val file: String) {
+        Recent(RecentWidget::class.java, "widget_recent"),
+        Starred(StarredWidget::class.java, "widget_starred"),
+    }
 
-    private fun recentTopFile(ctx: Context) = File(ctx.cacheDir, "widget_recent_top.txt")
+    private fun picture(ctx: Context, shelf: Shelf) = File(ctx.cacheDir, "${shelf.file}.png")
 
-    /** The app's view model while it runs: Recent's thumbnails come from it. */
+    private fun topFile(ctx: Context, shelf: Shelf) = File(ctx.cacheDir, "${shelf.file}_top.txt")
+
+    /** The app's view model while it runs: the document widgets' thumbnails come from it. */
     @Volatile
     internal var liveVm: java.lang.ref.WeakReference<AppViewModel>? = null
 
-    /** The app's recent documents changed (or a Recent widget was resized): draw the Recent card for every Recent widget. */
+    private val shelfSig = java.util.concurrent.ConcurrentHashMap<Shelf, String>()
+
+    private fun rowsOf(vm: AppViewModel, shelf: Shelf) = when (shelf) {
+        Shelf.Recent -> vm.recentRows()
+        Shelf.Starred -> vm.starredRows()
+    }
+
+    /** The app's documents changed (or a Recent / Starred widget was resized): draw those widgets again if what they show changed. */
     fun refreshRecent(vm: AppViewModel, force: Boolean = false) {
         liveVm = java.lang.ref.WeakReference(vm)
         val app = vm.getApplication<android.app.Application>()
         val mgr = AppWidgetManager.getInstance(app)
-        val ids = mgr.getAppWidgetIds(ComponentName(app, RecentWidget::class.java))
-        if (ids.isEmpty()) return
-        // only when the list really changed (every return to the app asks), and not during the moment
-        // the app is coming back, when its own screens are animating
-        val sig = vm.recentList.joinToString("|") { it.uri + it.opened } + "#" + ids.joinToString(",")
-        if (!force && sig == lastRecentSig) return
-        lastRecentSig = sig
-        main.removeCallbacks(recentSoon)
-        recentVm = java.lang.ref.WeakReference(vm)
-        main.postDelayed(recentSoon, 1200L)
+        for (shelf in Shelf.entries) {
+            val ids = ids(app, mgr, shelf.provider)
+            if (ids.isEmpty()) continue
+            // only when its list really changed (every return to the app asks), and not during the
+            // moment the app is coming back, when its own screens are animating
+            val rows = rowsOf(vm, shelf)
+            val sig = rows.take(3).joinToString("|") { it.key + it.date } + "#" + rows.size + "#" + ids.joinToString(",") { id -> size(app, mgr.getAppWidgetOptions(id)).toString() }
+            if (!force && sig == shelfSig[shelf]) continue
+            shelfSig[shelf] = sig
+            val job = shelfJobs.getOrPut(shelf) { Runnable { liveVm?.get()?.let { draw(it, shelf) } } }
+            main.removeCallbacks(job)
+            main.postDelayed(job, if (force) 450L else 1200L)
+        }
     }
 
-    @Volatile private var lastRecentSig: String? = null
-    @Volatile private var recentVm: java.lang.ref.WeakReference<AppViewModel>? = null
-    private val recentSoon = Runnable { recentVm?.get()?.let { drawRecent(it) } }
+    private val shelfJobs = java.util.concurrent.ConcurrentHashMap<Shelf, Runnable>()
 
-    private fun drawRecent(vm: AppViewModel) {
+    private fun draw(vm: AppViewModel, shelf: Shelf) {
         val app = vm.getApplication<android.app.Application>()
         val mgr = AppWidgetManager.getInstance(app)
-        val ids = mgr.getAppWidgetIds(ComponentName(app, RecentWidget::class.java))
+        val ids = ids(app, mgr, shelf.provider)
         if (ids.isEmpty()) return
-        val rows = vm.recentRows()
-        val top = vm.recentList.firstOrNull()?.uri
-        if (rows.isEmpty()) {
-            recentFile(app).delete()
-            ids.forEach { RecentWidget.show(app, mgr, it, null, null) }
+        val rows = rowsOf(vm, shelf)
+        val top = rows.firstOrNull()?.key
+        if (rows.isEmpty() && shelf == Shelf.Recent) {
+            picture(app, shelf).delete()
+            ids.forEach { showDoc(app, mgr, it, shelf, null, null) }
             return
         }
-        ids.forEach { id ->
-            val (w, h) = size(app, mgr.getAppWidgetOptions(id))
-            enqueue { next ->
-                GlassSettings.load(app)
-                val choice = themeChoice(app)
-                // the desk's own Recent card, exactly: its width on the desk (two columns, 16 dp edges,
-                // 12 dp apart), its 226 dp, its fan of pages as it is; the widget fits the whole picture
-                // to its size, so every size shows the same card, only larger or smaller
-                val pad = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 12f, app.resources.displayMetrics).toInt()
-                val deskW = ((app.resources.configuration.screenWidthDp - 44) / 2f).coerceIn(120f, 240f).dp
-                val deskWPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, deskW.value, app.resources.displayMetrics).toInt()
-                val deskHPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 226f, app.resources.displayMetrics).toInt()
-                val inner = minOf(w, h)
-                ComposeSnapshot.render(
-                    app, deskWPx + 2 * pad, deskHPx + 2 * pad, 0f, settleMs = 1100,
-                    content = {
-                        ClearTheme(choice) {
-                            CompositionLocalProvider(LocalHomeVm provides vm) {
-                                Box(Modifier.fillMaxSize().padding(toDp(app, pad))) {
-                                    RecentCard(vm, rows, onAll = {}, modifier = Modifier.width(deskW))
+        // one picture serves every widget of the shelf: the desk's card at its desk size, fitted to each
+        enqueue(shelf.name) { next ->
+            GlassSettings.load(app)
+            val choice = themeChoice(app)
+            val dm = app.resources.displayMetrics
+            val pad = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 12f, dm).toInt()
+            val deskW = deskWidth(app)
+            val deskWPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, deskW.value, dm).toInt()
+            val deskHPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 226f, dm).toInt()
+            val starredTitle = app.getString(R.string.home_list_starred)
+            ComposeSnapshot.render(
+                app, deskWPx + 2 * pad, deskHPx + 2 * pad, 0f, settleMs = 900,
+                content = {
+                    ClearTheme(choice) {
+                        CompositionLocalProvider(LocalHomeVm provides vm) {
+                            Box(Modifier.fillMaxSize().padding(toDp(app, pad))) {
+                                when {
+                                    shelf == Shelf.Recent -> RecentCard(vm, rows, onAll = {}, modifier = Modifier.width(deskW))
+                                    rows.isEmpty() -> StarredEmptyCard(Modifier.width(deskW))
+                                    else -> RecentCard(vm, rows, onAll = {}, modifier = Modifier.width(deskW), title = starredTitle, cardTone = Tone.Lavender)
                                 }
                             }
                         }
-                    },
-                ) { frame ->
-                    if (frame != null) runCatching { recentFile(app).outputStream().use { frame.compress(Bitmap.CompressFormat.PNG, 100, it) } }
-                    if (top != null) runCatching { recentTopFile(app).writeText(top) }
-                    if (inner > 0) RecentWidget.show(app, mgr, id, frame, top)
-                    next()
+                    }
+                },
+            ) { frame ->
+                if (frame != null) {
+                    runCatching { picture(app, shelf).outputStream().use { frame.compress(Bitmap.CompressFormat.PNG, 100, it) } }
+                    runCatching { if (top != null) topFile(app, shelf).writeText(top) else topFile(app, shelf).delete() }
+                    ids(app, mgr, shelf.provider).forEach { showDoc(app, mgr, it, shelf, frame, top) }
                 }
+                next()
             }
         }
     }
 
-    internal fun savedRecent(ctx: Context): Pair<Bitmap?, String?> =
-        (runCatching { BitmapFactory.decodeFile(recentFile(ctx).path) }.getOrNull()) to runCatching { recentTopFile(ctx).readText() }.getOrNull()
+    internal fun saved(ctx: Context, shelf: Shelf): Pair<Bitmap?, String?> =
+        (runCatching { BitmapFactory.decodeFile(picture(ctx, shelf).path) }.getOrNull()) to runCatching { topFile(ctx, shelf).readText() }.getOrNull()?.ifBlank { null }
+
+    /** A Recent or Starred widget showing [bitmap]: a tap opens Files on Recent or Starred. */
+    internal fun showDoc(ctx: Context, mgr: AppWidgetManager, id: Int, shelf: Shelf, bitmap: Bitmap?, top: String?) {
+        val app = ctx.applicationContext
+        val views = RemoteViews(app.packageName, R.layout.widget_card)
+        val (w, h) = size(app, mgr.getAppWidgetOptions(id))
+        if (bitmap != null) {
+            views.setImageViewBitmap(R.id.card_image, onBox(bitmap, w, h))
+            placeCardTarget(views, fit(w, h, bitmap.width, bitmap.height), bitmap.width, bitmap.height)
+        }
+        views.setContentDescription(R.id.card_image, app.getString(if (shelf == Shelf.Recent) R.string.desk_recent else R.string.home_list_starred))
+        views.setOnClickPendingIntent(
+            R.id.card_open,
+            // the card opens its own list in Files (Recent or Starred), never a document by itself
+            activity(app, "${shelf.file}/$id") { if (shelf == Shelf.Starred) putExtra(EXTRA_OPEN_STARRED, true) else putExtra(EXTRA_OPEN_FILES, true) },
+        )
+        placeNext(app, views, null, 0, null)
+        ROWS.forEach { views.setViewVisibility(it, android.view.View.GONE) }
+        runCatching { mgr.updateAppWidget(id, views) }
+    }
 }
 
-/** The most recent list (pinned first), its first items ticked right on the home screen. */
+/**
+ * A list of the user's (the one chosen for it, else the latest), the desk's own `ListCard`, true
+ * liquid glass and all, its items ticked right on the home screen. With more than one list, the round
+ * button in its corner turns to the next.
+ *
+ * A tick is instant without a native copy of the card: every render draws the card twice, as it is
+ * and with every item flipped, and keeps where each pill lies. A tap copies that one pill from the
+ * flipped picture into the shown one (a few milliseconds of canvas work) and shows it; the two
+ * pictures are then each other's flip again, exactly what a new render would draw, so nothing is
+ * rendered after a tap at all. They are kept on disk too, so a tap is as quick when the app is gone.
+ */
 class TodoWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         val pending = goAsync()
         var left = ids.size
         if (left == 0) return pending.finish()
-        ids.forEach { update(context, manager, it) { if (--left == 0) pending.finish() } }
+        ids.forEach { Widgets.forget(it); update(context, manager, it) { if (--left == 0) pending.finish() } }
     }
 
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, newOptions: Bundle) {
-        val pending = goAsync()
-        update(context, manager, id) { pending.finish() }
+        // at once: the card as it is, scaled whole to the new size; drawn anew once the size settles
+        val app = context.applicationContext
+        drawn(app, id)?.let { show(app, manager, id, it) }
+        val job = resizes.getOrPut(id) { Runnable { update(app, AppWidgetManager.getInstance(app), id) } }
+        main.removeCallbacks(job)
+        main.postDelayed(job, 350L)
+    }
+
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        appWidgetIds.forEach { id ->
+            WidgetPicks.set(context, id, null)
+            Widgets.forget(id)
+            cache.remove(id)
+            files(context, id).forEach { it.delete() }
+        }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == ACTION_TOGGLE) {
-            val note = intent.getStringExtra(EXTRA_NOTE)
-            val item = intent.getStringExtra(EXTRA_ITEM)
-            if (note == null || item == null) return
-            // the app's own feel for ticking a pill, under its haptics setting
+        val app = context.applicationContext
+        when (intent.action) {
+            ACTION_TOGGLE -> {
+                val note = intent.getStringExtra(EXTRA_NOTE) ?: return
+                val item = intent.getStringExtra(EXTRA_ITEM) ?: return
+                GlassSettings.load(app)
+                val wasDone = drawnShowing(app, note).firstOrNull()?.note?.items?.firstOrNull { it.id == item }?.done
+                    ?: (NoteFile.read(app).firstOrNull { it.id == note }?.items?.firstOrNull { it.id == item }?.done == true)
+                runCatching { Haptics(app, android.view.View(app)).play(if (wasDone) Feel.ToggleOff else Feel.ToggleOn) }
+                // first what is seen: the pill flips on the home screen now
+                val flipped = flipNow(app, note, item)
+                // then the truth: the file, and the app's own notes if it runs (so it never writes over the tick)
+                NoteFile.toggle(app, note, item)
+                Notes.live?.takeIf { it.isActive && it.loaded }?.let { live -> Handler(Looper.getMainLooper()).post { live.reload() } }
+                if (!flipped) {
+                    // no picture to flip in (a first tap after an update): drawn anew
+                    val mgr = AppWidgetManager.getInstance(app)
+                    Widgets.ids(app, mgr, TodoWidget::class.java).filter { WidgetPicks.resolve(app, it, NoteKind.List)?.id == note }.forEach { update(app, mgr, it) }
+                }
+                return
+            }
+            ACTION_NEXT -> {
+                val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+                if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return
+                GlassSettings.load(app)
+                runCatching { Haptics(app, android.view.View(app)).play(Feel.Tick) }
+                WidgetPicks.next(app, id, NoteKind.List)
+                val pending = goAsync()
+                update(app, AppWidgetManager.getInstance(app), id) { pending.finish() }
+                return
+            }
+        }
+        super.onReceive(context, intent)
+    }
+
+    /** The card as last drawn for a widget: the picture shown, its every-item-flipped twin, and where each pill is. */
+    internal class Drawn(val note: Note, val shown: Bitmap, val twin: Bitmap?, val spots: Map<String, android.graphics.RectF>)
+
+    companion object {
+        const val ACTION_TOGGLE = "com.chethan616.clearpdf.widget.TOGGLE"
+        const val ACTION_NEXT = "com.chethan616.clearpdf.widget.NEXT_LIST"
+        private const val EXTRA_NOTE = "note"
+        private const val EXTRA_ITEM = "item"
+        private val main = Handler(Looper.getMainLooper())
+        private val resizes = HashMap<Int, Runnable>()
+        private val cache = java.util.concurrent.ConcurrentHashMap<Int, Drawn>()
+
+        /** Bring every list widget in line with the notes (after a change in the app): only those whose list changed are drawn. */
+        fun syncAll(ctx: Context) {
+            val app = ctx.applicationContext
+            val mgr = AppWidgetManager.getInstance(app)
+            Widgets.ids(app, mgr, TodoWidget::class.java).forEach { update(app, mgr, it) }
+        }
+
+        private fun signature(app: Context, mgr: AppWidgetManager, id: Int, note: Note?): String =
+            "${Widgets.size(app, mgr.getAppWidgetOptions(id))}|${WidgetCards.isDark(app)}|${note?.id}|${note?.title}|" +
+                note?.items?.joinToString(",") { "${it.id}:${it.text.hashCode()}:${it.done}" } + "|" + WidgetPicks.count(app, NoteKind.List)
+
+        private fun files(ctx: Context, id: Int) = listOf("shown.png", "twin.png", "spots.json").map { File(ctx.cacheDir, "widget_list_${id}_$it") }
+
+        /** The card last drawn for widget [id]: from memory, else from the cache folder (the app was away). */
+        private fun drawn(app: Context, id: Int): Drawn? = cache[id] ?: runCatching {
+            val (shownF, twinF, spotsF) = files(app, id)
+            if (!shownF.isFile || !spotsF.isFile) return null
+            val o = org.json.JSONObject(spotsF.readText())
+            val note = NoteFile.read(app).firstOrNull { it.id == o.optString("note") } ?: return null
+            val spots = HashMap<String, android.graphics.RectF>()
+            o.optJSONObject("spots")?.let { s ->
+                s.keys().forEach { k -> s.optJSONArray(k)?.let { a -> spots[k] = android.graphics.RectF(a.optDouble(0).toFloat(), a.optDouble(1).toFloat(), a.optDouble(2).toFloat(), a.optDouble(3).toFloat()) } }
+            }
+            val shown = BitmapFactory.decodeFile(shownF.path)?.copy(Bitmap.Config.ARGB_8888, true) ?: return null
+            val twin = BitmapFactory.decodeFile(twinF.path)?.copy(Bitmap.Config.ARGB_8888, true)
+            // only while the file still says what the picture shows (a change in the app since then: no)
+            val doneNow = note.items.associate { it.id to it.done }
+            val doneThen = o.optJSONObject("done")
+            if (doneThen == null || doneNow.any { (k, v) -> doneThen.has(k) && doneThen.optBoolean(k) != v }) return null
+            Drawn(note, shown, twin, spots).also { cache[id] = it }
+        }.getOrNull()
+
+        private fun drawnShowing(app: Context, noteId: String): List<Drawn> {
+            val mgr = AppWidgetManager.getInstance(app)
+            return Widgets.ids(app, mgr, TodoWidget::class.java).toList().mapNotNull { id -> drawn(app, id)?.takeIf { it.note.id == noteId } }
+        }
+
+        private fun save(app: Context, id: Int, d: Drawn) {
+            Thread {
+                runCatching {
+                    val (shownF, twinF, spotsF) = files(app, id)
+                    shownF.outputStream().use { d.shown.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    if (d.twin != null) twinF.outputStream().use { d.twin.compress(Bitmap.CompressFormat.PNG, 100, it) } else twinF.delete()
+                    val spots = org.json.JSONObject()
+                    d.spots.forEach { (k, r) -> spots.put(k, org.json.JSONArray(listOf(r.left, r.top, r.right, r.bottom))) }
+                    val done = org.json.JSONObject()
+                    d.note.items.forEach { done.put(it.id, it.done) }
+                    spotsF.writeText(org.json.JSONObject().put("note", d.note.id).put("spots", spots).put("done", done).toString())
+                }
+            }.start()
+        }
+
+        /**
+         * Item [itemId] of list [noteId] ticked or unticked on every widget showing it, at once: its pill
+         * taken from the flipped picture (and the old one put in the flipped picture's place). False when
+         * no widget had pictures to do it with.
+         */
+        fun flipNow(ctx: Context, noteId: String, itemId: String): Boolean {
+            val app = ctx.applicationContext
+            val mgr = AppWidgetManager.getInstance(app)
+            var any = false
+            Widgets.ids(app, mgr, TodoWidget::class.java).forEach { id ->
+                val d = drawn(app, id)?.takeIf { it.note.id == noteId } ?: return@forEach
+                val twin = d.twin ?: return@forEach
+                val note = d.note.copy(items = d.note.items.map { if (it.id == itemId) it.copy(done = !it.done) else it })
+                val spot = d.spots[itemId]
+                val (shown, other) = if (spot == null) d.shown to twin else {
+                    // a pixel or two round the pill: its rim and the shade it casts on the card
+                    val r = android.graphics.Rect(spot.left.toInt() - 2, spot.top.toInt() - 2, spot.right.toInt() + 3, spot.bottom.toInt() + 3)
+                        .apply { intersect(0, 0, d.shown.width, d.shown.height) }
+                    val newShown = d.shown.copy(Bitmap.Config.ARGB_8888, true)
+                    val newTwin = twin.copy(Bitmap.Config.ARGB_8888, true)
+                    val plain = android.graphics.Paint().apply { xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC) }
+                    android.graphics.Canvas(newShown).drawBitmap(twin, r, r, plain)
+                    android.graphics.Canvas(newTwin).drawBitmap(d.shown, r, r, plain)
+                    newShown to newTwin
+                }
+                val next = Drawn(note, shown, other, d.spots)
+                cache[id] = next
+                show(app, mgr, id, next)
+                // what the widget shows is now this list as it will be: no render needed when the notes catch up
+                Widgets.showing(id, signature(app, mgr, id, note))
+                save(app, id, next)
+                any = true
+            }
+            return any
+        }
+
+        fun update(ctx: Context, mgr: AppWidgetManager, id: Int, done: () -> Unit = {}) {
+            val app = ctx.applicationContext
+            // the list chosen for this widget, else the latest
+            val list = WidgetPicks.resolve(app, id, NoteKind.List)
+            val sig = signature(app, mgr, id, list)
+            if (Widgets.isShowing(id, sig)) return done()
+            val res = app.resources
+            val shown = list ?: Note("", NoteKind.List)
+            val flipped = shown.copy(items = shown.items.map { it.copy(done = !it.done) })
+            Widgets.enqueue("list/$id") { next ->
+                GlassSettings.load(app)
+                val choice = Widgets.themeChoice(app)
+                // the desk's own list card, exactly as the desk lays it out (its width, its own height, its
+                // first four items and "N more"); the widget fits that very picture to its size
+                val deskW = Widgets.deskWidth(app)
+                val deskWPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, deskW.value, res.displayMetrics).toInt()
+                fun draw(note: Note, then: (Bitmap?, Map<String, android.graphics.RectF>) -> Unit) {
+                    val placed = LinkedHashMap<String, androidx.compose.ui.geometry.Rect>()
+                    var card: android.graphics.Rect? = null
+                    ComposeSnapshot.render(app, deskWPx, deskWPx * 3, Widgets.cornerPx(app), crop = { card }, content = {
+                        Widgets.Desk(choice, placed = { card = it }) {
+                            ListCard(note, onOpen = {}, onLong = {}, onToggle = {}, modifier = Modifier.width(deskW), onItemPlaced = { item, r -> placed[item.id] = r })
+                        }
+                    }) { frame ->
+                        val top = card?.top ?: 0
+                        then(frame, placed.mapValues { (_, r) -> android.graphics.RectF(r.left, r.top - top, r.right, r.bottom - top) })
+                    }
+                }
+                draw(shown) { frame, spots ->
+                    if (frame == null) {
+                        // a render that did not come back keeps the card already there
+                        drawn(app, id)?.let { show(app, mgr, id, it) } ?: run {
+                            val (w, h) = Widgets.size(app, mgr.getAppWidgetOptions(id))
+                            val bitmap = WidgetCards(app, w, h).list(
+                                shown, res.getString(R.string.notes_untitled_list), res.getString(R.string.notes_list_empty),
+                                moreText = { res.getQuantityString(R.plurals.notes_more_items, it, it) },
+                            ).bitmap
+                            show(app, mgr, id, Drawn(shown, bitmap, null, emptyMap()))
+                        }
+                        next()
+                        done()
+                        return@draw
+                    }
+                    // shown at once; its flipped twin is drawn after, for the taps
+                    val d = Drawn(shown, frame.copy(Bitmap.Config.ARGB_8888, true), null, if (list != null) spots else emptyMap())
+                    cache[id] = d
+                    show(app, mgr, id, d)
+                    Widgets.showing(id, sig)
+                    if (list == null || shown.items.none { it.text.isNotBlank() }) {
+                        next()
+                        done()
+                        return@draw
+                    }
+                    draw(flipped) { twin, _ ->
+                        if (twin != null && twin.width == frame.width && twin.height == frame.height) {
+                            val full = Drawn(shown, d.shown, twin.copy(Bitmap.Config.ARGB_8888, true), d.spots)
+                            if (cache[id] === d) cache[id] = full
+                            save(app, id, full)
+                        }
+                        next()
+                        done()
+                    }
+                }
+            }
+        }
+
+        /** Widget [id] showing [d]: the card fitted to the widget, a tap target over each of its pills. */
+        private fun show(app: Context, mgr: AppWidgetManager, id: Int, d: Drawn) {
+            val res = app.resources
+            val (w, h) = Widgets.size(app, mgr.getAppWidgetOptions(id))
+            val bitmap = d.shown
+            val f = Widgets.fit(w, h, bitmap.width, bitmap.height)
+            val views = RemoteViews(app.packageName, R.layout.widget_card)
+            views.setImageViewBitmap(R.id.card_image, Widgets.onBox(bitmap, w, h))
+            views.setContentDescription(R.id.card_image, d.note.title.ifBlank { res.getString(R.string.notes_untitled_list) })
+            views.setOnClickPendingIntent(R.id.card_open, Widgets.open(app, d.note.id.ifEmpty { null }, "list/$id"))
+            Widgets.placeCardTarget(views, f, bitmap.width, bitmap.height)
+            val spots = d.note.items.filter { it.id in d.spots }.map { it.id to d.spots.getValue(it.id) }
+            Widgets.ROWS.forEachIndexed { i, rowId ->
+                val spot = spots.getOrNull(i)
+                if (spot == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                    // before Android 12 the targets can't be placed: the whole card opens the list
+                    views.setViewVisibility(rowId, android.view.View.GONE)
+                    return@forEachIndexed
+                }
+                val (itemId, r) = spot
+                Widgets.placeRow(views, rowId, f, r)
+                val toggle = Intent(app, TodoWidget::class.java).setAction(ACTION_TOGGLE)
+                    .setData(Uri.parse("artefact://widget/toggle/${d.note.id}/$itemId"))
+                    .putExtra(EXTRA_NOTE, d.note.id).putExtra(EXTRA_ITEM, itemId)
+                views.setOnClickPendingIntent(
+                    rowId,
+                    PendingIntent.getBroadcast(app, "${d.note.id}/$itemId".hashCode(), toggle, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
+                )
+            }
+            // more than one list: the round button in the corner turns to the next
+            val many = WidgetPicks.count(app, NoteKind.List) > 1
+            Widgets.placeNext(app, views, f, bitmap.width, if (many) Widgets.broadcast(app, TodoWidget::class.java, ACTION_NEXT, id) else null)
+            if (many) {
+                views.setContentDescription(R.id.card_next, res.getString(R.string.widget_next_list))
+                views.setInt(R.id.card_next, "setColorFilter", if (WidgetCards.isDark(app)) 0xF0FFFFFF.toInt() else 0xCC12302B.toInt())
+            }
+            runCatching { mgr.updateAppWidget(id, views) }
+        }
+    }
+}
+
+/**
+ * A note as the desk's paper card (the one chosen for it, else the latest; the starter "Thought of the
+ * day" on a fresh install). With more than one note, the round button in its corner turns to the next.
+ */
+class NoteWidget : AppWidgetProvider() {
+    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
+        val pending = goAsync()
+        var left = ids.size
+        if (left == 0) return pending.finish()
+        ids.forEach { Widgets.forget(it); update(context, manager, it) { if (--left == 0) pending.finish() } }
+    }
+
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, newOptions: Bundle) {
+        // at once: the last picture, scaled whole to the new size; the card itself once the size settles
+        val app = context.applicationContext
+        last[id]?.let { show(app, manager, id, it.first, it.second) }
+        val job = resizes.getOrPut(id) { Runnable { update(app, AppWidgetManager.getInstance(app), id) } }
+        main.removeCallbacks(job)
+        main.postDelayed(job, 350L)
+    }
+
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        appWidgetIds.forEach { WidgetPicks.set(context, it, null); Widgets.forget(it); last.remove(it) }
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_NEXT) {
             val app = context.applicationContext
+            val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+            if (id == AppWidgetManager.INVALID_APPWIDGET_ID) return
             GlassSettings.load(app)
-            val wasDone = NoteFile.read(app).firstOrNull { it.id == note }?.items?.firstOrNull { it.id == item }?.done == true
-            runCatching { Haptics(app, android.view.View(app)).play(if (wasDone) Feel.ToggleOff else Feel.ToggleOn) }
-            // the file is the truth for a tick from the home screen: written at once, then the app (if it
-            // runs) reads it again, so its own copy never writes over the tick
-            NoteFile.toggle(app, note, item)
-            Notes.live?.takeIf { it.isActive && it.loaded }?.let { live -> Handler(Looper.getMainLooper()).post { live.reload() } }
+            runCatching { Haptics(app, android.view.View(app)).play(Feel.Tick) }
+            WidgetPicks.next(app, id, NoteKind.Text)
             val pending = goAsync()
-            Widgets.refreshAll(app) { pending.finish() }
+            update(app, AppWidgetManager.getInstance(app), id) { pending.finish() }
             return
         }
         super.onReceive(context, intent)
     }
 
     companion object {
-        const val ACTION_TOGGLE = "com.chethan616.clearpdf.widget.TOGGLE"
-        private const val EXTRA_NOTE = "note"
-        private const val EXTRA_ITEM = "item"
+        const val ACTION_NEXT = "com.chethan616.clearpdf.widget.NEXT_NOTE"
+        private val main = Handler(Looper.getMainLooper())
+        private val resizes = HashMap<Int, Runnable>()
 
-        fun update(ctx: Context, mgr: AppWidgetManager, id: Int, done: () -> Unit = {}) {
+        /** The last picture each widget showed and the note it opens: shown at once while a new one draws. */
+        private val last = java.util.concurrent.ConcurrentHashMap<Int, Pair<Bitmap, String?>>()
+
+        private fun signature(app: Context, mgr: AppWidgetManager, id: Int, note: Note?): String =
+            "${Widgets.size(app, mgr.getAppWidgetOptions(id))}|${WidgetCards.isDark(app)}|${note?.id}|${note?.title}|${note?.body?.hashCode()}|${note?.images}|${note?.updated}|" +
+                WidgetPicks.count(app, NoteKind.Text)
+
+        /** Redraw the note widgets whose note changed (after a change in the app). */
+        fun refreshChanged(ctx: Context) {
             val app = ctx.applicationContext
-            val (w, h) = Widgets.size(app, mgr.getAppWidgetOptions(id))
-            // the list chosen for this widget, else the latest
-            val list = WidgetPicks.resolve(app, id, NoteKind.List)
-            val res = app.resources
-            val shown = list ?: Note("", NoteKind.List)
-            Widgets.enqueue { next ->
-                GlassSettings.load(app)
-                val choice = Widgets.themeChoice(app)
-                // the desk's own list card, exactly as the desk lays it out (its width, its own height,
-                // its first four items and "N more"); the widget fits that very picture to its size
-                val deskW = Widgets.deskWidth(app)
-                val deskWPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, deskW.value, res.displayMetrics).toInt()
-                val placed = LinkedHashMap<String, androidx.compose.ui.geometry.Rect>()
-                var card: android.graphics.Rect? = null
-                ComposeSnapshot.render(app, deskWPx, deskWPx * 3, Widgets.cornerPx(app), crop = { card }, content = {
-                    Widgets.Desk(choice, placed = { card = it }) {
-                        ListCard(shown, onOpen = {}, onLong = {}, onToggle = {}, modifier = Modifier.width(deskW), onItemPlaced = { item, r -> placed[item.id] = r })
-                    }
-                }) { frame ->
-                    val top = card?.top ?: 0
-                    val bitmap = frame ?: WidgetCards(app, w, h).list(
-                        shown, res.getString(R.string.notes_untitled_list), res.getString(R.string.notes_list_empty),
-                        moreText = { res.getQuantityString(R.plurals.notes_more_items, it, it) },
-                    ).bitmap
-                    val spots = if (frame != null) placed.entries.map { (itemId, r) -> itemId to android.graphics.RectF(r.left, r.top - top, r.right, r.bottom - top) } else emptyList()
-                    val f = Widgets.fit(w, h, bitmap.width, bitmap.height)
-                    val views = RemoteViews(app.packageName, R.layout.widget_card)
-                    views.setImageViewBitmap(R.id.card_image, Widgets.onBox(bitmap, w, h))
-                    views.setContentDescription(R.id.card_image, shown.title.ifBlank { res.getString(R.string.notes_untitled_list) })
-                    views.setOnClickPendingIntent(R.id.card_open, Widgets.open(app, list?.id, "list/$id"))
-                    Widgets.placeCardTarget(views, f, bitmap.width, bitmap.height)
-                    Widgets.ROWS.forEachIndexed { i, rowId ->
-                        val spot = if (list != null) spots.getOrNull(i) else null
-                        if (spot == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                            views.setViewVisibility(rowId, android.view.View.GONE)
-                            return@forEachIndexed
-                        }
-                        val (itemId, r) = spot
-                        Widgets.placeRow(views, rowId, f, r)
-                        val toggle = Intent(app, TodoWidget::class.java).setAction(ACTION_TOGGLE)
-                            .setData(Uri.parse("artefact://widget/toggle/${list!!.id}/$itemId"))
-                            .putExtra(EXTRA_NOTE, list.id).putExtra(EXTRA_ITEM, itemId)
-                        views.setOnClickPendingIntent(
-                            rowId,
-                            PendingIntent.getBroadcast(app, "${list.id}/$itemId".hashCode(), toggle, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
-                        )
-                    }
-                    runCatching { mgr.updateAppWidget(id, views) }
-                    next()
-                    done()
-                }
-            }
+            val mgr = AppWidgetManager.getInstance(app)
+            Widgets.ids(app, mgr, NoteWidget::class.java).forEach { update(app, mgr, it) }
         }
-    }
-}
 
-/** The most recent text note (pinned first) as the desk's paper card: the starter "Thought of the day" on a fresh install. */
-class NoteWidget : AppWidgetProvider() {
-    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        val pending = goAsync()
-        var left = ids.size
-        if (left == 0) return pending.finish()
-        ids.forEach { update(context, manager, it) { if (--left == 0) pending.finish() } }
-    }
-
-    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, newOptions: Bundle) {
-        val pending = goAsync()
-        update(context, manager, id) { pending.finish() }
-    }
-
-    companion object {
         fun update(ctx: Context, mgr: AppWidgetManager, id: Int, done: () -> Unit = {}) {
             val app = ctx.applicationContext
             val (w, h) = Widgets.size(app, mgr.getAppWidgetOptions(id))
             // the note chosen for this widget, else the latest
             val note = WidgetPicks.resolve(app, id, NoteKind.Text)
+            val sig = signature(app, mgr, id, note)
+            if (Widgets.isShowing(id, sig)) return done()
             val res = app.resources
             val shown = note ?: Note("", NoteKind.Text, title = res.getString(R.string.thought_title), body = res.getString(R.string.seed_note_body))
-            Widgets.enqueue { next ->
+            Widgets.enqueue("note/$id") { next ->
                 GlassSettings.load(app)
                 val choice = Widgets.themeChoice(app)
                 val side = minOf(w, h)
@@ -454,81 +764,63 @@ class NoteWidget : AppWidgetProvider() {
                         }
                     }
                 }) { frame ->
-                    val bitmap = frame ?: WidgetCards(app, w, h).note(shown, res.getString(R.string.notes_untitled_note)) { Widgets.mediaFile(app, it) }
-                    val views = RemoteViews(app.packageName, R.layout.widget_card)
-                    views.setImageViewBitmap(R.id.card_image, Widgets.onBox(bitmap, w, h))
-                    views.setContentDescription(R.id.card_image, shown.title.ifBlank { res.getString(R.string.notes_untitled_note) })
-                    views.setOnClickPendingIntent(R.id.card_open, Widgets.open(app, note?.id, "note/$id"))
-                    Widgets.placeCardTarget(views, Widgets.fit(w, h, bitmap.width, bitmap.height), bitmap.width, bitmap.height)
-                    Widgets.ROWS.forEach { views.setViewVisibility(it, android.view.View.GONE) }
-                    runCatching { mgr.updateAppWidget(id, views) }
+                    // a render that did not come back keeps the picture already there (never a different-looking stand-in)
+                    val bitmap = frame ?: last[id]?.first ?: WidgetCards(app, w, h).note(shown, res.getString(R.string.notes_untitled_note)) { Widgets.mediaFile(app, it) }
+                    last[id] = bitmap to note?.id
+                    show(app, mgr, id, bitmap, note?.id)
+                    if (frame != null) Widgets.showing(id, sig)
                     next()
                     done()
                 }
             }
         }
-    }
-}
 
-/** The desk's Recent card: the newest documents' first pages fanned, opening the newest. */
-class RecentWidget : AppWidgetProvider() {
-    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        val (bitmap, top) = Widgets.savedRecent(context)
-        ids.forEach { show(context, manager, it, bitmap, top) }
-        Widgets.liveVm?.get()?.let { vm -> Handler(Looper.getMainLooper()).post { Widgets.refreshRecent(vm, force = true) } }
-    }
-
-    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, newOptions: Bundle) {
-        val (bitmap, top) = Widgets.savedRecent(context)
-        // at once: the last picture fitted to the new size; then, if the app runs, the card drawn anew
-        show(context, manager, id, bitmap, top)
-        Widgets.liveVm?.get()?.let { vm -> Handler(Looper.getMainLooper()).post { Widgets.refreshRecent(vm, force = true) } }
-    }
-
-    companion object {
-        fun show(ctx: Context, mgr: AppWidgetManager, id: Int, bitmap: Bitmap?, top: String?) {
-            val app = ctx.applicationContext
-            val views = RemoteViews(app.packageName, R.layout.widget_card)
+        private fun show(app: Context, mgr: AppWidgetManager, id: Int, bitmap: Bitmap, noteId: String?) {
+            val res = app.resources
             val (w, h) = Widgets.size(app, mgr.getAppWidgetOptions(id))
-            if (bitmap != null) views.setImageViewBitmap(R.id.card_image, Widgets.onBox(bitmap, w, h))
-            views.setContentDescription(R.id.card_image, app.getString(R.string.desk_recent))
-            if (bitmap != null) Widgets.placeCardTarget(views, Widgets.fit(w, h, bitmap.width, bitmap.height), bitmap.width, bitmap.height)
-            // the card opens the newest document, as on the desk; without one, the app's Files
-            views.setOnClickPendingIntent(
-                R.id.card_open,
-                Widgets.activity(app, "recent/$id/${top.orEmpty()}") { if (top != null) putExtra(EXTRA_OPEN_RECENT, top) else putExtra(EXTRA_OPEN_FILES, true) },
-            )
+            val f = Widgets.fit(w, h, bitmap.width, bitmap.height)
+            val views = RemoteViews(app.packageName, R.layout.widget_card)
+            views.setImageViewBitmap(R.id.card_image, Widgets.onBox(bitmap, w, h))
+            views.setContentDescription(R.id.card_image, res.getString(R.string.widget_note_name))
+            views.setOnClickPendingIntent(R.id.card_open, Widgets.open(app, noteId, "note/$id"))
+            Widgets.placeCardTarget(views, f, bitmap.width, bitmap.height)
+            val many = WidgetPicks.count(app, NoteKind.Text) > 1
+            Widgets.placeNext(app, views, f, bitmap.width, if (many) Widgets.broadcast(app, NoteWidget::class.java, ACTION_NEXT, id) else null)
+            if (many) {
+                views.setContentDescription(R.id.card_next, res.getString(R.string.widget_next_note))
+                // the paper card's own ink: dark on the light card, white on the dark one
+                views.setInt(R.id.card_next, "setColorFilter", if (WidgetCards.isDark(app)) 0xF0FFFFFF.toInt() else 0xCC3A3420.toInt())
+            }
             Widgets.ROWS.forEach { views.setViewVisibility(it, android.view.View.GONE) }
             runCatching { mgr.updateAppWidget(id, views) }
         }
     }
 }
 
-/**
- * The list card as a square of [sidePx], showing as many of its items as fit (four at most, as on
- * the desk), the rest as "N more": each size shows the card at its own scale, as Apple's widgets do.
- */
-@Composable
-private fun FitList(wPx: Int, hPx: Int, note: Note, onItemPlaced: (com.chethan616.clearpdf.notes.CheckItem, androidx.compose.ui.geometry.Rect) -> Unit) {
-    val wall = clear.wall
-    SubcomposeLayout { _ ->
-        val wDp = wPx.toDp()
-        val hDp = hPx.toDp()
-        // as many pills as the widget's height holds (the default 2x3 holds three), at most eight
-        var k = 8
-        while (k > 1) {
-            val n = k
-            val probe = subcompose("probe$n") { ListCard(note, onOpen = {}, onLong = {}, onToggle = {}, modifier = Modifier.width(wDp), maxItems = n) }
-                .firstOrNull()?.measure(Constraints(minWidth = wPx, maxWidth = wPx)) ?: break
-            if (probe.height <= hPx) break
-            k--
-        }
-        val shown = k
-        val card = subcompose("card") {
-            Box(Modifier.size(wDp, hDp).clip(CardShape).background(Brush.verticalGradient(wall))) {
-                ListCard(note, onOpen = {}, onLong = {}, onToggle = {}, modifier = Modifier.fillMaxSize(), onItemPlaced = onItemPlaced, maxItems = shown)
-            }
-        }.firstOrNull()?.measure(Constraints.fixed(wPx, hPx))
-        layout(wPx, hPx) { card?.place(0, 0) }
-    }
+/** The desk's Recent card: the newest documents' first pages fanned, opening Files ▸ Recent. */
+class RecentWidget : AppWidgetProvider() {
+    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) = docUpdate(context, manager, ids, Widgets.Shelf.Recent)
+
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, newOptions: Bundle) =
+        docResized(context, manager, id, Widgets.Shelf.Recent)
+}
+
+/** Starred: the starred documents as the Recent card shows its own, opening Files ▸ Starred. */
+class StarredWidget : AppWidgetProvider() {
+    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) = docUpdate(context, manager, ids, Widgets.Shelf.Starred)
+
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, newOptions: Bundle) =
+        docResized(context, manager, id, Widgets.Shelf.Starred)
+}
+
+private fun docUpdate(context: Context, manager: AppWidgetManager, ids: IntArray, shelf: Widgets.Shelf) {
+    val (bitmap, top) = Widgets.saved(context, shelf)
+    ids.forEach { Widgets.showDoc(context, manager, it, shelf, bitmap, top) }
+    Widgets.liveVm?.get()?.let { vm -> Handler(Looper.getMainLooper()).post { Widgets.refreshRecent(vm, force = true) } }
+}
+
+private fun docResized(context: Context, manager: AppWidgetManager, id: Int, shelf: Widgets.Shelf) {
+    // at once: the last picture scaled whole to the new size (the same card at every size)
+    val (bitmap, top) = Widgets.saved(context, shelf)
+    Widgets.showDoc(context, manager, id, shelf, bitmap, top)
 }

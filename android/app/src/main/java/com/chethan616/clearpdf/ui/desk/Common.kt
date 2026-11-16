@@ -29,7 +29,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -198,7 +201,10 @@ fun SettingsButton(vm: AppViewModel) {
     }
 }
 
-/** A file in a list: its paper, its name, when and how big, a star, and its menu. */
+/**
+ * A file in a list: its paper, its name, when and how big, its star (a tap stars or unstars it, there
+ * and then) and its ⋯, whose glass grows into the file's menu ([FileMenu]).
+ */
 @Composable
 fun FileListItem(vm: AppViewModel, r: FileRow, recent: Boolean, modifier: Modifier = Modifier) {
     val c = clear
@@ -208,7 +214,7 @@ fun FileListItem(vm: AppViewModel, r: FileRow, recent: Boolean, modifier: Modifi
         modifier.fillMaxWidth()
             .pressable(onClick = { if (selecting) vm.toggleSelected(r) else r.open() }, onLongClick = { vm.toggleSelected(r) })
             .background(if (ticked) Candy.Sky.copy(alpha = 0.14f) else Color.Transparent)
-            .padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 10.dp),
+            .padding(start = 14.dp, end = 2.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PaperThumb(vm, r.thumbPath, 40.dp, 52.dp, corner = 6.dp, name = r.name)
@@ -221,7 +227,6 @@ fun FileListItem(vm: AppViewModel, r: FileRow, recent: Boolean, modifier: Modifi
                 style = ClearType.Caption, color = c.inkSoft, maxLines = 1,
             )
         }
-        if (r.starred) Icon(LucideIcons.Star, stringResource(R.string.home_starred_description), tint = Candy.Lemon, modifier = Modifier.padding(horizontal = 4.dp).size(16.dp))
         if (selecting) {
             Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
                 Box(
@@ -231,69 +236,20 @@ fun FileListItem(vm: AppViewModel, r: FileRow, recent: Boolean, modifier: Modifi
                 ) { if (ticked) Icon(LucideIcons.Check, null, tint = Color.White, modifier = Modifier.size(14.dp)) }
             }
         } else {
-            Box(Modifier.size(44.dp).pressable({ vm.fileSheet = r to recent }), contentAlignment = Alignment.Center) {
+            val starred = vm.isStarred(r)
+            StarToggle(starred, size = 40.dp) { vm.setStarred(r, !starred) }
+            var dots by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+            Box(
+                Modifier.size(44.dp)
+                    .onGloballyPositioned { dots = it.boundsInWindow() }
+                    // stepped aside while its glass is the menu (the menu's own ⋯ is drawn there instead)
+                    .drawWithContent { if (!com.chethan616.clearpdf.ui.glass.MorphAnchors.hides(dots)) drawContent() }
+                    .pressable({ if (vm.fileMenu == null) vm.fileMenu = FileMenuAt(r, recent, dots) }, pressedScale = 0.85f),
+                contentAlignment = Alignment.Center,
+            ) {
                 Icon(LucideIcons.EllipsisVertical, stringResource(R.string.home_more_options_for, r.name), tint = c.inkSoft, modifier = Modifier.size(20.dp))
             }
         }
-    }
-}
-
-/** A file's sheet: four big candy actions up top, then its tools and the rest. */
-@Composable
-fun FileActionsSheet(vm: AppViewModel, r: FileRow, recent: Boolean, onDismiss: () -> Unit) {
-    var renaming by remember { mutableStateOf(false) }
-    var deleting by remember { mutableStateOf(false) }
-    fun act(f: () -> Unit) {
-        onDismiss()
-        f()
-    }
-    GlassSheet(onDismiss = onDismiss, title = displayName(r.name), subtitle = listOfNotNull(whenLabel(r.date), r.size.takeIf { it > 0 }?.let { formatSize(it) }).joinToString("  ·  ")) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            BigAction(LucideIcons.Share2, stringResource(R.string.common_share), Candy.Sky) { act { vm.shareFile(r) } }
-            BigAction(LucideIcons.Star, stringResource(if (r.starred) R.string.home_unstar else R.string.home_star), Candy.Lemon) { act { vm.setStarred(r.key, !r.starred) } }
-            BigAction(LucideIcons.Pencil, stringResource(R.string.common_rename), Candy.Grape) { renaming = true }
-            BigAction(LucideIcons.Printer, stringResource(R.string.home_print), Candy.Mint) { act { vm.printFile(r) } }
-        }
-        Spacer(Modifier.height(6.dp))
-        Column(Modifier.verticalScroll(rememberScrollState())) {
-            GlassRow(stringResource(R.string.common_tool_edit_pdf), { act { vm.openFor(r, FileTool.Edit) } }, icon = LucideIcons.FilePenLine, accent = ToolCatalog.Edit.accent)
-            GlassRow(stringResource(R.string.common_tool_read_aloud), { act { vm.openFor(r, FileTool.ReadAloud) } }, icon = LucideIcons.Volume2, accent = ToolCatalog.ReadAloud.accent)
-            GlassRow(stringResource(R.string.home_export_as), { act { vm.openFor(r, FileTool.Export) } }, icon = LucideIcons.FileOutput, accent = ToolCatalog.Export.accent)
-            GlassRow(stringResource(R.string.common_tool_compress), { act { vm.openFor(r, FileTool.Compress) } }, icon = LucideIcons.FileArchive, accent = ToolCatalog.Compress.accent)
-            GlassRow(stringResource(R.string.common_tool_set_password), { act { vm.openFor(r, FileTool.Protect) } }, icon = LucideIcons.FileLock2, accent = ToolCatalog.Protect.accent)
-            GlassRow(stringResource(R.string.home_open_with), { act { vm.openWith(r) } }, icon = LucideIcons.ExternalLink, accent = Candy.Sky)
-            GlassRow(stringResource(R.string.home_duplicate), { act { vm.duplicateFile(r) } }, icon = LucideIcons.Copy, accent = Candy.Tangerine)
-            GlassRow(stringResource(R.string.common_save_copy), { act { vm.saveFileCopy(r) } }, icon = LucideIcons.FileDown, accent = Candy.Mint)
-            if (recent) GlassRow(stringResource(R.string.home_remove_from_recent), { act { vm.removeRecent(r.key) } }, icon = LucideIcons.X, accent = Candy.Grape)
-            GlassRow(stringResource(R.string.common_delete), { deleting = true }, icon = LucideIcons.Trash2, destructive = true)
-        }
-    }
-    if (renaming) {
-        var name by remember { mutableStateOf(com.chethan616.clearpdf.engine.DocumentTypes.title(r.name)) }
-        GlassDialog(
-            onDismiss = { renaming = false }, title = stringResource(R.string.common_rename), icon = LucideIcons.Pencil, accent = Candy.Grape,
-            confirm = stringResource(R.string.common_done), confirmEnabled = name.isNotBlank() && !name.startsWith("."),
-            onConfirm = { renaming = false; onDismiss(); vm.renameFile(r, name) },
-            dismiss = stringResource(R.string.common_cancel),
-        ) { GlassTextField(name, { name = it }, stringResource(R.string.home_enter_name)) }
-    }
-    if (deleting) {
-        GlassDialog(
-            onDismiss = { deleting = false }, title = stringResource(R.string.home_delete_file_title), icon = LucideIcons.Trash2, destructive = true,
-            confirm = stringResource(R.string.common_delete), onConfirm = { deleting = false; onDismiss(); vm.deleteFile(r) },
-            dismiss = stringResource(R.string.common_cancel),
-        ) { Text(stringResource(R.string.home_delete_file_body, r.name), style = ClearType.Body, color = clear.inkSoft) }
-    }
-}
-
-/** A big round candy action with its name under it. */
-@Composable
-private fun BigAction(icon: ImageVector, label: String, accent: Color, onClick: () -> Unit) {
-    val c = clear
-    Column(Modifier.width(76.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        GlassCircle(onClick = onClick, size = 56.dp, tint = accent, label = label) { GlassIcon(icon, null, Modifier.size(24.dp)) }
-        Spacer(Modifier.height(6.dp))
-        Text(label, style = ClearType.Caption, color = c.inkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }
 }
 

@@ -1174,4 +1174,34 @@
     <string name="kind_short_text">Texto</string>
     <string name="kind_short_images">Fotos</string>
     <string name="kind_short_maps">Mapas</string>
+    <string name="widget_starred_name">Com estrela</string>
+    <string name="widget_starred_description">Seus documentos com estrela, o mais recente a um toque.</string>
+    <string name="widget_starred_empty">Marque um arquivo com estrela e ele aparece aqui</string>
+    <string name="widget_next_list">Próxima lista</string>
+    <string name="widget_next_note">Próxima nota</string>
+    <string name="info_about">Sobre</string>
+    <string name="info_tagged_short">Acessível</string>
+    <string name="viewer_bold_not_found">Não é possível deixar essas palavras em negrito aqui</string>
+    <string name="desk_highlights">Destaques</string>
+    <string name="desk_snapshots">Instantâneos</string>
+    <string name="desk_text">Texto</string>
+    <string name="thoughts_create_new">Criar novo</string>
+    <string name="thoughts_empty">Ainda nada aqui. Crie um abaixo.</string>
+    <string name="today_title">Hoje</string>
+    <string name="today_morning">Bom dia</string>
+    <string name="today_afternoon">Boa tarde</string>
+    <string name="today_evening">Boa noite</string>
+    <string name="today_night">Boa noite</string>
+    <string name="today_overview">Resumo do dia</string>
+    <plurals name="today_left">
+        <item quantity="one">%d tarefa pendente</item>
+        <item quantity="other">%d tarefas pendentes</item>
+    </plurals>
+    <plurals name="today_notes">
+        <item quantity="one">%d nota hoje</item>
+        <item quantity="other">%d notas hoje</item>
+    </plurals>
+    <string name="settings_your_name">Seu nome</string>
+    <string name="settings_your_name_hint">Mostrado acima da saudação de Hoje</string>
+    <string name="thoughts_audios">Áudios</string>
 </resources>

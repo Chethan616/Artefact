@@ -120,6 +120,7 @@ Springs and curves come from `glass/Motion.kt`, scaled by the user's Settings â–
 | --- | --- |
 | `GlassMotion.unfold()` / `fold()` | A menu or popover opening and closing |
 | `GlassMotion.morph()` | A dialog popping in |
+| `GlassMotion.morphOpen()` / `morphClose()` | A round button's glass becoming its menu, and back |
 | `GlassMotion.pop()` | A small bouncy reaction |
 | `GlassMotion.shape()` / `shapeBack()` | A shape changing (a pressed button, a thumb) |
 | `Fluid.quick()`, `Fluid.fade()`, `Fluid.dismiss()` | Fades and quick tweens |
@@ -129,7 +130,12 @@ Rules:
 
 - No `tween(300)` or `spring(0.8f, 400f)` in a screen. Use a named spec so Settings applies.
 - Leaving is faster than arriving, and never bounces.
-- Menus unfold beside the button that opened them. There is no morph from the button.
+- A menu opened from a round glass button (or a file's â‹¯) is that button's glass: it morphs out of
+  it (`MorphButtonSurface`: circle, tall drop, wide, menu) on `GlassMotion.morphOpen()`, which
+  bounces at the user's setting (Calm barely, Jelly most) as the menu's own stretch and squash, and
+  folds back without a bounce. Other menus unfold beside the button that opened them.
+- A long press on a card opens its menu the same way, from a drop over the card's corner
+  (`FileMenuAt(ghost = true)`).
 - Animate state the user caused. A static page does not breathe or shimmer.
 
 ## Haptics
