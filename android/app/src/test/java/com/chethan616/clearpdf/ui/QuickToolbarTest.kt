@@ -10,8 +10,9 @@ import org.junit.Test
 class QuickToolbarTest {
     @Test
     fun slotsGrowWithTheScreen() {
-        assertEquals(6, toolbarSlots(411))
-        assertEquals(7, toolbarSlots(460))
+        // as many as the bar on the page shows: five on a phone (a sixth came out too small)
+        assertEquals(5, toolbarSlots(411))
+        assertEquals(6, toolbarSlots(460))
         assertEquals(8, toolbarSlots(800))
         // the default bar fits a phone held upright
         assertTrue(QuickTool.DEFAULT_BAR.size <= toolbarSlots(360))

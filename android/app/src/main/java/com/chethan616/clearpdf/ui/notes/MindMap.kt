@@ -370,7 +370,7 @@ internal object MapType {
     val loaded: Boolean get() = base != null
 
     fun load(context: android.content.Context) {
-        if (base == null) base = runCatching { androidx.core.content.res.ResourcesCompat.getFont(context, R.font.jakarta) }.getOrNull()
+        if (base == null) base = runCatching { androidx.core.content.res.ResourcesCompat.getFont(context, R.font.outfit) }.getOrNull()
     }
 
     fun face(weight: Int): Typeface = Typeface.create(base ?: Typeface.DEFAULT, weight, false)

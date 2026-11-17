@@ -223,6 +223,21 @@ object GlassMotion {
 
     private const val ShapeMinDamping = 0.46f
 
+    /**
+     * A round glass button opening into its menu (`LiquidMorph.kt`): the whole drip, spread and pour on
+     * one spring that, at the user's bounce, swings past the menu and back as jelly does (Calm barely,
+     * Jelly three or four times). A floor on damping keeps Jelly from ringing on.
+     */
+    fun morphOpen(): SpringSpec<Float> = spring(maxOf(MotionSettings.damping(0.6f), MorphMinDamping), MotionSettings.stiffness(150f), Rest)
+
+    /** The menu flowing back into its button when dismissed: unhurried, and it lands without a bounce. */
+    fun morphClose(): SpringSpec<Float> = spring(1f, MotionSettings.stiffness(150f), 0.01f)
+
+    /** The same after a row was chosen: quicker, done the moment it looks landed (the row's action waits on it). */
+    fun morphChosen(): SpringSpec<Float> = spring(1f, MotionSettings.stiffness(300f), 0.03f)
+
+    private const val MorphMinDamping = 0.3f
+
     /** A tap shorter than this still plays the whole press. */
     const val MinPressMillis = 90L
 }

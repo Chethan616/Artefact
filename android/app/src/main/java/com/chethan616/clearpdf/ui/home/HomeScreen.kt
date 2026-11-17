@@ -129,6 +129,16 @@ sealed interface DeskItem {
     data class Doc(val row: FileRow) : DeskItem {
         override val key get() = "d-" + row.key
     }
+
+    /** The pictures in the notes. */
+    data class Highlights(val pictures: List<NotePicture>) : DeskItem {
+        override val key get() = "highlights"
+    }
+
+    /** The documents made with Scan. */
+    data class Snapshots(val scans: List<FileRow>) : DeskItem {
+        override val key get() = "snapshots"
+    }
 }
 
 /** The desk's cards for [filter]: notes newest first, with the collections set in among them. */
@@ -139,6 +149,9 @@ fun deskItems(filter: DeskFilter, notes: List<Note>, recents: List<FileRow>): Li
             val out = sorted.map<Note, DeskItem> { DeskItem.Of(it) }.toMutableList()
             if (recents.isNotEmpty()) out.add(minOf(1, out.size), DeskItem.Recent(recents))
             out.add(minOf(3, out.size), DeskItem.Files)
+            // the notes' pictures and the scans, as the mock's Highlights and Snapshots
+            notePictures(notes).takeIf { it.isNotEmpty() }?.let { out.add(minOf(4, out.size), DeskItem.Highlights(it)) }
+            scanRows(recents).takeIf { it.isNotEmpty() }?.let { out.add(minOf(5, out.size), DeskItem.Snapshots(it)) }
             out.add(minOf(6, out.size), DeskItem.Pdfs(recents.size))
             out
         }
@@ -163,12 +176,18 @@ val DeskDockClearance = 128.dp
 @Composable
 fun HomeScreen(vm: AppViewModel, desk: DeskState) {
     var filter by rememberSaveable { mutableStateOf(DeskFilter.All) }
+    val thoughtTitle = stringResource(R.string.thought_title)
+    // a desk page asked for a shelf (Today's picture: Images)
+    LaunchedEffect(vm.deskShelf) { vm.deskShelf?.let { filter = it; vm.deskShelf = null } }
     val scope = rememberCoroutineScope()
     val player = remember { VoicePlayer(scope) }
     var playing by remember { mutableStateOf<String?>(null) }
     DisposableEffect(Unit) { onDispose { player.release() } }
     var actionsFor by remember { mutableStateOf<Note?>(null) }
     var actionsAnchor by remember { mutableStateOf(Rect.Zero) }
+    // where each card is (window bounds, by its key): a long press's menu grows from its own card
+    val bounds = remember { HashMap<String, Rect>() }
+    val density = LocalDensity.current
     val notes = vm.notes.all
     val recents = vm.recentRows()
     val fresh = remember(filter, notes, vm.recentList) { deskItems(filter, notes, recents) }
@@ -178,8 +197,15 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
     // covers the desk (nothing of it drawn) or has gone.
     val held = remember { arrayOf(fresh) }
     if (vm.deskStill) held[0] = fresh
-    val items = held[0]
+    // the cards in the order the user dragged them to (per shelf), and, while one is carried, as it goes
+    val drag = remember { DeskDrag() }
+    val saved = remember(filter, vm.deskOrderVersion) { vm.deskOrder(filter) }
+    val arranged = remember(held[0], saved) { arrangeDesk(held[0], saved) }
+    val items = drag.live?.let { keys -> keys.mapNotNull { k -> arranged.firstOrNull { it.key == k } } } ?: arranged
     val grid = rememberLazyStaggeredGridState()
+    val feel = com.chethan616.clearpdf.ui.glass.rememberFeel()
+    // the gesture runs from the first frame on: it reads the cards as they are now, not as they were then
+    val itemsNow by androidx.compose.runtime.rememberUpdatedState(items)
     LaunchedEffect(filter) { grid.animateScrollToItem(0) }
     // the cards rise in when the desk (or a chip) first shows them, never while scrolling
     var intro by remember { mutableStateOf(true) }
@@ -204,7 +230,23 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
             columns = StaggeredGridCells.Fixed(2),
             state = grid,
             // glass in the scrolling desk samples the soft wallpaper: while it scrolls, ten times a second is plenty
-            modifier = Modifier.fillMaxSize().throttleBackdrops { grid.isScrollInProgress },
+            modifier = Modifier.fillMaxSize().throttleBackdrops { grid.isScrollInProgress }
+                // a card held and moved goes where it is put, as icons on a home screen
+                .deskDragging(
+                    grid, drag,
+                    draggable = { itemsNow.map { it.key }.toSet() },
+                    order = { itemsNow.map { it.key } },
+                    onLift = {
+                        // the long press's menu gives way to the card being carried
+                        actionsFor = null
+                        vm.fileMenu = null
+                        feel(com.chethan616.clearpdf.ui.glass.Feel.Press)
+                    },
+                    onDrop = { keys ->
+                        feel(com.chethan616.clearpdf.ui.glass.Feel.Confirm)
+                        vm.saveDeskOrder(filter, keys)
+                    },
+                ),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = DeskDockClearance + 40.dp),
             verticalItemSpacing = 12.dp,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -220,18 +262,23 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
                 FilterChips(filter) { filter = it }
             }
             itemsIndexed(items, key = { _, it -> it.key }) { i, item ->
-                val m = Modifier.fillMaxWidth().riseIn(i, active = intro).onGloballyPositioned { actionsAnchor = it.boundsInWindow() }
+                // the others glide aside as a carried card passes; the carried one follows the finger
+                val m = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = if (drag.key == item.key) null else androidx.compose.animation.core.spring<androidx.compose.ui.unit.IntOffset>(0.82f, 420f))
+                    .carried(drag, item.key, grid)
+                    .fillMaxWidth().riseIn(i, active = intro).onGloballyPositioned { bounds[item.key] = it.boundsInWindow() }
+                val long: (Note) -> Unit = { n -> actionsAnchor = bounds[item.key] ?: Rect.Zero; actionsFor = n }
                 when (item) {
                     is DeskItem.Of -> when (item.note.kind) {
-                        NoteKind.List -> ListCard(item.note, { vm.openNote = item.note.id }, { actionsFor = item.note }, { vm.notes.toggle(item.note.id, it.id) }, m)
+                        NoteKind.List -> ListCard(item.note, { vm.openNote = item.note.id }, { long(item.note) }, { vm.notes.toggle(item.note.id, it.id) }, m)
                         NoteKind.Voice -> VoiceCard(
                             item.note, playing == item.note.id && player.playing,
                             // read while drawing: the position ticking never recomposes the desk
                             { if (playing == item.note.id && player.durationMs > 0) player.positionMs / player.durationMs.toFloat() else 0f },
-                            { play(item.note) }, { actionsFor = item.note }, m,
+                            { play(item.note) }, { long(item.note) }, m,
                         )
-                        NoteKind.Text -> NoteCard(item.note, { vm.openNote = item.note.id }, { actionsFor = item.note }, m)
-                        NoteKind.Map -> MapCard(item.note, { vm.openNote = item.note.id }, { actionsFor = item.note }, m)
+                        // the thought of the day opens its own page: the thoughts as a deck
+                        NoteKind.Text -> NoteCard(item.note, { if (item.note.thought != 0L || item.note.title == thoughtTitle) vm.openDeskPage(DeskPage.Thoughts) else vm.openNote = item.note.id }, { long(item.note) }, m)
+                        NoteKind.Map -> MapCard(item.note, { vm.openNote = item.note.id }, { long(item.note) }, m)
                     }
                     is DeskItem.Picture -> {
                         val n = item.note
@@ -239,7 +286,7 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
                         val open = if (filter == DeskFilter.Images) ({ vm.editingPhoto = n.id to n.images.first() }) else ({ vm.openNote = n.id })
                         StackCard(
                             n.title.ifBlank { stringResource(R.string.desk_filter_images) }, shortDate(n.updated),
-                            listOf(clear.tone(Tone.Blush), clear.tone(Tone.Peach)), open, m, onLong = { actionsFor = n },
+                            listOf(clear.tone(Tone.Blush), clear.tone(Tone.Peach)), open, m, onLong = { long(n) },
                             chips = {
                                 if (n.images.size > 1) PhotoChip("+${n.images.size - 1}", { vm.openNote = n.id }, Modifier.align(Alignment.BottomEnd).padding(12.dp))
                             },
@@ -247,10 +294,20 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
                     }
                     DeskItem.Files -> CollectionCard(stringResource(R.string.desk_word_files), clear.tone(Tone.Butter), { vm.filesShowLocal = true; vm.homeTab = HomeTab.Files }, m)
                     is DeskItem.Pdfs -> CollectionCard(stringResource(R.string.desk_word_pdf), clear.tone(Tone.Orchid), { vm.homeTab = HomeTab.Files }, m, height = 136.dp)
-                    is DeskItem.Recent -> RecentCard(vm, item.rows, { vm.homeTab = HomeTab.Files }, m)
+                    // a long press: the newest document's menu, its glass growing out of the card's corner
+                    is DeskItem.Highlights -> HighlightsCard(item.pictures, { filter = DeskFilter.Images }, { filter = DeskFilter.Images }, m)
+                    is DeskItem.Snapshots -> SnapshotsCard(vm, item.scans, { vm.filesShowRecent = true; vm.homeTab = HomeTab.Files }, m)
+                    is DeskItem.Recent -> RecentCard(
+                        vm, item.rows, { vm.filesShowRecent = true; vm.homeTab = HomeTab.Files }, m,
+                        onLong = { b -> vm.fileMenu = com.chethan616.clearpdf.ui.desk.FileMenuAt(item.rows.first(), true, com.chethan616.clearpdf.ui.desk.cardMenuAnchor(b, density), ghost = true) },
+                    )
                     is DeskItem.Doc -> DocCard(
                         vm, item.row, clear.tone(listOf(Tone.Sky, Tone.Peach, Tone.Sage, Tone.Butter)[i % 4]), listOf(-3f, 4f, -2f, 3f)[i % 4],
-                        { vm.fileSheet = item.row to true }, m,
+                        {
+                            val b = bounds[item.key] ?: Rect.Zero
+                            vm.fileMenu = com.chethan616.clearpdf.ui.desk.FileMenuAt(item.row, true, com.chethan616.clearpdf.ui.desk.cardMenuAnchor(b, density), ghost = true)
+                        },
+                        m,
                     )
                 }
             }
@@ -285,6 +342,8 @@ private fun DeskHeader(vm: AppViewModel) {
     }
     if (menu) {
         GlassMenu(anchor, { menu = false }, listOf(
+            GlassMenuItem(stringResource(R.string.today_title), LucideIcons.Sun) { vm.openDeskPage(DeskPage.Today) },
+            GlassMenuItem(stringResource(R.string.thought_title), LucideIcons.Sparkles) { vm.openDeskPage(DeskPage.Thoughts) },
             GlassMenuItem(stringResource(R.string.home_tab_files), LucideIcons.FolderOpen) { vm.homeTab = HomeTab.Files },
             GlassMenuItem(stringResource(R.string.home_tab_tools), LucideIcons.LayoutGrid) { vm.homeTab = HomeTab.Tools },
             GlassMenuItem(stringResource(R.string.voice_import), LucideIcons.Mic) { vm.pickAudio() },
@@ -437,7 +496,7 @@ private fun DeskEmpty(vm: AppViewModel, filter: DeskFilter, desk: DeskState) {
 
 /** A long press on a note: name it (a voice memo), pin it, open it, or delete it. */
 @Composable
-private fun NoteActions(vm: AppViewModel, n: Note, anchor: Rect, onRename: () -> Unit, onDismiss: () -> Unit) {
+internal fun NoteActions(vm: AppViewModel, n: Note, anchor: Rect, onRename: () -> Unit, onDismiss: () -> Unit) {
     val voice = n.kind == NoteKind.Voice
     val feel = com.chethan616.clearpdf.ui.glass.rememberFeel()
     val renameLabel = stringResource(R.string.notes_rename)
@@ -461,7 +520,7 @@ private fun NoteActions(vm: AppViewModel, n: Note, anchor: Rect, onRename: () ->
  * selected, so typing replaces it; Done or Save keeps it, an empty name clears it.
  */
 @Composable
-private fun NameSheet(vm: AppViewModel, n: Note, onDismiss: () -> Unit) {
+internal fun NameSheet(vm: AppViewModel, n: Note, onDismiss: () -> Unit) {
     var name by remember(n.id) { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(n.title, androidx.compose.ui.text.TextRange(0, n.title.length))) }
     val focus = remember { androidx.compose.ui.focus.FocusRequester() }
     val feel = com.chethan616.clearpdf.ui.glass.rememberFeel()

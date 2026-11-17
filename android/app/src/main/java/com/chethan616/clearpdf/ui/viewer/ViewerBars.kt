@@ -334,7 +334,7 @@ private fun StepButton(icon: ImageVector, label: String, enabled: Boolean, onCli
 }
 
 /** How many tools fit in the dock at a screen [widthDp] wide (More tools takes its own bubble). */
-private fun dockSlots(widthDp: Int): Int = when {
+internal fun dockSlots(widthDp: Int): Int = when {
     widthDp >= 768 -> 8
     widthDp >= 460 -> 6
     else -> 5

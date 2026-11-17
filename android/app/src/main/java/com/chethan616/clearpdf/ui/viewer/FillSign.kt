@@ -113,12 +113,20 @@ fun FillSignLayer(vm: AppViewModel, doc: OpenDocument) {
                     return@toolGestures
                 }
                 // read now: the gesture handler outlives the composition it was made in
-                when (val element = vm.fillElement) {
+                val element = vm.fillElement
+                val signing = element == FillElement.Signature || element == FillElement.Initials
+                // a form (its own fields, or ones Find form fields made): a tap on a field fills it,
+                // as outside Fill & Sign; the bar offers only Sign, so a tap elsewhere places nothing
+                if (!signing && vm.tapField(doc, at)) return@toolGestures
+                if (!signing && doc.info.fields != 0u) return@toolGestures
+                when (element) {
                     FillElement.Text -> vm.fillTextPrompt = TextPrompt(doc, at)
                     FillElement.Signature, FillElement.Initials -> {
                         val initials = element == FillElement.Initials
                         if (vm.signatures.fileFor(initials).isFile) vm.placeFill(doc, element, at)
                         else vm.signaturePad = SignaturePad(initials, doc, at)
+                        // on a form, once signed, taps go back to filling its fields
+                        if (doc.info.fields != 0u && vm.signatures.fileFor(initials).isFile) vm.fillElement = FillElement.Text
                     }
                     else -> vm.placeFill(doc, element, at)
                 }

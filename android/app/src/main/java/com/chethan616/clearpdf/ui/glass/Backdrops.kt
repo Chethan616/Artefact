@@ -72,12 +72,22 @@ fun GlassLayer(
     }
 }
 
-/** A mood of the wallpaper: where its blooms of light sit, as fractions of the screen, and how big they are. */
-data class AuroraMood(val blobs: List<Offset>, val radius: Float = 0.62f)
+/**
+ * A mood of the wallpaper: where its blooms of light sit, as fractions of the screen, and how big they
+ * are. [painting]: in the light theme, the sky the design mock gives that screen instead (its gradient
+ * sampled from the mock and baked into a small picture, drawn smooth and stretched to the screen).
+ */
+data class AuroraMood(val blobs: List<Offset>, val radius: Float = 0.62f, val painting: Int? = null)
 
 object AuroraMoods {
     // the blooms, in ClearColors.blooms' order: aqua, lilac, pink, periwinkle, haze
-    val Desk = AuroraMood(listOf(Offset(0.0f, 0.58f), Offset(0.98f, 0.44f), Offset(1.0f, 0.1f), Offset(0.5f, 1.08f), Offset(0.2f, -0.05f)))
+    val Desk = AuroraMood(listOf(Offset(0.0f, 0.58f), Offset(0.98f, 0.44f), Offset(1.0f, 0.1f), Offset(0.5f, 1.08f), Offset(0.2f, -0.05f)), painting = com.chethan616.clearpdf.R.drawable.sky_desk)
+
+    /** Thought of the day: blue at the ends, lilac and pink through the middle (the mock's). */
+    val Thoughts = AuroraMood(listOf(Offset(0.05f, 0.85f), Offset(0.6f, 0.35f), Offset(0.95f, 0.2f), Offset(0.4f, 1.1f), Offset(0.1f, 0.0f)), 0.68f, com.chethan616.clearpdf.R.drawable.sky_thoughts)
+
+    /** Today: periwinkle at the top, peach on the left and pink on the right, pale blue below (the mock's). */
+    val Today = AuroraMood(listOf(Offset(0.0f, 0.35f), Offset(0.9f, 0.6f), Offset(0.95f, 0.15f), Offset(0.3f, 1.05f), Offset(0.5f, 0.0f)), 0.7f, com.chethan616.clearpdf.R.drawable.sky_today)
     val Files = AuroraMood(listOf(Offset(0.1f, 0.3f), Offset(0.9f, 0.7f), Offset(0.85f, 0.0f), Offset(0.2f, 1.05f), Offset(0.6f, -0.1f)), 0.58f)
     val Tools = AuroraMood(listOf(Offset(0.9f, 0.25f), Offset(0.1f, 0.65f), Offset(0.0f, 0.05f), Offset(0.8f, 1.05f), Offset(0.45f, -0.08f)))
     val Settings = AuroraMood(listOf(Offset(0.15f, 0.15f), Offset(0.95f, 0.85f), Offset(1.0f, 0.3f), Offset(0.1f, 1.0f), Offset(0.6f, 0.0f)), 0.55f)
@@ -151,6 +161,16 @@ fun Aurora(mood: AuroraMood, modifier: Modifier = Modifier) {
             onDrawBehind { drawImage(image, dstSize = IntSize(size.width.toInt(), size.height.toInt()), filterQuality = FilterQuality.Low) }
         },
     )
+    // the mock's own sky for this screen (light theme), crossfading as the screens change
+    val painting = if (!colors.dark) mood.painting else null
+    androidx.compose.animation.Crossfade(painting, modifier.fillMaxSize(), animationSpec = androidx.compose.animation.core.tween(700), label = "sky") { id ->
+        if (id != null) {
+            androidx.compose.foundation.Image(
+                androidx.compose.ui.graphics.painter.BitmapPainter(ImageBitmap.imageResource(id), filterQuality = FilterQuality.High),
+                null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
+            )
+        }
+    }
 }
 
 /**

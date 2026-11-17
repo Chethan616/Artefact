@@ -3,6 +3,7 @@ package com.chethan616.clearpdf.ui
 import android.app.ActivityManager
 import com.chethan616.clearpdf.ui.home.FileTool
 import com.chethan616.clearpdf.ui.viewer.FillElement
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.chethan616.clearpdf.engine.toBitmap
 import com.chethan616.clearpdf.engine.UserBookmark
@@ -120,7 +121,13 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
                     runCatching { files.pruneCopies(list.map { it.uri }, open) }
                 }
             }
-            // the home screen's Recent widget is the desk's Recent card
+            // the stars the lists showed at once that the file now agrees with
+            val list = recentList
+            starNow = starNow.filterNot { (k, v) ->
+                val same = list.filter { it.uri == k || sameFile(it.name, it.size) == k }
+                if (v) same.any { it.starred } else same.none { it.starred }
+            }
+            // the home screen's Recent and Starred widgets are the desk's Recent card
             runCatching { com.chethan616.clearpdf.widget.Widgets.refreshRecent(this@AppViewModel) }
         }
     }
@@ -861,6 +868,32 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         }
     }
 
+    /**
+     * Star or unstar a file wherever it is listed (Recent, Starred, On this device): one never opened
+     * gets an entry of its own, so its star stays. The list shows it at once (before the file is written).
+     */
+    fun setStarred(row: com.chethan616.clearpdf.ui.home.FileRow, starred: Boolean) {
+        val key = sameFile(row.name, row.size)
+        // at once on screen: the stars the lists read follow this set until the file catches up
+        starNow = starNow + (row.key to starred) + (key to starred)
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                recents.star(com.chethan616.clearpdf.engine.RecentFile(row.key, row.name, row.date, 0, row.size), starred)
+            }
+            refreshRecents()
+        }
+    }
+
+    /** Stars just set and not yet read back from the file, by uri and by name and size. */
+    private var starNow by mutableStateOf<Map<String, Boolean>>(emptyMap())
+
+    /** Whether [row]'s file is starred now (follows a star set a moment ago). */
+    fun isStarred(row: com.chethan616.clearpdf.ui.home.FileRow): Boolean {
+        starNow[row.key]?.let { return it }
+        starNow[sameFile(row.name, row.size)]?.let { return it }
+        return row.starred
+    }
+
     // ---- View settings ----------------------------------------------------------------------
 
     /** Reading Mode (text reflowed to the screen) is showing. Remembered for each file, as the reference does. */
@@ -1331,7 +1364,9 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
             val target = if (save) signatures.fileFor(pad.initials) else File(getApplication<Application>().cacheDir, "sign-${System.nanoTime()}.png")
             withContext(Dispatchers.IO) { target.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) } }
             signaturesChanged++
-                fillElement = if (pad.initials) FillElement.Initials else FillElement.Signature
+                // placed where the page was tapped on a form: taps go back to filling its fields
+                fillElement = if (pad.at != null && (pad.doc?.info?.fields ?: 0u) != 0u) FillElement.Text
+                    else if (pad.initials) FillElement.Initials else FillElement.Signature
             val doc = pad.doc
             val at = pad.at
             if (doc != null && at != null) {
@@ -1661,11 +1696,14 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
             val rect = o.optJSONArray("rect") ?: return@mapNotNull null
             val font = o.optString("font")
             com.chethan616.clearpdf.ui.viewer.Paragraph(
-                page = page, number = o.optInt("paragraph"), text = o.optString("text"),
+                // the rows the source ended on purpose (a heading, a line of its own) stay their own
+                // lines, so typing at the end never pulls them together (#144)
+                page = page, number = o.optInt("paragraph"), text = o.optString("edit_text").ifEmpty { o.optString("text") },
                 box = FloatArray(4) { k -> rect.optDouble(k).toFloat() }, font = font, size = o.optDouble("size", 12.0).toFloat(),
                 bold = if (o.has("bold")) o.optBoolean("bold") else font.contains("Bold", true) || font.contains("Black", true) || font.contains("Heavy", true),
                 italic = if (o.has("italic")) o.optBoolean("italic") else font.contains("Italic", true) || font.contains("Oblique", true),
                 color = o.optString("color").takeIf { it.startsWith("#") },
+                runs = styleRuns(o, o.optString("edit_text").ifEmpty { o.optString("text") }),
             )
         }
         editSelection?.takeIf { it.page == page }?.let { sel -> editSelection = paragraphs[page]?.firstOrNull { it.number == sel.number } }
@@ -1746,6 +1784,83 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
     /** The part of the paragraph being typed in that is selected (null: none, or a bare caret). */
     var editRange by mutableStateOf<androidx.compose.ui.text.TextRange?>(null)
 
+    /** The bold and italic words of the paragraph being typed in, following the typing (#127). */
+    var editRuns by mutableStateOf<List<com.chethan616.clearpdf.ui.viewer.StyleRun>>(emptyList())
+
+    /**
+     * A paragraph's style runs from the engine (UTF-8 byte ranges of its editor text) as character
+     * ranges of its text. The two differ only where rows break (a newline for a space); anything
+     * else (a hyphen joined across rows) and the runs are left out rather than misplaced.
+     */
+    private fun styleRuns(o: org.json.JSONObject, text: String): List<com.chethan616.clearpdf.ui.viewer.StyleRun> {
+        val arr = o.optJSONArray("runs") ?: return emptyList()
+        if (arr.length() == 0) return emptyList()
+        val editor = o.optString("editor_text")
+        if (editor.replace('\n', ' ') != text.replace('\n', ' ')) return emptyList()
+        // byte offset to character offset
+        val total = editor.toByteArray(Charsets.UTF_8).size
+        val charAt = IntArray(total + 1)
+        var b = 0
+        editor.forEachIndexed { i, ch ->
+            val n = ch.toString().toByteArray(Charsets.UTF_8).size
+            for (k in 0 until n) charAt[b + k] = i
+            b += n
+        }
+        charAt[total] = editor.length
+        return (0 until arr.length()).mapNotNull { i ->
+            val r = arr.optJSONObject(i) ?: return@mapNotNull null
+            val range = r.optJSONArray("range") ?: return@mapNotNull null
+            val s = range.optInt(0).coerceIn(0, total)
+            val e = range.optInt(1).coerceIn(s, total)
+            com.chethan616.clearpdf.ui.viewer.StyleRun(charAt[s], charAt[e], r.optBoolean("bold"), r.optBoolean("italic"))
+        }
+    }
+
+    /**
+     * Bold (or, when they all are already, un-bold) only the words selected while reading (#127): the
+     * paragraph under the selection is found, the selected words in it, and just those characters
+     * change face; the rest of the paragraph keeps its own.
+     */
+    fun boldSelection(doc: OpenDocument, page: Int, rects: List<FloatArray>) {
+        viewModelScope.launch {
+            val picked = doc.selection.text()?.trim().orEmpty()
+            doc.selection.clear()
+            if (picked.isEmpty() || rects.isEmpty()) return@launch
+            loadParagraphs(doc, page)
+            val paras = paragraphs[page].orEmpty()
+            val r0 = rects.first()
+            val cx = (r0[0] + r0[2]) / 2f
+            val cy = (r0[1] + r0[3]) / 2f
+            fun inside(p: com.chethan616.clearpdf.ui.viewer.Paragraph) = cx >= p.box[0] - 2f && cx <= p.box[2] + 2f && cy >= p.box[1] - 2f && cy <= p.box[3] + 2f
+            // the selected words where they are in the paragraph (lines broken anywhere in between)
+            val words = picked.split(Regex("\\s+")).filter { it.isNotEmpty() }
+            val pattern = Regex(words.joinToString("\\s+") { Regex.escape(it) })
+            val para = paras.filter(::inside).firstOrNull { pattern.containsMatchIn(it.text) }
+                ?: paras.firstOrNull { pattern.containsMatchIn(it.text) }
+            if (para == null) {
+                tell(text(R.string.viewer_bold_not_found))
+                return@launch
+            }
+            // the first place the words are in the paragraph
+            val match = pattern.findAll(para.text).firstOrNull() ?: return@launch
+            val range = androidx.compose.ui.text.TextRange(match.range.first, match.range.last + 1)
+            editing = null
+            editRuns = para.runs
+            val bold = !rangeStyled(para, range)
+            styleRange(doc, para, range, bold = bold, italic = rangeStyled(para, range, italic = true))
+        }
+    }
+
+    /** Whether every character of [range] in [para] (as being typed) is bold (or, with [italic], slanted). */
+    fun rangeStyled(para: com.chethan616.clearpdf.ui.viewer.Paragraph, range: androidx.compose.ui.text.TextRange, italic: Boolean = false): Boolean {
+        val words = editDraft?.takeIf { editing != null } ?: para.text
+        val chars = com.chethan616.clearpdf.ui.viewer.StyleRun.perChar(editRuns, words.length, para.bold, para.italic)
+        val from = range.min.coerceIn(0, words.length)
+        val to = range.max.coerceIn(from, words.length)
+        if (from == to) return if (italic) para.italic else para.bold
+        return (from until to).all { if (italic) chars[it].second else chars[it].first }
+    }
+
     /**
      * Bold or slanted, only the words selected in the paragraph being typed in: the rest keeps its
      * face. The engine takes the selection as a byte range of the paragraph's text, in one of its
@@ -1764,6 +1879,13 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
             else -> "helvetica"
         }
         val one = mapOf("range" to listOf(bytes(start), bytes(end)), "font" to family, "bold" to bold, "italic" to italic)
+        // the editor shows it at once; the page follows from the engine
+        val chars = com.chethan616.clearpdf.ui.viewer.StyleRun.perChar(editRuns, words.length, para.bold, para.italic)
+        for (i in start until end) chars[i] = bold to italic
+        editRuns = com.chethan616.clearpdf.ui.viewer.StyleRun.of(chars).ifEmpty {
+            // all one style now, but maybe not the paragraph's own: say so explicitly
+            if (chars.isNotEmpty() && chars[0] != (para.bold to para.italic)) listOf(com.chethan616.clearpdf.ui.viewer.StyleRun(0, chars.size, chars[0].first, chars[0].second)) else emptyList()
+        }
         runTool(doc, "text_edit", paraArgs(para) + mapOf("text" to words, "ranges" to listOf(one)))
     }
 
@@ -2133,6 +2255,38 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
     private fun scanThumb(f: File): androidx.compose.ui.graphics.ImageBitmap? {
         val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = 4 }
         return android.graphics.BitmapFactory.decodeFile(f.absolutePath, opts)?.let { rotateForExif(f, it) }?.asImageBitmap()
+    }
+
+    /**
+     * What [page] will look like saved with [filter]: the same straightening and clean-up the save
+     * runs (`page_enhance_camera`), on the page's quarter-size picture in a throwaway document, so it
+     * takes a moment, not the seconds the full photo would. Null when it couldn't be made.
+     */
+    suspend fun scanPreview(page: com.chethan616.clearpdf.ui.ScanPage, filter: com.chethan616.clearpdf.ui.ScanFilter): androidx.compose.ui.graphics.ImageBitmap? {
+        val eng = engine ?: return null
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val src = File(getApplication<Application>().cacheDir, "camera/preview-${page.file.nameWithoutExtension}.jpg")
+                if (!src.isFile) {
+                    src.parentFile?.mkdirs()
+                    src.outputStream().use { page.thumb.asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.JPEG, 92, it) }
+                }
+                val id = eng.tool("doc_create", mapOf("from" to "images", "paths" to listOf(src.absolutePath), "name" to "Preview")).optLong("doc")
+                try {
+                    val size = eng.tool("doc_info", mapOf("doc" to id)).optJSONArray("pages")?.optJSONObject(0) ?: return@runCatching null
+                    val (w, h) = size.optDouble("width") to size.optDouble("height")
+                    if (!(filter == com.chethan616.clearpdf.ui.ScanFilter.Original && page.corners.contentEquals(com.chethan616.clearpdf.ui.ScanPage.WHOLE))) {
+                        val corners = page.corners.mapIndexed { k, v -> v * if (k % 2 == 0) w else h }
+                        eng.tool("page_enhance_camera", mapOf("doc" to id, "page" to 1, "corners" to corners, "mode" to filter.mode, "level" to filter.level))
+                    }
+                    val scale = (900.0 / maxOf(w, h)).toFloat().coerceIn(0.2f, 4f)
+                    val img = withContext(eng.renders) { eng.session.renderPage(id.toULong(), 0u, scale, null) }
+                    img.toBitmap().asImageBitmap()
+                } finally {
+                    runCatching { eng.tool("doc_close", mapOf("doc" to id, "discard_changes" to true)) }
+                }
+            }.getOrNull()
+        }
     }
 
     /** Scan's pages go into this document at this (1-based) position instead of a new PDF. */
@@ -2556,6 +2710,9 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
                 busy = text(R.string.msg_busy_recognizing)
                 runCatching { eng.tool("ocr_recognize", mapOf("doc" to id)) }
             }
+            // the document's own title is its name (not the first photo's file name)
+            val title = scanName.trim().ifEmpty { "Scan " + java.text.SimpleDateFormat("yyyy-MM-dd HH.mm.ss", java.util.Locale.US).format(java.util.Date()) }
+            runCatching { eng.tool("doc_set_info", mapOf("doc" to id, "key" to "Title", "value" to title)) }
             val out = tempFile("pdf")
             eng.tool("doc_save", mapOf("doc" to id, "path" to out.absolutePath, "full" to true))
             val target = insertScanAt
@@ -3009,10 +3166,61 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
     var homeTab by mutableStateOf(com.chethan616.clearpdf.ui.home.HomeTab.Home)
     var settingsOpen by mutableStateOf(false)
 
-    /** The file whose "..." sheet is open, and whether it was opened from Recent. */
-    var fileSheet by mutableStateOf<Pair<com.chethan616.clearpdf.ui.home.FileRow, Boolean>?>(null)
+    /** The file whose menu is open (from its ⋯ or a long press), and where its glass grows from. */
+    var fileMenu by mutableStateOf<com.chethan616.clearpdf.ui.desk.FileMenuAt?>(null)
+
+    /** A file being renamed or about to be deleted (asked once its menu has folded away). */
+    var fileRenaming by mutableStateOf<com.chethan616.clearpdf.ui.home.FileRow?>(null)
+    var fileDeleting by mutableStateOf<com.chethan616.clearpdf.ui.home.FileRow?>(null)
     var showLicences by mutableStateOf(false)
     var filesShowLocal by mutableStateOf(false)
+
+    /** Files opens on Starred (the Starred widget asked). */
+    var filesShowStarred by mutableStateOf(false)
+
+    /** The owner's name, shown small above Today's greeting (Settings ▸ Your name); empty: none. */
+    var ownerName by mutableStateOf(appPrefs.getString("ownerName", "").orEmpty())
+        private set
+
+    fun updateOwnerName(name: String) {
+        ownerName = name.trim()
+        appPrefs.edit().putString("ownerName", ownerName).apply()
+    }
+
+    /** The desk's own pages open over it (Today, Thought of the day), the last one showing. */
+    val deskPages = androidx.compose.runtime.mutableStateListOf<com.chethan616.clearpdf.ui.home.DeskPage>()
+
+    /** Open desk page [p] over the desk (or bring it forward). */
+    fun openDeskPage(p: com.chethan616.clearpdf.ui.home.DeskPage) {
+        deskPages.remove(p)
+        deskPages.add(p)
+        homeTab = com.chethan616.clearpdf.ui.home.HomeTab.Home
+    }
+
+    /** Back from the desk page showing. */
+    fun closeDeskPage() {
+        if (deskPages.isNotEmpty()) deskPages.removeAt(deskPages.lastIndex)
+    }
+
+    /** Bumped when the desk's hand-made order changes (the desk reads it again). */
+    var deskOrderVersion by mutableStateOf(0)
+        private set
+
+    /** The order the user dragged [filter]'s cards into (their keys), or empty: the desk's own. */
+    fun deskOrder(filter: com.chethan616.clearpdf.ui.home.DeskFilter): List<String> =
+        appPrefs.getString("deskOrder_${filter.name}", null)?.split('\n')?.filter { it.isNotBlank() }.orEmpty()
+
+    /** Keep [keys] as [filter]'s order (a card dropped in a new place). */
+    fun saveDeskOrder(filter: com.chethan616.clearpdf.ui.home.DeskFilter, keys: List<String>) {
+        appPrefs.edit().putString("deskOrder_${filter.name}", keys.joinToString("\n")).apply()
+        deskOrderVersion++
+    }
+
+    /** The desk turns to this shelf (asked from a desk page), then forgets it. */
+    var deskShelf by mutableStateOf<com.chethan616.clearpdf.ui.home.DeskFilter?>(null)
+
+    /** Files opens on Recent (the Recent card or widget asked). */
+    var filesShowRecent by mutableStateOf(false)
 
     /** Lists as a grid instead of rows (remembered). */
     private var gridViewState by mutableStateOf(appPrefs.getBoolean("gridView", false))
@@ -3119,6 +3327,18 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
      * on disk and its place, which the desk and Files must not do again on every recomposition.
      */
     fun recentRows(): List<com.chethan616.clearpdf.ui.home.FileRow> {
+        val all = knownRows()
+        recentOnlyMemo?.let { (from, rows) -> if (from === all) return rows }
+        val keep = recentList.filter { !it.starOnly }.map { it.uri }.toHashSet()
+        val rows = all.filter { it.key in keep }
+        recentOnlyMemo = all to rows
+        return rows
+    }
+
+    private var recentOnlyMemo: Pair<List<com.chethan616.clearpdf.ui.home.FileRow>, List<com.chethan616.clearpdf.ui.home.FileRow>>? = null
+
+    /** Every file Recent knows: those read lately and those only starred. */
+    private fun knownRows(): List<com.chethan616.clearpdf.ui.home.FileRow> {
         val list = recentList
         recentRowsMemo?.let { (from, rows) -> if (from === list) return rows }
         val rows = list.map { r ->
@@ -3130,7 +3350,7 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
 
     private var recentRowsMemo: Pair<List<RecentFile>, List<com.chethan616.clearpdf.ui.home.FileRow>>? = null
 
-    fun starredRows(): List<com.chethan616.clearpdf.ui.home.FileRow> = recentRows().filter { it.starred }.let { l ->
+    fun starredRows(): List<com.chethan616.clearpdf.ui.home.FileRow> = knownRows().filter { it.starred }.let { l ->
         if (starSort == 1) l.sortedBy { it.name.lowercase() } else l.sortedByDescending { it.date }
     }
 

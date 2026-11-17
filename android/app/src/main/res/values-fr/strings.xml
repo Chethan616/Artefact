@@ -1469,4 +1469,40 @@
     <string name="kind_short_text">Texte</string>
     <string name="kind_short_images">Images</string>
     <string name="kind_short_maps">Cartes</string>
+    <string name="widget_starred_name">Favoris</string>
+    <string name="widget_starred_description">Vos documents favoris, le plus récent à portée de doigt.</string>
+    <string name="widget_starred_empty">Ajoutez un fichier aux favoris pour le voir ici</string>
+    <string name="widget_next_list">Liste suivante</string>
+    <string name="widget_next_note">Note suivante</string>
+    <string name="info_about">À propos</string>
+    <string name="info_tagged_short">Accessible</string>
+    <string name="viewer_bold_not_found">Impossible de mettre ces mots en gras ici</string>
+    <string name="desk_highlights">Moments forts</string>
+    <string name="desk_snapshots">Instantanés</string>
+    <string name="desk_text">Texte</string>
+    <string name="thoughts_create_new">Créer</string>
+    <string name="thoughts_empty">Rien pour l’instant. Créez-en un ci-dessous.</string>
+    <string name="today_title">Aujourd’hui</string>
+    <string name="today_morning">Bonjour</string>
+    <string name="today_afternoon">Bon après-midi</string>
+    <string name="today_evening">Bonsoir</string>
+    <string name="today_night">Bonne nuit</string>
+    <string name="today_overview">Aperçu du jour</string>
+    <string name="today_all_done">Plus rien à faire</string>
+    <plurals name="today_todos_left">
+        <item quantity="one">%d tâche restante</item>
+        <item quantity="many">%d tâches restantes</item>
+        <item quantity="other">%d tâches restantes</item>
+    </plurals>
+    <plurals name="today_left">
+        <item quantity="one">%d tâche restante</item>
+        <item quantity="other">%d tâches restantes</item>
+    </plurals>
+    <plurals name="today_notes">
+        <item quantity="one">%d note aujourd’hui</item>
+        <item quantity="other">%d notes aujourd’hui</item>
+    </plurals>
+    <string name="settings_your_name">Votre nom</string>
+    <string name="settings_your_name_hint">Affiché au-dessus du message d’Aujourd’hui</string>
+    <string name="thoughts_audios">Audios</string>
 </resources>

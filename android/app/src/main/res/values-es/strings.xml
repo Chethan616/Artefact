@@ -1597,4 +1597,40 @@
     <string name="kind_short_text">Texto</string>
     <string name="kind_short_images">Fotos</string>
     <string name="kind_short_maps">Mapas</string>
+    <string name="widget_starred_name">Destacados</string>
+    <string name="widget_starred_description">Tus documentos destacados, el más reciente a un toque.</string>
+    <string name="widget_starred_empty">Destaca un archivo y aparecerá aquí</string>
+    <string name="widget_next_list">Lista siguiente</string>
+    <string name="widget_next_note">Nota siguiente</string>
+    <string name="info_about">Acerca de</string>
+    <string name="info_tagged_short">Accesible</string>
+    <string name="viewer_bold_not_found">Esas palabras no se pueden poner en negrita aquí</string>
+    <string name="desk_highlights">Destacados</string>
+    <string name="desk_snapshots">Instantáneas</string>
+    <string name="desk_text">Texto</string>
+    <string name="thoughts_create_new">Crear nuevo</string>
+    <string name="thoughts_empty">Aún no hay nada. Crea uno abajo.</string>
+    <string name="today_title">Hoy</string>
+    <string name="today_morning">Buenos días</string>
+    <string name="today_afternoon">Buenas tardes</string>
+    <string name="today_evening">Buenas noches</string>
+    <string name="today_night">Buenas noches</string>
+    <string name="today_overview">Resumen del día</string>
+    <string name="today_all_done">No queda nada por hacer</string>
+    <plurals name="today_todos_left">
+        <item quantity="one">Queda %d tarea</item>
+        <item quantity="many">Quedan %d tareas</item>
+        <item quantity="other">Quedan %d tareas</item>
+    </plurals>
+    <plurals name="today_left">
+        <item quantity="one">%d tarea pendiente</item>
+        <item quantity="other">%d tareas pendientes</item>
+    </plurals>
+    <plurals name="today_notes">
+        <item quantity="one">%d nota hoy</item>
+        <item quantity="other">%d notas hoy</item>
+    </plurals>
+    <string name="settings_your_name">Tu nombre</string>
+    <string name="settings_your_name_hint">Se muestra sobre el saludo de Hoy</string>
+    <string name="thoughts_audios">Audios</string>
 </resources>

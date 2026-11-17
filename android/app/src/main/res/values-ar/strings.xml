@@ -1243,4 +1243,43 @@
     <string name="kind_short_text">نص</string>
     <string name="kind_short_images">صور</string>
     <string name="kind_short_maps">خرائط</string>
+    <string name="widget_starred_name">المميّزة بنجمة</string>
+    <string name="widget_starred_description">مستنداتك المميّزة بنجمة، وأحدثها على بُعد لمسة.</string>
+    <string name="widget_starred_empty">ميّز ملفًا بنجمة ليظهر هنا</string>
+    <string name="widget_next_list">القائمة التالية</string>
+    <string name="widget_next_note">الملاحظة التالية</string>
+    <string name="info_about">حول</string>
+    <string name="info_tagged_short">قابل للوصول</string>
+    <string name="viewer_bold_not_found">تعذّر جعل هذه الكلمات عريضة هنا</string>
+    <string name="desk_highlights">أبرز اللحظات</string>
+    <string name="desk_snapshots">لقطات</string>
+    <string name="desk_text">نص</string>
+    <string name="thoughts_create_new">إنشاء جديد</string>
+    <string name="thoughts_empty">لا شيء هنا بعد. أنشئ واحدًا بالأسفل.</string>
+    <string name="today_title">اليوم</string>
+    <string name="today_morning">صباح الخير</string>
+    <string name="today_afternoon">مساء الخير</string>
+    <string name="today_evening">مساء الخير</string>
+    <string name="today_night">تصبح على خير</string>
+    <string name="today_overview">نظرة على اليوم</string>
+    <string name="today_all_done">لا شيء متبقٍ للقيام به</string>
+    <plurals name="today_todos_left">
+        <item quantity="zero">لا مهام متبقية</item>
+        <item quantity="one">مهمة واحدة متبقية</item>
+        <item quantity="two">مهمتان متبقيتان</item>
+        <item quantity="few">%d مهام متبقية</item>
+        <item quantity="many">%d مهمة متبقية</item>
+        <item quantity="other">%d مهمة متبقية</item>
+    </plurals>
+    <plurals name="today_left">
+        <item quantity="one">%d مهمة متبقية</item>
+        <item quantity="other">%d مهام متبقية</item>
+    </plurals>
+    <plurals name="today_notes">
+        <item quantity="one">%d ملاحظة اليوم</item>
+        <item quantity="other">%d ملاحظات اليوم</item>
+    </plurals>
+    <string name="settings_your_name">اسمك</string>
+    <string name="settings_your_name_hint">يظهر فوق تحية اليوم</string>
+    <string name="thoughts_audios">صوتيات</string>
 </resources>

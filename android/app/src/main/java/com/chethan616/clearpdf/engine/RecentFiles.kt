@@ -22,6 +22,8 @@ data class RecentFile(
     val lastX: Float = -1f,
     val lastY: Float = -1f,
     val lastZoom: Float = 1f,
+    /** Starred from Files without being opened: kept for its star, not shown as read lately. */
+    val starOnly: Boolean = false,
 )
 
 /**
@@ -46,6 +48,25 @@ class RecentFiles(private val file: File) {
         write(read().map { if (it.uri == uri) f(it) else it })
     }
 
+    /**
+     * Star or unstar a file: the entry for [entry]'s uri, or failing that the same file known by another
+     * address (its name and size: a file opened from another app and found again on the phone), else
+     * a new entry for it, set in among the others by [RecentFile.opened] (starring a file on the phone
+     * does not make it the newest thing read).
+     */
+    fun star(entry: RecentFile, starred: Boolean) = synchronized(lock) {
+        val list = read()
+        val same = list.filter { it.uri == entry.uri || (it.name == entry.name && it.size == entry.size && entry.size > 0) }
+        if (same.isNotEmpty()) {
+            val keys = same.map { it.uri }.toSet()
+            // a file kept only for its star goes once unstarred
+            write(list.mapNotNull { if (it.uri in keys) it.copy(starred = starred).takeIf { r -> starred || !r.starOnly } else it })
+        } else if (starred) {
+            val at = list.indexOfFirst { it.opened < entry.opened }.let { if (it < 0) list.size else it }
+            write(list.take(at) + entry.copy(starred = true, starOnly = true) + list.drop(at))
+        }
+    }
+
     fun remove(uris: Set<String>) = synchronized(lock) { write(read().filter { it.uri !in uris }) }
 
     fun clear() = synchronized(lock) { write(emptyList()) }
@@ -68,6 +89,7 @@ class RecentFiles(private val file: File) {
                     lastX = o.optDouble("lastX", -1.0).toFloat(),
                     lastY = o.optDouble("lastY", -1.0).toFloat(),
                     lastZoom = o.optDouble("lastZoom", 1.0).toFloat(),
+                    starOnly = o.optBoolean("starOnly"),
                 )
             }
         }.getOrDefault(emptyList())
@@ -75,11 +97,13 @@ class RecentFiles(private val file: File) {
 
     private fun write(list: List<RecentFile>) {
         val a = JSONArray()
-        for (r in list.take(MAX)) {
+        // at most MAX, but a starred file is never let go: its star lives here
+        for (r in list.filterIndexed { i, it -> i < MAX || it.starred }) {
             a.put(
                 JSONObject().put("uri", r.uri).put("name", r.name).put("opened", r.opened).put("pages", r.pages)
                     .put("size", r.size).put("lastPage", r.lastPage).put("starred", r.starred).put("reading", r.reading)
-                    .put("lastX", r.lastX.toDouble()).put("lastY", r.lastY.toDouble()).put("lastZoom", r.lastZoom.toDouble()),
+                    .put("lastX", r.lastX.toDouble()).put("lastY", r.lastY.toDouble()).put("lastZoom", r.lastZoom.toDouble())
+                    .put("starOnly", r.starOnly),
             )
         }
         val tmp = File(file.parentFile, file.name + ".tmp")

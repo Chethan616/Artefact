@@ -75,12 +75,15 @@ private fun Modifier.glassControl(
     tintAt: (() -> Color)? = null,
     candyBase: Boolean = true,
     adaptWash: Boolean = true,
+    /** Told the control's surround reading (the morph that grows out of a round button carries it on). */
+    aroundOut: ((SurroundLuminance?) -> Unit)? = null,
 ): Modifier {
     val backdrop = LocalBackdrop.current
     // Adaptive luminance on: the glass reads the screen around it and turns to suit, its frost,
     // colour and tint set by that instead of the glass preset. [adaptWash] false keeps the milk or
     // smoke off a control whose ink is the caller's (a chip's label), where only the glass adapts.
     val around = rememberSurroundLuminance()
+    aroundOut?.invoke(around)
     val scope = rememberCoroutineScope()
     val haptics = LocalHaptics.current
     val currentHaptics by rememberUpdatedState(haptics)
@@ -352,13 +355,16 @@ fun GlassCircle(
     var at by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     val glyph by androidx.compose.runtime.rememberUpdatedState(content)
     val inkNow = probe.color
-    androidx.compose.runtime.DisposableEffect(at) {
+    // its adaptive reading, for the morph to wear the very same glass at the button's end
+    val around = androidx.compose.runtime.remember { arrayOfNulls<SurroundLuminance>(1) }
+    androidx.compose.runtime.DisposableEffect(at, GlassSettings.adaptive) {
         val r = at
         if (r != null) {
             MorphAnchors.register(r) { CompositionLocalProvider(LocalGlassInk provides inkNow) { glyph() } }
             MorphAnchors.setTint(r, tint)
+            MorphAnchors.setSurround(r, around[0])
         }
-        onDispose { if (r != null) MorphAnchors.unregister(r) }
+        onDispose { if (r != null) { MorphAnchors.unregister(r); MorphAnchors.setSurround(r, null) } }
     }
     CompositionLocalProvider(LocalGlassInk provides probe.color) {
         Box(
@@ -367,7 +373,7 @@ fun GlassCircle(
                 // stepped aside while its glass is a menu: not drawn at all (a layer's alpha alone left it in
                 // the copy of the screen the menu's glass bends, where the lens smeared its glyph)
                 .drawWithContent { if (at?.let { MorphAnchors.hides(it) } != true) drawContent() }
-                .size(size).glassControl(CircleShape, onClick, onLongClick, tint, surface, 2.dp, label, tap = tap, bloom = true, candyBase = false),
+                .size(size).glassControl(CircleShape, onClick, onLongClick, tint, surface, 2.dp, label, tap = tap, bloom = true, candyBase = false, aroundOut = { around[0] = it }),
             contentAlignment = Alignment.Center,
         ) { content() }
     }

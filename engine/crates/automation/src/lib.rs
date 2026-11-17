@@ -603,15 +603,26 @@ impl Automation {
                 let r = |x: f32| (x as f64 * 100.0).round() / 100.0;
                 let current = doc.text_blocks(page);
                 let id = doc.id;
+                // the page's lines, read only when a paragraph mixes lines (its runs' styles come from
+                // them) or has several rows (where each row ends says which breaks are its own)
+                let lines = if current.iter().any(|b| b.rows.len() > 1 || b.spans.iter().any(|(_, l)| Some(*l) != b.spans.first().map(|(_, f)| *f))) {
+                    doc.text_lines(page)
+                } else {
+                    Vec::new()
+                };
                 let blocks: Vec<Value> = current
                     .iter()
                     .enumerate()
                     .map(|(i, b)| {
+                        let runs = style_runs(b, &lines);
                         let (u, v) = (info.user_to_view(b.rect[0] as f32, b.rect[1] as f32), info.user_to_view(b.rect[2] as f32, b.rect[3] as f32));
                         json!({
                             "paragraph": i + 1,
                             "text": b.text,
                             "editor_text": b.editor_text,
+                            // The text to edit: rows the source wrapped joined by a space, a row it
+                            // ended on purpose (a heading, a line of its own) kept as a line break.
+                            "edit_text": edit_text(b, &lines),
                             "rows": b.rows.iter().map(|row| row.iter().map(|i| i + 1).collect::<Vec<_>>()).collect::<Vec<_>>(),
                             "lines": b.lines.iter().map(|l| l + 1).collect::<Vec<_>>(),
                             "rect": [r(u[0].min(v[0])), r(u[1].min(v[1])), r(u[0].max(v[0])), r(u[1].max(v[1]))],
@@ -619,6 +630,9 @@ impl Automation {
                             "size": (b.size * 100.0).round() / 100.0,
                             "bold": b.bold,
                             "italic": b.italic,
+                            // Where the paragraph's weight or slant changes (a bold word in a plain
+                            // line): UTF-8 byte ranges of editor_text; empty when it is all one style.
+                            "runs": runs,
                             // Passing this back as text_edit's color keeps the source's own colour
                             // operators (any colour space).
                             "color": format!("#{:02x}{:02x}{:02x}", (b.color[0] * 255.0).round() as u8, (b.color[1] * 255.0).round() as u8, (b.color[2] * 255.0).round() as u8),
@@ -2891,6 +2905,72 @@ fn write_atomic_synced(
     // any step removes it and leaves the destination as it was.
     pdfcraft_platform::staging::write_atomically_with(path, bytes, StagingName::SuffixThenTag, suffixes, sync)
         .map_err(|e| failed(format!("{}: {e}", path.display())))
+}
+
+/// A paragraph's bold and italic runs over its `editor_text` (byte ranges), adjacent runs of one
+/// style merged; empty when the whole paragraph is one style (or its lines were not read).
+/// A paragraph's text for an editor, which sends it back to `text_edit`. Rows the source wrapped
+/// (the next row's first word would not have fit after this one) join with a space, so an edit
+/// rewraps them as before. A row the source ended early on purpose (a heading over its text, a short
+/// line of its own, a hyphen at its end) keeps its break as a newline, which the rewrite keeps: adding
+/// a word to such a paragraph never pulls the next line up beside a heading or a short line (#144).
+/// The same bytes as `editor_text` but for the joined breaks, so `runs` ranges hold for it too.
+fn edit_text(b: &pdfcraft_engine::TextBlock, lines: &[pdfcraft_engine::TextLine]) -> String {
+    let rows: Vec<&str> = b.editor_text.split('\n').collect();
+    if rows.len() < 2 || rows.len() != b.rows.len() || lines.is_empty() {
+        return b.text.clone();
+    }
+    let row_lines = |r: &Vec<usize>| r.iter().filter_map(|i| lines.get(*i)).collect::<Vec<_>>();
+    let all: Vec<Vec<&pdfcraft_engine::TextLine>> = b.rows.iter().map(row_lines).collect();
+    // turned text: its boxes don't measure along its rows, so leave it as one paragraph
+    if b.rotation.abs() > 0.01 || all.iter().any(|r| r.is_empty()) {
+        return b.text.clone();
+    }
+    let width = |r: &[&pdfcraft_engine::TextLine]| {
+        let left = r.iter().map(|l| l.rect[0]).fold(f64::INFINITY, f64::min);
+        let right = r.iter().map(|l| l.rect[2]).fold(f64::NEG_INFINITY, f64::max);
+        right - left
+    };
+    let full = all.iter().map(|r| width(r)).fold(0.0, f64::max);
+    let mut out = String::with_capacity(b.editor_text.len());
+    for (k, text) in rows.iter().enumerate() {
+        out.push_str(text);
+        let (Some(this), Some(next), Some(next_text)) = (all.get(k), all.get(k + 1), rows.get(k + 1)) else { continue };
+        let (Some(a), Some(n)) = (this.first(), next.first()) else { continue };
+        let size = a.size.max(n.size).max(1.0);
+        let restyled = (a.size - n.size).abs() > size * 0.05 || a.bold != n.bold || a.italic != n.italic;
+        // the next row's first word, its share of that row's width
+        let next_trim = next_text.trim();
+        let word = next_trim.split_whitespace().next().unwrap_or_default();
+        let share = word.chars().count() as f64 / next_trim.chars().count().max(1) as f64;
+        let room = full - width(this) - n.size * 0.3 - width(next) * share;
+        // only a clear fit (a whole size to spare) counts: a near miss stays a wrap, as before
+        let ended = room > size;
+        if restyled || ended || text.trim_end().ends_with('-') {
+            out.push('\n');
+        } else {
+            out.push(' ');
+        }
+    }
+    out
+}
+
+fn style_runs(b: &pdfcraft_engine::TextBlock, lines: &[pdfcraft_engine::TextLine]) -> Vec<Value> {
+    if lines.is_empty() {
+        return Vec::new();
+    }
+    let mut runs: Vec<(usize, usize, bool, bool)> = Vec::new();
+    for (range, line) in &b.spans {
+        let (bold, italic) = lines.get(*line).map(|l| (l.bold, l.italic)).unwrap_or((b.bold, b.italic));
+        match runs.last_mut() {
+            Some(last) if last.2 == bold && last.3 == italic && last.1 <= range.start => last.1 = range.end,
+            _ => runs.push((range.start, range.end, bold, italic)),
+        }
+    }
+    if runs.iter().all(|r| r.2 == runs[0].2 && r.3 == runs[0].3) {
+        return Vec::new();
+    }
+    runs.into_iter().map(|(s, e, bold, italic)| json!({ "range": [s, e], "bold": bold, "italic": italic })).collect()
 }
 
 #[cfg(test)]

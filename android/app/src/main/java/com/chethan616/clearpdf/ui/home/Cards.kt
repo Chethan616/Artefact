@@ -1,6 +1,7 @@
 package com.chethan616.clearpdf.ui.home
 
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 
 import android.graphics.BitmapFactory
@@ -585,7 +586,7 @@ fun StackCard(
  * and menu buttons (follows Settings ▸ liquid glass and motion), with white ink for the photo behind.
  */
 @Composable
-fun PhotoChip(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null) {
+fun PhotoChip(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null, style: androidx.compose.ui.text.TextStyle = ClearType.Label.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)) {
     // white over a photo; with Adaptive luminance, dark wherever the glass turns light
     val ink = com.chethan616.clearpdf.ui.glass.rememberGlassInk(Color.White)
     GlassChip(
@@ -593,7 +594,7 @@ fun PhotoChip(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, 
         horizontalArrangement = Arrangement.spacedBy(6.dp), ink = ink.color,
     ) {
         if (icon != null) Icon(icon, null, tint = ink.color, modifier = Modifier.size(15.dp))
-        Text(text, style = ClearType.Label.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = ink.color, maxLines = 1)
+        Text(text, style = style, color = ink.color, maxLines = 1)
     }
 }
 
@@ -617,10 +618,24 @@ fun RecentCard(
     modifier: Modifier = Modifier,
     /** The fan of pages at this size (a small home screen widget draws it smaller to keep clear of the title and chips). */
     pagesScale: Float = 1f,
+    /** The card's word: "Recent", or "Starred" for the Starred widget. */
+    title: String = stringResource(R.string.desk_recent),
+    /** The card's colour: sky for Recent, lavender for Starred. */
+    cardTone: Tone = Tone.Sky,
+    /** A star on the card's corner (the Starred widget). */
+    starred: Boolean = false,
+    /** A long press: the newest document's menu, from where the finger is. */
+    onLong: ((androidx.compose.ui.geometry.Rect) -> Unit)? = null,
 ) {
-    val tone = clear.tone(Tone.Sky)
+    val tone = clear.tone(cardTone)
     val top = rows.first()
-    Box(modifier.height(226.dp).pressable(top.open, { vm.fileSheet = top to true }, pressedScale = 0.95f)) {
+    var bounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+    Box(
+        modifier.height(226.dp)
+            .onGloballyPositioned { bounds = it.boundsInWindow() }
+            // a tap opens Recent in Files (the list, not the newest document by itself)
+            .pressable(onAll, onLong?.let { { it(bounds) } }, pressedScale = 0.95f),
+    ) {
         // a blush card peeking out behind, turned
         Box(Modifier.fillMaxSize().padding(vertical = 8.dp).graphicsLayer { rotationZ = 5f; translationX = 8.dp.toPx() }.clip(CardShape).background(Brush.verticalGradient(listOf(clear.tone(Tone.Blush).top, clear.tone(Tone.Blush).bottom))))
         // the card and the pages fanned on it are the layer the chips' glass refracts
@@ -629,8 +644,13 @@ fun RecentCard(
             paint = {
                 Box(Modifier.fillMaxSize().cardPaint(tone, Offset(0.9f, 0.0f)))
                 Column(Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp)) {
-                    Text(stringResource(R.string.desk_recent), style = ClearType.Title.copy(fontSize = 17.sp), color = tone.ink, maxLines = 1)
-                    Text(whenLabel(top.date), style = ClearType.Caption.copy(fontSize = 10.5.sp), color = tone.ink.copy(alpha = 0.6f), maxLines = 1)
+                    Text(title, style = ClearType.RecentTitle, color = tone.ink, maxLines = 1)
+                    Text(whenLabel(top.date), style = ClearType.RecentWhen, color = tone.ink.copy(alpha = 0.6f), maxLines = 1)
+                }
+                if (starred) {
+                    Box(Modifier.align(Alignment.TopEnd).padding(12.dp).size(30.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+                        Icon(LucideIcons.Star, null, tint = com.chethan616.clearpdf.ui.theme.Candy.Lemon, modifier = Modifier.size(17.dp))
+                    }
                 }
                 // up to three first pages, fanned; the newest on top
                 val shown = rows.take(3)
@@ -649,12 +669,35 @@ fun RecentCard(
             opaque = true,
         ) {
             Row(Modifier.align(Alignment.BottomStart).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (rows.size > 1) PhotoChip("+${rows.size - 1}", onAll)
+                if (rows.size > 1) PhotoChip("+${rows.size - 1}", onAll, style = ClearType.RecentChip)
                 // what the newest is: PDFs, Pictures, Spreadsheets, Mind maps …
                 val kind = com.chethan616.clearpdf.engine.DocumentTypes.kindOf(top.name)
-                PhotoChip(stringResource(kind.short), onAll, icon = kind.icon)
+                PhotoChip(stringResource(kind.short), onAll, icon = kind.icon, style = ClearType.RecentChip)
             }
         }
+    }
+}
+
+/**
+ * The Starred widget before anything is starred: the butter card, a big lemon star, and how to star
+ * a file.
+ */
+@Composable
+fun StarredEmptyCard(modifier: Modifier = Modifier) {
+    // lavender: the one light tone made for white ink, so the glass and words on it read
+    val tone = clear.tone(Tone.Lavender)
+    Box(modifier.height(226.dp).cardPaint(tone, Offset(0.9f, 0.0f))) {
+        Column(Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp)) {
+            Text(stringResource(R.string.home_list_starred), style = ClearType.Title.copy(fontSize = 17.sp), color = tone.ink, maxLines = 1)
+        }
+        Box(Modifier.align(Alignment.Center).size(78.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.55f)), contentAlignment = Alignment.Center) {
+            Icon(LucideIcons.Star, null, tint = com.chethan616.clearpdf.ui.theme.Candy.Lemon, modifier = Modifier.size(40.dp))
+        }
+        Text(
+            stringResource(R.string.widget_starred_empty), style = ClearType.Label, color = tone.ink.copy(alpha = 0.7f),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+        )
     }
 }
 
@@ -666,7 +709,7 @@ fun DocCard(vm: AppViewModel, r: FileRow, tone: CardTone, tilt: Float, onLong: (
     Column(modifier.pressable(r.open, onLong, pressedScale = 0.95f).cardPaint(tone, Offset(0.8f, 0.0f)).padding(14.dp)) {
         Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
             PaperThumb(vm, r.thumbPath, 104.dp, 136.dp, tilt = tilt, corner = 8.dp, name = r.name, modifier = Modifier.graphicsLayer { shadowElevation = 10.dp.toPx(); shape = RoundedRectangle(8.dp) })
-            if (r.starred) {
+            if (vm.isStarred(r)) {
                 Box(Modifier.align(Alignment.TopEnd).size(26.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
                     Icon(LucideIcons.Star, null, tint = com.chethan616.clearpdf.ui.theme.Candy.Lemon, modifier = Modifier.size(14.dp))
                 }

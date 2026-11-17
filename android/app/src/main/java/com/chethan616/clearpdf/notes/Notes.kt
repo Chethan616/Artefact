@@ -112,6 +112,8 @@ class Notes(private val context: Context, private val scope: CoroutineScope) {
     fun toggle(noteId: String, itemId: String) {
         val n = get(noteId) ?: return
         put(n.copy(items = n.items.map { if (it.id == itemId) it.copy(done = !it.done) else it }))
+        // the home screen's list widgets tick it too, at once (their pill flipped, nothing redrawn)
+        runCatching { com.chethan616.clearpdf.widget.TodoWidget.flipNow(context, noteId, itemId) }
     }
 
     fun delete(id: String) {
@@ -259,12 +261,15 @@ object NoteFile {
     }
 
     /** Tick or untick [itemId] of [noteId]; false when either is gone. */
+    fun toggle(c: Context, noteId: String, itemId: String): Boolean = change(c, noteId, itemId) { !it }
+
     @Synchronized
-    fun toggle(c: Context, noteId: String, itemId: String): Boolean {
+    private fun change(c: Context, noteId: String, itemId: String, done: (Boolean) -> Boolean): Boolean {
         val all = read(c)
         val n = all.firstOrNull { it.id == noteId } ?: return false
-        if (n.items.none { it.id == itemId }) return false
-        val changed = n.copy(items = n.items.map { if (it.id == itemId) it.copy(done = !it.done) else it }, updated = System.currentTimeMillis())
+        val item = n.items.firstOrNull { it.id == itemId } ?: return false
+        if (item.done == done(item.done)) return true
+        val changed = n.copy(items = n.items.map { if (it.id == itemId) it.copy(done = done(it.done)) else it }, updated = System.currentTimeMillis())
         val arr = JSONArray()
         (all.map { if (it.id == noteId) changed else it }).forEach { arr.put(it.toJson()) }
         val dir = File(c.filesDir, "notes")

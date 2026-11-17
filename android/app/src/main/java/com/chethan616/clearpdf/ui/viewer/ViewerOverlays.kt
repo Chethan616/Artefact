@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -238,6 +239,10 @@ fun BoxScope.SelectionMenu(vm: AppViewModel, doc: OpenDocument, sel: Selection) 
         // a Word document or presentation opens for reading: no markup, no Edit text
         if (!doc.isOffice) Row(Modifier.fillMaxWidth().height(61.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
             MenuIcon(LucideIcons.MessageSquarePlus, stringResource(R.string.viewer_add_comment), allowed) { vm.notePrompt = NotePrompt(doc, null, sel) }
+            // only the selected words, made bold in the page's own text (#127)
+            if (doc.writable || doc.source == null) MenuIcon(LucideIcons.Bold, stringResource(R.string.edit_bold), true) {
+                vm.boldSelection(doc, page, sel.rects)
+            }
             MenuIcon(LucideIcons.Highlighter, stringResource(R.string.common_tool_highlight), allowed) { markup(TextMarkup.Highlight) }
             MenuIcon(LucideIcons.Underline, stringResource(R.string.common_tool_underline), allowed) { markup(TextMarkup.Underline) }
             MenuIcon(LucideIcons.Strikethrough, stringResource(R.string.viewer_strikethrough), allowed) { markup(TextMarkup.Strikethrough) }
@@ -269,7 +274,7 @@ internal fun menuInk(): androidx.compose.ui.graphics.Color =
 internal fun MenuIcon(icon: ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
     val ink = menuInk()
     Box(
-        Modifier.size(48.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = label },
+        Modifier.size(44.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, null, tint = if (enabled) ink else ink.copy(alpha = 0.35f), modifier = Modifier.size(24.dp))
@@ -324,7 +329,10 @@ private fun InlineNoteBar(hint: String, onDismiss: () -> Unit, onPost: (String) 
                     shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                     wash = if (c.dark) Color(0xFF0D0D10).copy(alpha = 0.64f) else Color.White.copy(alpha = 0.76f),
                     blur = 18.dp,
-                ),
+                )
+                // with the keyboard down the bar sits above the navigation bar (its glass runs on under
+                // it); with it up, imePadding has already lifted it and this adds nothing (#143)
+                .navigationBarsPadding(),
         ) {
             BasicTextField(
                 value = text, onValueChange = { text = it }, maxLines = 3,

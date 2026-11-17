@@ -16,8 +16,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-/** The app's reading face: Plus Jakarta Sans, the same as the glass screens (the old name stays for the viewer's code). */
-val Inter: FontFamily get() = com.chethan616.clearpdf.ui.theme.Jakarta
+/** The app's reading face: Outfit, the same as the glass screens (the old name stays for the viewer's code). */
+val Inter: FontFamily get() = com.chethan616.clearpdf.ui.theme.Outfit
 
 /** The colours the screens use beyond Material's roles (measured from the reference app's screens). */
 @Immutable

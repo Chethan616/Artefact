@@ -3,7 +3,9 @@ package com.chethan616.clearpdf.ui
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 
 /**
  * The app's icons: Material Symbols, Rounded (the old ClearPDF's set), under the names the code has
@@ -84,7 +86,11 @@ object LucideIcons {
     val GripVertical: ImageVector get() = Icons.Rounded.DragIndicator
     val Hash: ImageVector get() = Icons.Rounded.Tag
     val Heading: ImageVector get() = Icons.Rounded.Title
-    val Highlighter: ImageVector get() = Icons.Rounded.Highlight
+    /**
+     * A highlighter pen laid at a slant over its stroke, centred in its square as the other markup
+     * glyphs are (Material's Highlight is a torch drawn low in its box, so it sat below its row).
+     */
+    val Highlighter: ImageVector get() = HighlighterGlyph
     val ImagePlus: ImageVector get() = Icons.Rounded.AddPhotoAlternate
     val Images: ImageVector get() = Icons.Rounded.PhotoLibrary
     val Info: ImageVector get() = Icons.Rounded.Info
@@ -114,6 +120,7 @@ object LucideIcons {
     val Pause: ImageVector get() = Icons.Rounded.Pause
     val PenLine: ImageVector get() = Icons.Rounded.Draw
     val Pencil: ImageVector get() = Icons.Rounded.Edit
+    val PencilOutline: ImageVector get() = Icons.Outlined.Edit
     val Pin: ImageVector get() = Icons.Rounded.PushPin
     val Play: ImageVector get() = Icons.Rounded.PlayArrow
     val Plus: ImageVector get() = Icons.Rounded.Add
@@ -132,6 +139,7 @@ object LucideIcons {
     val Share2: ImageVector get() = Icons.Rounded.Share
     val ShieldCheck: ImageVector get() = Icons.Rounded.VerifiedUser
     val Signature: ImageVector get() = Icons.Rounded.Gesture
+    val Accessibility: ImageVector get() = Icons.Rounded.Accessibility
     val SlidersHorizontal: ImageVector get() = Icons.Rounded.Tune
     val Smartphone: ImageVector get() = Icons.Rounded.Smartphone
     val Sparkles: ImageVector get() = Icons.Rounded.AutoAwesome
@@ -139,6 +147,7 @@ object LucideIcons {
     val SquarePen: ImageVector get() = Icons.Rounded.EditNote
     val SquareTerminal: ImageVector get() = Icons.Rounded.Terminal
     val Star: ImageVector get() = Icons.Rounded.Star
+    val StarOutline: ImageVector get() = Icons.Rounded.StarBorder
     val Strikethrough: ImageVector get() = Icons.Rounded.FormatStrikethrough
     val Sun: ImageVector get() = Icons.Rounded.LightMode
     val TextCursorInput: ImageVector get() = Icons.Rounded.TextFields
@@ -151,4 +160,19 @@ object LucideIcons {
     val Volume2: ImageVector get() = Icons.AutoMirrored.Rounded.VolumeUp
     val Wrench: ImageVector get() = Icons.Rounded.Build
     val X: ImageVector get() = Icons.Rounded.Close
+}
+
+private val HighlighterGlyph: ImageVector by lazy {
+    // a solid marker laid at a slant, its nib down-left, over a bar of its ink: the same weight as the
+    // filled Material glyphs it sits among, its ink spanning 3 … 21 so it centres on the row as they do
+    ImageVector.Builder("Highlighter", 24.dp, 24.dp, 24f, 24f).apply {
+        addPath(
+            androidx.compose.ui.graphics.vector.PathParser().parsePathString(
+                "M14.1,3.6 Q14.8,2.9 15.5,3.6 L19.4,7.5 Q20.1,8.2 19.4,8.9 L11.6,16.7 L6.3,11.4 Z " +
+                    "M5.6,12.2 L10.8,17.4 L9.3,18.9 L5.2,18.9 L3.9,17.6 L3.9,13.9 Z " +
+                    "M12.2,19.4 L20.2,19.4 Q21.2,19.4 21.2,20.4 Q21.2,21.4 20.2,21.4 L12.2,21.4 Z",
+            ).toNodes(),
+            fill = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black),
+        )
+    }.build()
 }

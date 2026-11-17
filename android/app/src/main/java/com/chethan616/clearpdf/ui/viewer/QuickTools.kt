@@ -8,6 +8,9 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
@@ -96,8 +99,8 @@ enum class QuickTool(val id: String, @StringRes val label: Int, @StringRes val t
     Print("print", R.string.sheet_print, R.string.sheet_print, LucideIcons.Printer, ToolHues.export);
 
     companion object {
-        /** The bar as it comes: the reference's default tools and order. */
-        val DEFAULT_BAR = listOf(Edit, Comment, Highlight, Draw, FillSign, Export)
+        /** The bar as it comes: the reference's default tools and order, the five a phone's bar holds (Export is in More tools). */
+        val DEFAULT_BAR = listOf(Edit, Comment, Highlight, Draw, FillSign)
 
         /** A Word document's bar: its engine reads it aloud, exports and converts it, and prints it. */
         val WORD = listOf(Edit, ReadAloud, ExportPdf, SaveAs, Print)
@@ -117,11 +120,7 @@ enum class QuickTool(val id: String, @StringRes val label: Int, @StringRes val t
 }
 
 /** How many tools fit on the bar beside More tools at a screen [widthDp] wide. */
-fun toolbarSlots(widthDp: Int): Int = when {
-    widthDp >= 768 -> 8
-    widthDp >= 460 -> 7
-    else -> 6
-}
+fun toolbarSlots(widthDp: Int): Int = dockSlots(widthDp)
 
 /** The bar's tools and More tools' order, as the user arranged them (kept in the app's preferences). */
 @Stable
@@ -267,47 +266,70 @@ fun CustomizeToolbar(vm: AppViewModel, onDone: () -> Unit) {
 
     Box(Modifier.fillMaxWidth().onGloballyPositioned { origin = it.boundsInRoot().topLeft }) {
         Column {
-            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.toolbar_customize), color = c.text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                com.chethan616.clearpdf.ui.glass.GlassCircle(onDone, label = stringResource(R.string.common_cancel)) {
+            // as More tools' header: its title, a glass close, and the blue tick that keeps the arrangement
+            val ink = menuInk()
+            Spacer(Modifier.height(6.dp))
+            Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.toolbar_customize), style = com.chethan616.clearpdf.ui.theme.ClearType.Title.copy(fontSize = 18.sp), color = ink, modifier = Modifier.weight(1f))
+                com.chethan616.clearpdf.ui.glass.GlassCircle(onDone, size = 36.dp, label = stringResource(R.string.common_cancel)) {
                     com.chethan616.clearpdf.ui.glass.GlassIcon(LucideIcons.X, null, Modifier.size(18.dp))
                 }
                 Spacer(Modifier.width(8.dp))
                 com.chethan616.clearpdf.ui.glass.GlassCircle({
                     prefs.save(bar.toList(), grid.toList())
                     onDone()
-                }, tint = com.chethan616.clearpdf.ui.theme.Candy.Sky, label = stringResource(R.string.toolbar_save)) {
+                }, size = 36.dp, tint = com.chethan616.clearpdf.ui.theme.Candy.Sky, label = stringResource(R.string.toolbar_save)) {
                     com.chethan616.clearpdf.ui.glass.GlassIcon(LucideIcons.Check, null, Modifier.size(18.dp))
                 }
             }
             Text(
                 pluralStringResource(R.plurals.toolbar_customize_hint, slots, slots),
-                color = c.textSecondary, fontSize = 14.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                style = com.chethan616.clearpdf.ui.theme.ClearType.Label, color = ink.copy(alpha = 0.62f),
+                modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 6.dp),
             )
-            Text(stringResource(R.string.toolbar_section_toolbar), color = c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 6.dp))
-            BoxWithConstraints(
-                Modifier.fillMaxWidth().padding(horizontal = 8.dp).clip(RoundedCornerShape(8.dp)).background(c.pressed)
-                    .onGloballyPositioned { barRect = it.boundsInRoot() },
+            Text(
+                stringResource(R.string.toolbar_section_toolbar).uppercase(), style = com.chethan616.clearpdf.ui.theme.ClearType.Eyebrow, color = ink.copy(alpha = 0.55f),
+                modifier = Modifier.padding(start = 20.dp, top = 18.dp, bottom = 8.dp),
+            )
+            // the toolbar as it looks on the page: a capsule of its glyphs, the blue More tools circle at its end
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(60.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                val itemW = minOf(72.dp, (maxWidth - 8.dp) / (slots + 1))
-                Row(Modifier.fillMaxWidth().heightIn(min = BottomBarHeight), verticalAlignment = Alignment.CenterVertically) {
-                    for (t in bar) Draggable(t) { BarTool(t, itemW) }
-                    Spacer(Modifier.weight(1f))
-                    // More tools always ends the bar
-                    Box(Modifier.alpha(0.5f)) { BarTool(null, itemW) }
+                Row(
+                    Modifier.weight(1f).height(56.dp).clip(com.chethan616.clearpdf.ui.glass.Capsule)
+                        .background(if (c.dark) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.6f))
+                        .border(1.dp, Color.White.copy(alpha = if (c.dark) 0.18f else 0.8f), com.chethan616.clearpdf.ui.glass.Capsule)
+                        .onGloballyPositioned { barRect = it.boundsInRoot() }
+                        .padding(horizontal = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    for (t in bar) Draggable(t) { BarGlyph(t.icon, ink) }
+                    // room left on the bar: faint places to drop a tool
+                    repeat(slots - bar.size) { Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) { Box(Modifier.size(8.dp).clip(androidx.compose.foundation.shape.CircleShape).background(ink.copy(alpha = 0.18f))) } }
+                }
+                Spacer(Modifier.width(10.dp))
+                // More tools always ends the bar
+                Box(Modifier.size(52.dp).clip(androidx.compose.foundation.shape.CircleShape).background(com.chethan616.clearpdf.ui.theme.Candy.Sky), contentAlignment = Alignment.Center) {
+                    Icon(LucideIcons.LayoutGrid, null, tint = Color.White, modifier = Modifier.size(24.dp))
                 }
             }
-            Text(stringResource(R.string.common_tool_more_tools), color = c.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 6.dp))
-            Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp).heightIn(min = 96.dp).onGloballyPositioned { gridRect = it.boundsInRoot() }) {
+            Text(
+                stringResource(R.string.common_tool_more_tools).uppercase(), style = com.chethan616.clearpdf.ui.theme.ClearType.Eyebrow, color = ink.copy(alpha = 0.55f),
+                modifier = Modifier.padding(start = 20.dp, top = 18.dp, bottom = 4.dp),
+            )
+            // More tools' own tiles, four to a row
+            Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp).heightIn(min = 96.dp).onGloballyPositioned { gridRect = it.boundsInRoot() }) {
                 grid.chunked(4).forEach { row ->
-                    Row(Modifier.fillMaxWidth()) {
-                        row.forEach { t -> Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { Draggable(t) { GridTool(t) } } }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                        row.forEach { t -> Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) { Draggable(t) { ToolTileFace(t.icon, stringResource(t.title), t.hue) } } }
                         repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(6.dp))
                 }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
         }
         // the tool under the finger
         val t = dragging
@@ -315,36 +337,14 @@ fun CustomizeToolbar(vm: AppViewModel, onDone: () -> Unit) {
             val half = with(LocalDensity.current) { 36.dp.toPx() }
             Box(
                 Modifier.offset { IntOffset((dragPos.x - origin.x - half).roundToInt(), (dragPos.y - origin.y - half).roundToInt()) }
-                    .shadow(6.dp, RoundedCornerShape(8.dp)).background(c.surface, RoundedCornerShape(8.dp)),
-            ) { BarTool(t, 72.dp) }
+                    .graphicsLayer { scaleX = 1.08f; scaleY = 1.08f },
+            ) { ToolTileFace(t.icon, stringResource(t.title), t.hue, Modifier.width(72.dp)) }
         }
     }
 }
 
-/** A tool as the bar shows it: icon over its short label ([tool] null: More tools). */
+/** A tool on the toolbar's capsule: its glyph alone, as the bar on the page shows it. */
 @Composable
-private fun BarTool(tool: QuickTool?, width: androidx.compose.ui.unit.Dp) {
-    val c = pdfColors
-    // grows with a large font setting, as the bar does
-    Column(Modifier.width(width).heightIn(min = BottomBarHeight), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center) {
-        Icon(tool?.icon ?: LucideIcons.LayoutGrid, null, tint = c.icon, modifier = Modifier.size(24.dp))
-        Spacer(Modifier.height(6.dp))
-        Text(
-            stringResource(tool?.label ?: R.string.common_tool_more_tools), color = c.text, fontSize = 12.sp, lineHeight = 14.sp, maxLines = 2,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-        )
-    }
-}
-
-/** A tool as More tools shows it: a tinted tile over its name. */
-@Composable
-private fun GridTool(tool: QuickTool) {
-    val c = pdfColors
-    Column(Modifier.width(80.dp).padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)).background(tileBackground(tool.hue, c.dark)), contentAlignment = Alignment.Center) {
-            Icon(tool.icon, null, tint = tool.hue, modifier = Modifier.size(26.dp))
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(stringResource(tool.title), color = c.text, fontSize = 13.sp, textAlign = TextAlign.Center, maxLines = 2, lineHeight = 16.sp)
-    }
+private fun BarGlyph(icon: ImageVector, ink: Color) {
+    Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) { Icon(icon, null, tint = ink, modifier = Modifier.size(24.dp)) }
 }

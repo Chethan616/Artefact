@@ -1,0 +1,11 @@
+Widgets, a deck of thoughts, cards you arrange
+* To-Do widget: real glass card, instant ticks, next list
+* Starred widget; widget taps open Files
+* Star files from their row; a new file menu
+* Drag desk cards where you want them
+* Bold or italic only the selected words
+* Thought of the day and Today pages
+* Fill & Sign: tap a found field to fill it
+* Scan filters preview before saving
+* Text edits keep headings on their own line
+* Fixes: comment bar, search keyboard, quick look icons

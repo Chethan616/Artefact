@@ -9278,3 +9278,60 @@ fn page_render_draws_stamps_without_an_appearance() {
     let grey = custom.iter().filter(|p| p[0].abs_diff(p[1]) < 24 && p[1].abs_diff(p[2]) < 24).count();
     assert!(grey > 100 && grey == custom.len(), "an unknown name is a grey placeholder: {grey} of {}", custom.len());
 }
+
+/// #127: bolding one word bolds that word only, and the paragraph listing says where the bold is.
+#[test]
+fn bold_range_is_one_word_and_listed_as_a_run() {
+    let dir = workdir("bold-range");
+    let mut a = auto(&dir);
+    let id = ok(&mut a, "doc_open", json!({"path":"a.pdf"}))["doc"].as_u64().unwrap();
+    ok(
+        &mut a,
+        "text_edit",
+        json!({"doc":id,"page":1,"paragraph":1,"text":"Bold word stays plain","ranges":[{"range":[0,4],"font":"helvetica","bold":true}]}),
+    );
+    let listed = ok(&mut a, "text_paragraphs", json!({"doc":id,"page":1}));
+    let p = &listed["paragraphs"][0];
+    let runs = p["runs"].as_array().unwrap();
+    assert!(runs.len() >= 2, "{listed}");
+    let editor = p["editor_text"].as_str().unwrap();
+    let bold: String = runs
+        .iter()
+        .filter(|r| r["bold"] == true)
+        .map(|r| &editor[r["range"][0].as_u64().unwrap() as usize..r["range"][1].as_u64().unwrap() as usize])
+        .collect();
+    assert_eq!(bold.trim(), "Bold", "{listed}");
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+/// A heading over a short line and two body lines, read as one paragraph: adding a word at its end
+/// keeps the heading and the short line on rows of their own (#144). The editor's text breaks
+/// where the source ended a row on purpose and joins the rows it wrapped.
+#[test]
+fn appending_to_a_heading_and_its_lines_keeps_their_rows() {
+    use pdfcraft_cos::{Dict, Document, ObjRef, Object, SaveOptions, Stream, write_full};
+    use std::sync::Arc;
+    let dir = workdir("heading-rows");
+    let content = "BT /F1 18 Tf 20 270 Td (AT PAGE 1) Tj ET \
+                   BT /F1 9 Tf 20 248 Td (Marker 73142) Tj ET \
+                   BT /F1 9 Tf 20 236 Td (The blue notebook contains seven pages.) Tj ET \
+                   BT /F1 9 Tf 20 224 Td (Unicode control: cafe, naive.) Tj ET";
+    let mut doc = Document::open(Arc::new(fixture(1))).unwrap();
+    doc.set(ObjRef::new(5, 0), Object::Stream(Stream::flate(Dict::new(), content.as_bytes())));
+    std::fs::write(dir.join("rows.pdf"), write_full(&doc, &SaveOptions::default()).unwrap()).unwrap();
+    let mut a = auto(&dir);
+    let id = ok(&mut a, "doc_open", json!({"path":"rows.pdf"}))["doc"].as_u64().unwrap();
+    let listed = ok(&mut a, "text_paragraphs", json!({"doc":id,"page":1}));
+    let p = &listed["paragraphs"][0];
+    assert_eq!(p["rows"].as_array().unwrap().len(), 4, "the heading and its lines are one paragraph: {listed}");
+    let text = p["edit_text"].as_str().unwrap();
+    assert_eq!(text, "AT PAGE 1\nMarker 73142\nThe blue notebook contains seven pages. Unicode control: cafe, naive.", "{listed}");
+    assert_eq!(text.len(), p["editor_text"].as_str().unwrap().len(), "runs index both alike");
+    ok(&mut a, "text_edit", json!({"doc":id,"page":1,"paragraph":1,"text": format!("{text} X")}));
+    let lines = ok(&mut a, "text_lines", json!({"doc":id,"page":1}));
+    let shown: Vec<String> = lines["lines"].as_array().unwrap().iter().map(|l| l["text"].as_str().unwrap().trim().to_owned()).collect();
+    assert!(shown.iter().any(|t| t == "AT PAGE 1"), "{shown:?}");
+    assert!(shown.iter().any(|t| t == "Marker 73142"), "{shown:?}");
+    assert!(shown.iter().any(|t| t.ends_with("naive. X")), "{shown:?}");
+    std::fs::remove_dir_all(dir).unwrap();
+}

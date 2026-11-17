@@ -308,12 +308,7 @@ fn headings_of(doc: &Document, layout: &DocLayout) -> Vec<crate::OutlineEntry> {
         .map(|k| {
             let (level, ref title, page) = found[k];
             let children = found[k + 1..].iter().take_while(|n| n.0 > level).count();
-            crate::OutlineEntry {
-                title: title.clone(),
-                level: u32::from(level - top),
-                page,
-                children: u32::try_from(children).unwrap_or(u32::MAX),
-            }
+            crate::OutlineEntry { title: title.clone(), level: u32::from(level - top), page, children: u32::try_from(children).unwrap_or(u32::MAX) }
         })
         .collect()
 }

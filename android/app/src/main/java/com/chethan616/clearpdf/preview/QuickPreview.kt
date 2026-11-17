@@ -127,7 +127,11 @@ internal fun QuickPreviewScreen(
         PdfcraftTheme(theme) {
             ProvideGlassHaptics {
                 CompositionLocalProvider(LocalGlassOverlayHost provides overlays) {
-                    Preview(state, onClose, onExpand, onShare, onOpenWith, onSaveCopy, onPassword, setBlur)
+                    // as in the viewer, the glass buttons read the screen behind them: white icons over a
+                    // dark page or picture, dark over a light one (and adaptive glass while it is on)
+                    com.chethan616.clearpdf.ui.glass.ProvideScreenInk {
+                        Preview(state, onClose, onExpand, onShare, onOpenWith, onSaveCopy, onPassword, setBlur)
+                    }
                 }
             }
         }

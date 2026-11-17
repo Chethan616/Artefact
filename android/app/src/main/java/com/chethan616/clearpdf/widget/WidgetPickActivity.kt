@@ -49,11 +49,31 @@ internal object WidgetPicks {
         }.apply()
     }
 
+    /** The notes of [kind] a widget can show, in the desk's order (pinned first, then the newest). */
+    fun candidates(ctx: Context, kind: NoteKind): List<Note> =
+        NoteFile.read(ctx).filter { it.kind == kind && if (kind == NoteKind.List) it.items.any { i -> i.text.isNotBlank() } else !it.isEmpty }
+            .sortedWith(compareByDescending<Note> { it.pinned }.thenByDescending { it.created })
+
+    /** How many notes of [kind] there are to turn through. */
+    fun count(ctx: Context, kind: NoteKind): Int = candidates(ctx, kind).size
+
     /** The note [widgetId] shows: the one chosen for it, while it still exists, else the latest of [kind]. */
     fun resolve(ctx: Context, widgetId: Int, kind: NoteKind): Note? {
         val all = NoteFile.read(ctx).filter { it.kind == kind && if (kind == NoteKind.List) it.items.any { i -> i.text.isNotBlank() } else !it.isEmpty }
         val chosen = get(ctx, widgetId)?.let { id -> all.firstOrNull { it.id == id } }
         return chosen ?: all.sortedWith(compareByDescending<Note> { it.pinned }.thenByDescending { it.updated }).firstOrNull()
+    }
+
+    /**
+     * Turn widget [widgetId] to the next note of [kind] (the widget's round button), wrapping round.
+     * The order is by creation, so ticking an item never reshuffles which list comes next.
+     */
+    fun next(ctx: Context, widgetId: Int, kind: NoteKind) {
+        val all = candidates(ctx, kind)
+        if (all.size < 2) return
+        val now = resolve(ctx, widgetId, kind)?.id
+        val i = all.indexOfFirst { it.id == now }
+        set(ctx, widgetId, all[(i + 1).mod(all.size)].id)
     }
 }
 

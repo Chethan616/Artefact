@@ -45,6 +45,16 @@ Read, sign and edit PDFs, open and edit Word, Excel and PowerPoint files, and ke
   <sub><a href="docs/media/artefact-trailer-16x9.mp4">Trailer, 16:9 (4K 60 fps)</a> · <a href="docs/media/artefact-trailer-9x16.mp4">Vertical cut, 9:16</a></sub>
 </p>
 
+<h3>Star history</h3>
+
+<a href="https://star-history.com/#Chethan616/Artefact&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Chethan616/Artefact&type=Date&theme=dark">
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Chethan616/Artefact&type=Date">
+    <img alt="Star history of Artefact" src="https://api.star-history.com/svg?repos=Chethan616/Artefact&type=Date" width="100%">
+  </picture>
+</a>
+
 </div>
 
 **Artefact is the next version of ClearPDF**, best known for its user experience and refined features. It installs over ClearPDF as an update and keeps your files where they are. Everything runs on your phone, on one Rust engine for PDF, Word, PowerPoint, Excel and pictures; the app has no internet permission at all.

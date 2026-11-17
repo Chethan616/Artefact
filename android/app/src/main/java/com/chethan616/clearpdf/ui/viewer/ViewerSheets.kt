@@ -485,8 +485,14 @@ fun pdfDateMillis(s: String?): Long? {
  */
 @Composable
 private fun ToolTile(icon: ImageVector, label: String, tint: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    ToolTileFace(icon, label, tint, modifier.pressable(onClick, pressedScale = 0.92f).semantics { contentDescription = label })
+}
+
+/** A tool's tile as More tools draws it: its hue's rounded square with the glyph in white, its name under it. */
+@Composable
+internal fun ToolTileFace(icon: ImageVector, label: String, tint: Color, modifier: Modifier = Modifier) {
     Column(
-        modifier.pressable(onClick, pressedScale = 0.92f).padding(vertical = 6.dp).semantics { contentDescription = label },
+        modifier.padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
@@ -582,7 +588,11 @@ fun MoreToolsSheet(vm: AppViewModel, doc: OpenDocument, anchor: Rect) {
 
 
 /** Save as: the formats the document's engine writes, each saved to Downloads. */
-/** What the document is: its name, kind, size, pages, where it lives, and what it says about itself. */
+/**
+ * What the document is, as a card about it: its first page and name up top with what kind of file it
+ * is; four tiles for pages, size, page size and where it lives; what it says about itself (title,
+ * author, what made it); and three badges for its password, signature and accessibility.
+ */
 @Composable
 fun DocumentInfoSheet(vm: AppViewModel, doc: OpenDocument) {
     val ctl = doc.controller
@@ -590,53 +600,149 @@ fun DocumentInfoSheet(vm: AppViewModel, doc: OpenDocument) {
     val info = doc.info
     val context = androidx.compose.ui.platform.LocalContext.current
     val location = remember(doc.source) { doc.source?.toString()?.let { vm.locationOfDocument(it) } }
-    val kind = stringResource(com.chethan616.clearpdf.engine.DocumentTypes.kindOf(info.name).short)
+    // "PDF 1.7", "DOCX": the file's own kind, never the shelf's plural
+    val (badge, badgeColor) = com.chethan616.clearpdf.ui.desk.kindBadge(info.name)
+    val kind = badge.ifBlank { "PDF" } + (if (info.pdfVersion.isNotBlank() && !doc.isOffice) " " + info.pdfVersion else "")
     val first = info.pages.firstOrNull()
-    @Composable
-    fun line(label: String, value: String?) {
-        if (value.isNullOrBlank()) return
-        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.Top) {
-            Text(label, color = c.textSecondary, fontSize = 15.sp, modifier = Modifier.weight(0.42f))
-            Text(value, color = c.text, fontSize = 15.sp, modifier = Modifier.weight(0.58f), textAlign = TextAlign.End)
-        }
+    val thumb = remember(doc.source) {
+        doc.source?.let { u -> if (u.scheme == "file") u.path else u.toString() }
     }
-    PdfSheet(onDismiss = { ctl.sheet = ViewerSheet.None }, maxHeightFraction = 0.8f) {
-        SheetHeader(doc.title, subtitle = kind)
+    PdfSheet(onDismiss = { ctl.sheet = ViewerSheet.None }, maxHeightFraction = 0.86f) {
         Column(Modifier.verticalScroll(rememberScrollState())) {
-            SheetSection(inset = 16.dp) {
-                Column {
-                    line(stringResource(R.string.info_kind), kind + (if (info.pdfVersion.isNotBlank() && !doc.isOffice) " " + info.pdfVersion else ""))
-                    line(stringResource(R.string.info_size), android.text.format.Formatter.formatShortFileSize(context, info.fileSize.toLong()))
-                    line(stringResource(if (doc.isSlides) R.string.info_slides else R.string.info_pages), doc.pageCount.toString())
-                    if (first != null && !doc.isSheets) line(stringResource(R.string.info_page_size), "%.0f × %.0f pt".format(first.width, first.height))
-                    line(stringResource(R.string.info_where), location)
+            // the document: its first page, a little turned, its name and kind
+            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 6.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                com.chethan616.clearpdf.ui.desk.PaperThumb(vm, thumb, 66.dp, 86.dp, tilt = -3f, corner = 8.dp, name = info.name)
+                Spacer(Modifier.width(16.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(doc.title, style = ClearType.Title.copy(fontSize = 19.sp, lineHeight = 24.sp), color = c.text, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        InfoChip(kind, badgeColor)
+                        if (info.encrypted) InfoChip(stringResource(R.string.info_protected), Candy.Grape)
+                    }
+                }
+                com.chethan616.clearpdf.ui.glass.GlassCircle(onClick = { ctl.sheet = ViewerSheet.None }, size = 38.dp, label = stringResource(R.string.ui_close_sheet)) {
+                    com.chethan616.clearpdf.ui.glass.GlassIcon(LucideIcons.X, null, Modifier.size(18.dp))
                 }
             }
-            SheetSection(inset = 16.dp) {
-                Column {
-                    line(stringResource(R.string.info_title), info.title)
-                    line(stringResource(R.string.info_author), info.author)
-                    line(stringResource(R.string.info_subject), info.subject)
-                    line(stringResource(R.string.info_keywords), info.keywords)
-                    line(stringResource(R.string.info_creator), info.creator)
-                    line(stringResource(R.string.info_producer), info.producer)
-                }
+            // the numbers, as tiles
+            val tiles = buildList {
+                add(Triple(LucideIcons.FileText, stringResource(if (doc.isSlides) R.string.info_slides else R.string.info_pages), doc.pageCount.toString()))
+                add(Triple(LucideIcons.FileArchive, stringResource(R.string.info_size), android.text.format.Formatter.formatShortFileSize(context, info.fileSize.toLong())))
+                if (first != null && !doc.isSheets) add(Triple(LucideIcons.Crop, stringResource(R.string.info_page_size), pageSizeName(first.width, first.height)))
+                if (!location.isNullOrBlank()) add(Triple(LucideIcons.FolderOpen, stringResource(R.string.info_where), location))
             }
-            SheetSection(inset = 16.dp) {
-                Column {
-                    val yes = stringResource(R.string.info_yes)
-                    val no = stringResource(R.string.info_no)
-                    line(stringResource(R.string.info_protected), if (info.encrypted) yes else no)
-                    if (!doc.isOffice) {
-                        line(stringResource(R.string.info_signed), if (info.signed) yes else no)
-                        line(stringResource(R.string.info_tagged), if (info.tagged) yes else no)
-                        if (info.fields > 0u) line(stringResource(R.string.info_fields), info.fields.toString())
-                        if (info.attachments > 0u) line(stringResource(R.string.info_attachments), info.attachments.toString())
+            Column(Modifier.padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                tiles.chunked(2).forEach { pair ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        pair.forEach { (icon, label, value) -> InfoTile(icon, label, value, Modifier.weight(1f)) }
+                        if (pair.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }
-            Spacer(Modifier.height(10.dp))
+            // what the file says about itself
+            val about = listOf(
+                stringResource(R.string.info_title) to info.title,
+                stringResource(R.string.info_author) to info.author,
+                stringResource(R.string.info_subject) to info.subject,
+                stringResource(R.string.info_keywords) to info.keywords,
+                stringResource(R.string.info_creator) to info.creator,
+                stringResource(R.string.info_producer) to info.producer?.let(::madeBy),
+            ).filter { !it.second.isNullOrBlank() }
+            if (about.isNotEmpty()) {
+                Spacer(Modifier.height(18.dp))
+                Text(stringResource(R.string.info_about).uppercase(), style = ClearType.Eyebrow, color = c.textSecondary, modifier = Modifier.padding(horizontal = 22.dp))
+                Spacer(Modifier.height(6.dp))
+                Column(Modifier.padding(horizontal = 14.dp).fillMaxWidth().clip(com.chethan616.clearpdf.ui.glass.RoundedRectangle(20.dp)).background(c.text.copy(alpha = 0.05f))) {
+                    about.forEachIndexed { i, (label, value) ->
+                        if (i > 0) Box(Modifier.padding(start = 16.dp).fillMaxWidth().height(1.dp).background(c.text.copy(alpha = 0.07f)))
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.Top) {
+                            Text(label, style = ClearType.Label, color = c.textSecondary, modifier = Modifier.weight(0.38f))
+                            Text(value.orEmpty(), style = ClearType.Body, color = c.text, modifier = Modifier.weight(0.62f), textAlign = TextAlign.End)
+                        }
+                    }
+                }
+            }
+            // three yes / no facts as badges
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.padding(horizontal = 14.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FactBadge(LucideIcons.FileLock2, stringResource(R.string.info_protected), info.encrypted, Modifier.weight(1f))
+                if (!doc.isOffice) {
+                    FactBadge(LucideIcons.Signature, stringResource(R.string.info_signed), info.signed, Modifier.weight(1f))
+                    FactBadge(LucideIcons.Accessibility, stringResource(R.string.info_tagged_short), info.tagged, Modifier.weight(1f))
+                }
+            }
+            if (!doc.isOffice && (info.fields > 0u || info.attachments > 0u)) {
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.padding(horizontal = 14.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (info.fields > 0u) InfoTile(LucideIcons.FilePenLine, stringResource(R.string.info_fields), info.fields.toString(), Modifier.weight(1f))
+                    if (info.attachments > 0u) InfoTile(LucideIcons.Paperclip, stringResource(R.string.info_attachments), info.attachments.toString(), Modifier.weight(1f))
+                }
+            }
+            Spacer(Modifier.height(18.dp))
         }
+    }
+}
+
+/** What made a file, as people know it: files the app made before it was renamed say PdfCraft. */
+private fun madeBy(producer: String): String = if (producer.trim().equals("PdfCraft", ignoreCase = true)) "Artefact" else producer
+
+/** A page size by its paper name when it is one (A4, Letter …), else in millimetres. */
+private fun pageSizeName(w: Float, h: Float): String {
+    val (a, b) = if (w <= h) w to h else h to w
+    fun near(x: Float, y: Float) = kotlin.math.abs(a - x) < 3f && kotlin.math.abs(b - y) < 3f
+    val paper = when {
+        near(595f, 842f) -> "A4"
+        near(420f, 595f) -> "A5"
+        near(842f, 1191f) -> "A3"
+        near(612f, 792f) -> "Letter"
+        near(612f, 1008f) -> "Legal"
+        else -> null
+    }
+    val mm = "%.0f × %.0f mm".format(w / 72f * 25.4f, h / 72f * 25.4f)
+    return if (paper != null) "$paper · $mm" else mm
+}
+
+/** A small coloured capsule with a word (the file's kind). */
+@Composable
+private fun InfoChip(text: String, color: Color) {
+    Box(Modifier.clip(com.chethan616.clearpdf.ui.glass.Capsule).background(color.copy(alpha = 0.16f)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+        Text(text, style = ClearType.Label.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = color)
+    }
+}
+
+/** A number about the document: a glyph, what it is, and its value large. */
+@Composable
+private fun InfoTile(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String, modifier: Modifier) {
+    val c = pdfColors
+    Column(modifier.clip(com.chethan616.clearpdf.ui.glass.RoundedRectangle(20.dp)).background(c.text.copy(alpha = 0.05f)).padding(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = c.textSecondary, modifier = Modifier.size(15.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(label, style = ClearType.Caption, color = c.textSecondary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(value, style = ClearType.BodyStrong.copy(fontSize = 17.sp), color = c.text, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+    }
+}
+
+/** A yes / no fact: lit mint with a tick when it holds, faint with a dash when it doesn't. */
+@Composable
+private fun FactBadge(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, on: Boolean, modifier: Modifier) {
+    val c = pdfColors
+    val tint = if (on) Candy.Mint else c.textSecondary
+    Column(
+        modifier.clip(com.chethan616.clearpdf.ui.glass.RoundedRectangle(18.dp)).background(if (on) Candy.Mint.copy(alpha = 0.14f) else c.text.copy(alpha = 0.04f)).padding(vertical = 12.dp, horizontal = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(contentAlignment = Alignment.BottomEnd) {
+            Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
+            Box(Modifier.offset(x = 6.dp, y = 4.dp).size(14.dp).clip(androidx.compose.foundation.shape.CircleShape).background(if (on) Candy.Mint else c.textSecondary.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
+                Icon(if (on) LucideIcons.Check else LucideIcons.Minus, null, tint = Color.White, modifier = Modifier.size(10.dp))
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(label, style = ClearType.Caption, color = if (on) c.text else c.textSecondary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }
 }
 
