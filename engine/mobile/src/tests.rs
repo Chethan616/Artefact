@@ -561,7 +561,7 @@ fn a_slide_reports_its_speaker_notes() {
     assert!(s.slide_notes(id, 0).unwrap().contains("Say hello"), "{:?}", s.slide_notes(id, 0));
     assert_eq!(s.slide_notes(id, 99).unwrap(), "", "no such slide: empty");
     let pdf = s.open(blank_pdf(1), None).unwrap().id;
-    assert_eq!(s.slide_notes(pdf, 0).is_err(), true, "a PDF has no slide notes");
+    assert!(s.slide_notes(pdf, 0).is_err(), "a PDF has no slide notes");
 }
 
 #[test]
