@@ -1364,7 +1364,9 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
             val target = if (save) signatures.fileFor(pad.initials) else File(getApplication<Application>().cacheDir, "sign-${System.nanoTime()}.png")
             withContext(Dispatchers.IO) { target.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) } }
             signaturesChanged++
-                fillElement = if (pad.initials) FillElement.Initials else FillElement.Signature
+                // placed where the page was tapped on a form: taps go back to filling its fields
+                fillElement = if (pad.at != null && (pad.doc?.info?.fields ?: 0u) != 0u) FillElement.Text
+                    else if (pad.initials) FillElement.Initials else FillElement.Signature
             val doc = pad.doc
             val at = pad.at
             if (doc != null && at != null) {
