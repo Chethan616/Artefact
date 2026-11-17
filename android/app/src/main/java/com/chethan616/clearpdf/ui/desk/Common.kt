@@ -210,9 +210,22 @@ fun FileListItem(vm: AppViewModel, r: FileRow, recent: Boolean, modifier: Modifi
     val c = clear
     val selecting = vm.selectedFiles.isNotEmpty()
     val ticked = r.key in vm.selectedFiles
+    // opening a file ends any typing (a search): its keyboard never stays up over the document (#145)
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     Row(
         modifier.fillMaxWidth()
-            .pressable(onClick = { if (selecting) vm.toggleSelected(r) else r.open() }, onLongClick = { vm.toggleSelected(r) })
+            .pressable(
+                onClick = {
+                    if (selecting) vm.toggleSelected(r)
+                    else {
+                        focus.clearFocus(force = true)
+                        keyboard?.hide()
+                        r.open()
+                    }
+                },
+                onLongClick = { vm.toggleSelected(r) },
+            )
             .background(if (ticked) Candy.Sky.copy(alpha = 0.14f) else Color.Transparent)
             .padding(start = 14.dp, end = 2.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,

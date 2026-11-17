@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -328,7 +329,10 @@ private fun InlineNoteBar(hint: String, onDismiss: () -> Unit, onPost: (String) 
                     shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                     wash = if (c.dark) Color(0xFF0D0D10).copy(alpha = 0.64f) else Color.White.copy(alpha = 0.76f),
                     blur = 18.dp,
-                ),
+                )
+                // with the keyboard down the bar sits above the navigation bar (its glass runs on under
+                // it); with it up, imePadding has already lifted it and this adds nothing (#143)
+                .navigationBarsPadding(),
         ) {
             BasicTextField(
                 value = text, onValueChange = { text = it }, maxLines = 3,

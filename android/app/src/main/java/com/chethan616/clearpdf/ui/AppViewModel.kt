@@ -1694,12 +1694,14 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
             val rect = o.optJSONArray("rect") ?: return@mapNotNull null
             val font = o.optString("font")
             com.chethan616.clearpdf.ui.viewer.Paragraph(
-                page = page, number = o.optInt("paragraph"), text = o.optString("text"),
+                // the rows the source ended on purpose (a heading, a line of its own) stay their own
+                // lines, so typing at the end never pulls them together (#144)
+                page = page, number = o.optInt("paragraph"), text = o.optString("edit_text").ifEmpty { o.optString("text") },
                 box = FloatArray(4) { k -> rect.optDouble(k).toFloat() }, font = font, size = o.optDouble("size", 12.0).toFloat(),
                 bold = if (o.has("bold")) o.optBoolean("bold") else font.contains("Bold", true) || font.contains("Black", true) || font.contains("Heavy", true),
                 italic = if (o.has("italic")) o.optBoolean("italic") else font.contains("Italic", true) || font.contains("Oblique", true),
                 color = o.optString("color").takeIf { it.startsWith("#") },
-                runs = styleRuns(o),
+                runs = styleRuns(o, o.optString("edit_text").ifEmpty { o.optString("text") }),
             )
         }
         editSelection?.takeIf { it.page == page }?.let { sel -> editSelection = paragraphs[page]?.firstOrNull { it.number == sel.number } }
@@ -1788,11 +1790,11 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
      * ranges of its text. The two differ only where rows break (a newline for a space); anything
      * else (a hyphen joined across rows) and the runs are left out rather than misplaced.
      */
-    private fun styleRuns(o: org.json.JSONObject): List<com.chethan616.clearpdf.ui.viewer.StyleRun> {
+    private fun styleRuns(o: org.json.JSONObject, text: String): List<com.chethan616.clearpdf.ui.viewer.StyleRun> {
         val arr = o.optJSONArray("runs") ?: return emptyList()
         if (arr.length() == 0) return emptyList()
         val editor = o.optString("editor_text")
-        if (editor.replace('\n', ' ') != o.optString("text")) return emptyList()
+        if (editor.replace('\n', ' ') != text.replace('\n', ' ')) return emptyList()
         // byte offset to character offset
         val total = editor.toByteArray(Charsets.UTF_8).size
         val charAt = IntArray(total + 1)
