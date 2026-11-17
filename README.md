@@ -51,7 +51,7 @@ Read, sign and edit PDFs, open and edit Word, Excel and PowerPoint files, and ke
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Chethan616/Artefact&type=Date&theme=dark">
     <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Chethan616/Artefact&type=Date">
-    <img alt="Star history of Artefact" src="https://api.star-history.com/svg?repos=Chethan616/Artefact&type=Date" width="100%">
+    <img alt="Star history of Artefact" src="https://api.star-history.com/svg?repos=Chethan616/Artefact&type=Date" width="480">
   </picture>
 </a>
 
