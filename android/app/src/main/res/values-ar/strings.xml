@@ -1262,6 +1262,15 @@
     <string name="today_evening">مساء الخير</string>
     <string name="today_night">تصبح على خير</string>
     <string name="today_overview">نظرة على اليوم</string>
+    <string name="today_all_done">لا شيء متبقٍ للقيام به</string>
+    <plurals name="today_todos_left">
+        <item quantity="zero">لا مهام متبقية</item>
+        <item quantity="one">مهمة واحدة متبقية</item>
+        <item quantity="two">مهمتان متبقيتان</item>
+        <item quantity="few">%d مهام متبقية</item>
+        <item quantity="many">%d مهمة متبقية</item>
+        <item quantity="other">%d مهمة متبقية</item>
+    </plurals>
     <plurals name="today_left">
         <item quantity="one">%d مهمة متبقية</item>
         <item quantity="other">%d مهام متبقية</item>

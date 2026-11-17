@@ -1608,6 +1608,11 @@
     <string name="today_evening">Guten Abend</string>
     <string name="today_night">Gute Nacht</string>
     <string name="today_overview">Tagesüberblick</string>
+    <string name="today_all_done">Alles erledigt</string>
+    <plurals name="today_todos_left">
+        <item quantity="one">%d Aufgabe offen</item>
+        <item quantity="other">%d Aufgaben offen</item>
+    </plurals>
     <plurals name="today_left">
         <item quantity="one">%d Aufgabe offen</item>
         <item quantity="other">%d Aufgaben offen</item>

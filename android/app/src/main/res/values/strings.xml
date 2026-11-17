@@ -1667,6 +1667,11 @@
     <string name="today_evening">Good Evening</string>
     <string name="today_night">Good Night</string>
     <string name="today_overview">Daily Overview</string>
+    <string name="today_all_done">Nothing left to do</string>
+    <plurals name="today_todos_left">
+        <item quantity="one">%d to-do left</item>
+        <item quantity="other">%d to-dos left</item>
+    </plurals>
     <plurals name="today_left">
         <item quantity="one">%d to-do left</item>
         <item quantity="other">%d to-dos left</item>

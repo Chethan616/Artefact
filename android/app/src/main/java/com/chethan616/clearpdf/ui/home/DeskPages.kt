@@ -603,6 +603,12 @@ fun TodayScreen(vm: AppViewModel) {
         },
     )
     val name = vm.ownerName
+    var naming by remember { mutableStateOf(false) }
+    // the open to-dos across the lists, the longest-waiting list's first
+    val todos = remember(notes) {
+        notes.filter { it.kind == com.chethan616.clearpdf.notes.NoteKind.List }.sortedBy { it.updated }
+            .flatMap { n -> n.items.filter { !it.done && it.text.isNotBlank() } }
+    }
     Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Box(Modifier.fillMaxWidth().height(m(1068, k))) {
             // the desk's own header: its mark (a tap goes back to the desk) and its menu button
@@ -626,11 +632,14 @@ fun TodayScreen(vm: AppViewModel) {
                     ) { FourDots(Color.Unspecified) }
                 },
             )
-            // the name: Outfit 300 at 15, its baseline at 178 px
-            if (name.isNotBlank()) Text(
-                name.uppercase(), style = outfit(300, s(15f, k), 0.01f).copy(color = Color.White, textAlign = TextAlign.Center),
-                modifier = Modifier.fillMaxWidth().baselineAt(null, m(178, k)),
-            )
+            // the name: Outfit 300 at 15, its baseline at 178 px; a tap names it (faint "Your name" until then)
+            Box(Modifier.fillMaxWidth().baselineAt(null, m(178, k)), contentAlignment = Alignment.Center) {
+                Text(
+                    name.ifBlank { stringResource(R.string.settings_your_name) }.uppercase(),
+                    style = outfit(300, s(15f, k), 0.01f).copy(color = Color.White.copy(alpha = if (name.isBlank()) 0.55f else 1f), textAlign = TextAlign.Center),
+                    modifier = Modifier.pressable({ naming = true }, pressedScale = 0.94f).padding(horizontal = 12.dp, vertical = 4.dp),
+                )
+            }
             // the greeting: Outfit 500 at 73, baselines 264 and 354 px, white at 62 %, fading into blur
             FadeIntoBlur(0.55f, m(2.6f, k), Modifier.fillMaxWidth().baselineAt(null, m(264, k)).graphicsLayer { alpha = 0.62f }) {
                 Text(
@@ -661,7 +670,14 @@ fun TodayScreen(vm: AppViewModel) {
                 Modifier.offset(m(343 - 111, k), m(605 - 136, k)).size(m(222, k), m(272, k))
                     .graphicsLayer { rotationZ = 2f; shadowElevation = 4.dp.toPx(); shape = RoundedRectangle(m(28, k)); clip = true }
                     .background(Color(0xFF9CCDE4))
-                    .pressable({ vm.deskPages.clear(); vm.deskShelf = DeskFilter.Images }, pressedScale = 0.96f),
+                    // the picture's own note, or the scan itself; with neither, the desk's pictures
+                    .pressable({
+                        when {
+                            pic != null -> vm.openNote = pic.note.id
+                            scan != null -> scan.open()
+                            else -> { vm.deskPages.clear(); vm.deskShelf = DeskFilter.Images }
+                        }
+                    }, pressedScale = 0.96f),
             ) {
                 if (pic != null) NoteImage(pic.name, Modifier.matchParentSize(), maxPx = 900)
                 else if (scan != null) PageFill(vm, scan.thumbPath)
@@ -677,15 +693,37 @@ fun TodayScreen(vm: AppViewModel) {
                 Modifier.offset(m(55, k), m(700, k)).size(m(220, k), m(202, k))
                     .graphicsLayer { shadowElevation = 3.dp.toPx(); shape = RoundedRectangle(m(30, k)); clip = true; ambientShadowColor = Color(0x22000000); spotShadowColor = Color(0x22000000) }
                     .background(Color(0xFFF4F8FF).copy(alpha = 0.78f))
-                    .pressable({ vm.closeDeskPage() }, pressedScale = 0.96f),
+                    // the day's to-dos: their lists on the desk (or the desk itself, all done)
+                    .pressable({ vm.deskPages.clear(); if (todos.isNotEmpty()) vm.deskShelf = DeskFilter.Todo }, pressedScale = 0.96f),
             ) {
                 Text(java.text.SimpleDateFormat("EEEE", java.util.Locale.getDefault()).format(now), style = outfit(700, s(37.6f, k), -0.035f).copy(color = Color.Black), maxLines = 1, modifier = Modifier.baselineAt(m(22, k), m(52, k)))
                 Text(
                     java.text.SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(java.util.Locale.getDefault(), "MMMd"), java.util.Locale.getDefault()).format(now),
                     style = outfit(300, s(32f, k)).copy(color = Color(0xFF737D87)), maxLines = 1, modifier = Modifier.baselineAt(m(22, k), m(96, k)),
                 )
+                // the overview: how many to-dos are left, and the next one
+                Text(
+                    if (todos.isEmpty()) stringResource(R.string.today_all_done)
+                    else androidx.compose.ui.res.pluralStringResource(R.plurals.today_todos_left, todos.size, todos.size),
+                    style = outfit(500, s(13.4f, k), -0.01f).copy(color = Color(0xFF3B6593)), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(end = m(16, k)).baselineAt(m(22, k), m(133, k)),
+                )
+                todos.firstOrNull()?.let { next ->
+                    Text(
+                        next.text, style = outfit(400, s(11.1f, k)).copy(color = Color(0xFF1E1515)), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(end = m(16, k)).baselineAt(m(22, k), m(153, k)),
+                    )
+                }
                 Text(stringResource(R.string.today_overview), style = outfit(400, s(11.1f, k)).copy(color = Color(0xFF84909C)), modifier = Modifier.baselineAt(m(22, k), m(177, k)))
             }
         }
+    }
+    if (naming) {
+        var typed by remember { mutableStateOf(vm.ownerName) }
+        com.chethan616.clearpdf.ui.glass.GlassDialog(
+            onDismiss = { naming = false }, title = stringResource(R.string.settings_your_name), icon = LucideIcons.UserRound, accent = com.chethan616.clearpdf.ui.theme.Candy.Tangerine,
+            confirm = stringResource(R.string.common_done), onConfirm = { vm.updateOwnerName(typed); naming = false },
+            dismiss = stringResource(R.string.common_cancel),
+        ) { com.chethan616.clearpdf.ui.glass.GlassTextField(typed, { typed = it }, stringResource(R.string.settings_your_name_hint)) }
     }
 }

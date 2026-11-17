@@ -1598,6 +1598,12 @@
     <string name="today_evening">Buonasera</string>
     <string name="today_night">Buonanotte</string>
     <string name="today_overview">Panoramica del giorno</string>
+    <string name="today_all_done">Niente da fare</string>
+    <plurals name="today_todos_left">
+        <item quantity="one">%d attività rimasta</item>
+        <item quantity="many">%d attività rimaste</item>
+        <item quantity="other">%d attività rimaste</item>
+    </plurals>
     <plurals name="today_left">
         <item quantity="one">%d attività da fare</item>
         <item quantity="other">%d attività da fare</item>

@@ -1616,6 +1616,12 @@
     <string name="today_evening">Buenas noches</string>
     <string name="today_night">Buenas noches</string>
     <string name="today_overview">Resumen del día</string>
+    <string name="today_all_done">No queda nada por hacer</string>
+    <plurals name="today_todos_left">
+        <item quantity="one">Queda %d tarea</item>
+        <item quantity="many">Quedan %d tareas</item>
+        <item quantity="other">Quedan %d tareas</item>
+    </plurals>
     <plurals name="today_left">
         <item quantity="one">%d tarea pendiente</item>
         <item quantity="other">%d tareas pendientes</item>
