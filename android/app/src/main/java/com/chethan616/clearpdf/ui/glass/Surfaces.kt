@@ -30,7 +30,24 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.chethan616.clearpdf.ui.theme.clear
+import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.drawBackdrop
+
+/** A quiet, theme-tinted backdrop for controls that float over Clean mode content. */
+@Composable
+internal fun Modifier.cleanFloatingSurface(shape: Shape): Modifier {
+    val panel = clear.solidPanel
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
+        return clip(shape).background(panel)
+    }
+    return drawBackdrop(
+        backdrop = LocalBackdrop.current,
+        shape = { shape },
+        effects = { blur(10.dp.toPx()) },
+        highlight = null,
+        shadow = null,
+    ).background(panel.copy(alpha = 0.82f), shape)
+}
 
 /**
  * A still glass surface (bars, the dock's body, panels, sheets): refracts [LocalBackdrop] through

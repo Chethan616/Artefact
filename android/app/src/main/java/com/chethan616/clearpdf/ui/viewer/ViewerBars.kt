@@ -1,5 +1,6 @@
 package com.chethan616.clearpdf.ui.viewer
 
+import com.chethan616.clearpdf.ui.glass.cleanFloatingSurface
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -375,7 +376,7 @@ fun QuickToolbar(
     if (clear.clean) {
         Row(
             Modifier.fillMaxWidth().height(BottomBarHeight).padding(horizontal = 12.dp, vertical = 4.dp)
-                .glassBar(RoundedRectangle(16.dp)).padding(4.dp),
+                .cleanFloatingSurface(RoundedRectangle(16.dp)).padding(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             for (tool in shown) {
