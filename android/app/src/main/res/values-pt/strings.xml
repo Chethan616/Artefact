@@ -1210,4 +1210,9 @@
     <string name="settings_your_name">O seu nome</string>
     <string name="settings_your_name_hint">Mostrado acima da saudação de Hoje</string>
     <string name="thoughts_audios">Áudios</string>
+    <string name="settings_files_appearance">Aspeto dos ficheiros</string>
+    <string name="files_style_glass">Vidro líquido</string>
+    <string name="files_style_clean">Simples</string>
+    <string name="files_style_glass_detail">Predefinido · Superfícies translúcidas</string>
+    <string name="files_style_clean_detail">Superfícies opacas</string>
 </resources>

@@ -46,6 +46,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -151,6 +156,7 @@ private fun SettingsRoot(vm: AppViewModel, openLicences: () -> Unit, openGlass: 
             val motionName = MotionStyle.Presets.indexOf(MotionSettings.style).let { if (it < 0) custom else motionPresetNames()[it] }
             Panel {
                 ThemePicker(vm.theme) { vm.setThemeChoice(it) }
+                FilesAppearancePicker(vm.cleanFiles, vm::updateCleanFiles)
                 SettingRow(LucideIcons.Globe, Candy.Sky, stringResource(R.string.settings_language), openAppLanguage, value = appLanguage, chevron = true)
                 SettingRow(LucideIcons.Sparkles, Candy.Grape, stringResource(R.string.settings_glass_motion), openGlass, value = "$glassName · $motionName", chevron = true)
                 ToggleRow(LucideIcons.Smartphone, Candy.Bubblegum, stringResource(R.string.settings_haptics), null, GlassSettings.haptics) { GlassSettings.updateHaptics(context, it) }
@@ -393,6 +399,31 @@ internal fun Panel(content: @Composable ColumnScope.() -> Unit) {
         Spacer(Modifier.height(4.dp))
         content()
         Spacer(Modifier.height(4.dp))
+    }
+}
+
+/** The Files surface choice is independent of the app's light or dark theme. */
+@Composable
+private fun FilesAppearancePicker(cleanFiles: Boolean, onPick: (Boolean) -> Unit) {
+    Choice(stringResource(R.string.settings_files_appearance)) {
+        Column(Modifier.selectableGroup()) {
+            for (clean in listOf(false, true)) {
+                val active = clean == cleanFiles
+                Row(
+                    Modifier.fillMaxWidth().pressable({ onPick(clean) }, role = Role.RadioButton)
+                        .semantics { selected = active }.heightIn(min = 48.dp).padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    RadioButton(selected = active, onClick = null,
+                        colors = RadioButtonDefaults.colors(selectedColor = Candy.Sky, unselectedColor = clear.inkSoft))
+                    Column {
+                        Text(stringResource(if (clean) R.string.files_style_clean else R.string.files_style_glass), style = ClearType.BodyStrong, color = clear.ink)
+                        Text(stringResource(if (clean) R.string.files_style_clean_detail else R.string.files_style_glass_detail), style = ClearType.Caption, color = clear.inkSoft)
+                    }
+                }
+            }
+        }
     }
 }
 

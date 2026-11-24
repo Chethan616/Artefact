@@ -79,6 +79,9 @@ data class ClearColors(
     /** The canvas colour (the wallpaper's middle), for places that need one flat colour. */
     val canvas: Color get() = wall[wall.size / 2]
 
+    /** Opaque counterpart of the theme's frosted panels. */
+    val solidPanel: Color get() = frost.copy(alpha = 1f)
+
     fun tone(t: Tone): CardTone = tones.getValue(t)
 }
 

@@ -195,7 +195,11 @@ private fun Shell(vm: AppViewModel, onBrowse: () -> Unit, onPickSignatureImage: 
     // (nor while a document from Quick Preview opens: the desk is never seen on that way in)
     val underDoc = Modifier.drawWithContent { if (!reveal.covering && !vm.expandingPreview) drawContent() }
     GlassStage(
-        wallpaper = { Aurora(mood, underDoc) },
+        wallpaper = {
+            if (route == HomeTab.Files.name && vm.cleanFiles) {
+                Box(Modifier.fillMaxSize().then(underDoc).background(c.desk))
+            } else Aurora(mood, underDoc)
+        },
         screens = {
             Box(Modifier.fillMaxSize().then(underDoc).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
                 RouteHost(route) { r ->

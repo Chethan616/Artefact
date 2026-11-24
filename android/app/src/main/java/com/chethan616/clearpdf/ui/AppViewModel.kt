@@ -975,6 +975,15 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         appPrefs.edit().putString("theme", t.name).apply()
     }
 
+    /** Whether Files uses solid surfaces in the current app theme. */
+    var cleanFiles by mutableStateOf(appPrefs.getBoolean("cleanFiles", false))
+        private set
+
+    fun updateCleanFiles(clean: Boolean) {
+        cleanFiles = clean
+        appPrefs.edit().putBoolean("cleanFiles", clean).apply()
+    }
+
     /**
      * Extra Features ▸ the status bar in documents: shown with the viewer's bars, and the page uses the
      * whole screen when they hide (off: the reference's black band where the camera is).
