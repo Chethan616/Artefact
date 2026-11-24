@@ -1,5 +1,7 @@
 package com.chethan616.clearpdf.ui.glass
 
+import android.os.Build
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,15 +37,25 @@ import com.kyant.backdrop.drawBackdrop
 
 /** A quiet, theme-tinted backdrop for controls that float over Clean mode content. */
 @Composable
-internal fun Modifier.cleanFloatingSurface(shape: Shape): Modifier {
+internal fun Modifier.cleanFloatingSurface(shape: Shape, strongestAtTop: Boolean = false): Modifier {
     val panel = clear.solidPanel
-    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
         return clip(shape).background(panel)
+    }
+    val mask = remember(strongestAtTop) {
+        val light = Color.Black.copy(alpha = 0.12f)
+        val stops = if (strongestAtTop) listOf(Color.Black, light) else listOf(light, Color.Black)
+        Brush.verticalGradient(stops)
     }
     return drawBackdrop(
         backdrop = LocalBackdrop.current,
         shape = { shape },
-        effects = { blur(10.dp.toPx()) },
+        effects = { blur(14.dp.toPx()) },
+        // Mask the recorded backdrop only. The underlying scene supplies the sharper detail.
+        onDrawBackdrop = { draw ->
+            draw()
+            drawRect(mask, blendMode = BlendMode.DstIn)
+        },
         highlight = null,
         shadow = null,
     ).background(panel.copy(alpha = 0.82f), shape)

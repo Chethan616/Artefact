@@ -342,7 +342,7 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
                 Box(
                     Modifier.offset { IntOffset(0, maxOf(topInset, filterY)) }
                         .fillMaxWidth()
-                        .then(if (pinned) Modifier.cleanFloatingSurface(RectangleShape) else Modifier)
+                        .then(if (pinned) Modifier.cleanFloatingSurface(RectangleShape, strongestAtTop = true) else Modifier)
                         .padding(horizontal = 16.dp),
                 ) {
                     FilterChips(filter) { filter = it }
