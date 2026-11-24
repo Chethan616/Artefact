@@ -1,5 +1,6 @@
 package com.chethan616.clearpdf.ui.home
 
+import com.chethan616.clearpdf.ui.glass.cleanFloatingSurface
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
@@ -308,9 +309,17 @@ fun BoxScope.CreateDock(
             }
             .onGloballyPositioned { if (into.value == 0f) dockBottom[0] = it.boundsInWindow().bottom }
             // the very glass of the Back and menu buttons; the recorder darkens it so its white reads
-            .glass(Capsule, c.glass, blur = 3.dp, lensHeight = 14.dp, lensAmount = 26.dp)
+            .then(
+                if (c.clean) Modifier.cleanFloatingSurface(Capsule)
+                else Modifier.glass(Capsule, c.glass, blur = 3.dp, lensHeight = 14.dp, lensAmount = 26.dp),
+            )
             .graphicsLayer { clip = true; shape = Capsule }
-            .drawBehind { drawRect(if (c.clean && shown != null) DockInk else c.capsule, alpha = lerp(0.5f, 1.9f, morph.value.coerceIn(0f, 1f)).coerceAtMost(1f)) }
+            .drawBehind {
+                if (!c.clean || shown != null) {
+                    val opacity = lerp(0.5f, 1.9f, morph.value.coerceIn(0f, 1f)).coerceAtMost(1f)
+                    drawRect(if (c.clean) DockInk else c.capsule, alpha = opacity)
+                }
+            }
             .padding(6.dp),
     ) { measurables, constraints ->
         val loose = constraints.copy(minWidth = 0, minHeight = 0)
