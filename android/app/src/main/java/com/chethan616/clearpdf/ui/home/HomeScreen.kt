@@ -373,6 +373,10 @@ private fun DeskTitle(filter: DeskFilter) {
     val c = clear
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
+    if (c.clean) {
+        Text(stringResource(filter.title), style = ClearType.Display, color = c.ink, modifier = Modifier.padding(start = 6.dp, top = 20.dp))
+        return
+    }
     val simplifiedChinese = LocalConfiguration.current.locales[0]?.let(AppLocale::isSimplifiedChinese) == true
     val titles = DeskFilter.entries.map { it to stringResource(it.title) }
     BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 6.dp, top = 20.dp)) {
@@ -464,12 +468,12 @@ fun DeskChip(label: String, chosen: Boolean, onClick: () -> Unit) {
     com.chethan616.clearpdf.ui.glass.GlassChip(
         onClick = onClick,
         height = 46.dp,
-        fill = { Candy.Chip.copy(alpha = 0.94f * lit) },
+        fill = { if (c.clean) Candy.Sky.copy(alpha = 0.16f * lit) else Candy.Chip.copy(alpha = 0.94f * lit) },
         contentPadding = PaddingValues(horizontal = 22.dp),
         tap = com.chethan616.clearpdf.ui.glass.Feel.Tick,
-        ink = if (chosen) Color(0xFF1C2433) else c.ink,
+        ink = if (chosen && !c.clean) Color(0xFF1C2433) else c.ink,
     ) {
-        Text(label, style = ClearType.Body.copy(fontSize = 16.sp), color = if (chosen) Color(0xFF1C2433) else c.ink)
+        Text(label, style = ClearType.Body.copy(fontSize = 16.sp), color = if (chosen && !c.clean) Color(0xFF1C2433) else c.ink)
     }
 }
 
