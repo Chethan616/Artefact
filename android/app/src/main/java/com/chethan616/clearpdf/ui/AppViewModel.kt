@@ -975,13 +975,15 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         appPrefs.edit().putString("theme", t.name).apply()
     }
 
-    /** Whether Files uses solid surfaces in the current app theme. */
-    var cleanFiles by mutableStateOf(appPrefs.getBoolean("cleanFiles", false))
+    /** Whether the app uses solid surfaces in the current app theme. */
+    var cleanAppearance by mutableStateOf(com.chethan616.clearpdf.ui.theme.savedCleanAppearance(app))
         private set
 
-    fun updateCleanFiles(clean: Boolean) {
-        cleanFiles = clean
-        appPrefs.edit().putBoolean("cleanFiles", clean).apply()
+    fun updateCleanAppearance(clean: Boolean) {
+        cleanAppearance = clean
+        appPrefs.edit().putBoolean("cleanAppearance", clean).apply()
+        com.chethan616.clearpdf.widget.Widgets.refreshAll(getApplication())
+        com.chethan616.clearpdf.widget.Widgets.refreshRecent(this, force = true)
     }
 
     /**

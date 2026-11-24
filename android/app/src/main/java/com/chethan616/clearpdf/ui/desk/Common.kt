@@ -237,7 +237,7 @@ fun FileListItem(vm: AppViewModel, r: FileRow, recent: Boolean, modifier: Modifi
             Spacer(Modifier.height(2.dp))
             Text(
                 listOfNotNull(whenLabel(r.date), r.size.takeIf { it > 0 }?.let { formatSize(it) }).joinToString("  ·  "),
-                style = ClearType.Caption, color = if (vm.cleanFiles && ticked) c.ink else c.inkSoft, maxLines = 1,
+                style = ClearType.Caption, color = if (vm.cleanAppearance && ticked) c.ink else c.inkSoft, maxLines = 1,
             )
         }
         if (selecting) {

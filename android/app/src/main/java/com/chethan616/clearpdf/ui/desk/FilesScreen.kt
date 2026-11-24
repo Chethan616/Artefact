@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -23,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.text.BasicTextField
@@ -42,7 +39,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -51,11 +47,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.chethan616.clearpdf.R
 import com.chethan616.clearpdf.ui.AppViewModel
@@ -70,7 +62,6 @@ import com.chethan616.clearpdf.ui.glass.GlassRow
 import com.chethan616.clearpdf.ui.glass.GlassTab
 import com.chethan616.clearpdf.ui.glass.GlassTabs
 import com.chethan616.clearpdf.ui.glass.WashPanel
-import com.chethan616.clearpdf.ui.glass.RoundedRectangle
 import com.chethan616.clearpdf.ui.glass.glass
 import com.chethan616.clearpdf.ui.glass.pressable
 import com.chethan616.clearpdf.ui.home.FileRow
@@ -92,7 +83,7 @@ private const val PanelRows = 20
 @Composable
 fun FilesScreen(vm: AppViewModel, onBrowse: () -> Unit) {
     val c = clear
-    val clean = vm.cleanFiles
+    val clean = vm.cleanAppearance
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var query by rememberSaveable { mutableStateOf("") }
     var sortByName by rememberSaveable { mutableStateOf(false) }
@@ -167,14 +158,15 @@ fun FilesScreen(vm: AppViewModel, onBrowse: () -> Unit) {
         item(key = "search") { SearchCapsule(query, { query = it }, clean, onSearch = { vm.addRecentSearch(query) }) }
         if (query.isBlank()) {
             item(key = "tabs") {
-                FilesTabs(
+                GlassTabs(
                     tabs = listOf(
                         GlassTab(stringResource(R.string.home_list_recent), accent = Candy.Tomato),
                         GlassTab(stringResource(R.string.home_list_starred), accent = Candy.Tangerine),
                         GlassTab(stringResource(R.string.home_list_on_device), accent = Candy.Sky),
                     ),
                     selected = tab, onSelect = { tab = it; vm.selectedFiles.clear() },
-                    clean = clean,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp).fillMaxWidth(),
+                    height = 48.dp,
                 )
             }
         }
@@ -255,7 +247,7 @@ private fun LazyListScope.panels(vm: AppViewModel, key: String, title: String?, 
         item(key = "t-$key") {
             Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
                 Text(title, style = ClearType.Title, color = clear.ink, modifier = Modifier.weight(1f))
-                Text(rows.size.toString(), style = ClearType.Number, color = if (vm.cleanFiles) clear.ink else clear.inkFaint)
+                Text(rows.size.toString(), style = ClearType.Number, color = if (vm.cleanAppearance) clear.ink else clear.inkFaint)
             }
         }
     } else {
@@ -263,43 +255,14 @@ private fun LazyListScope.panels(vm: AppViewModel, key: String, title: String?, 
     }
     rows.chunked(PanelRows).forEachIndexed { i, chunk ->
         item(key = "p-$key-$i") {
-            FilesPanel(vm.cleanFiles, Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth()) {
+            WashPanel(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth()) {
                 Spacer(Modifier.height(4.dp))
                 chunk.forEachIndexed { index, r ->
-                    if (vm.cleanFiles && index > 0) HorizontalDivider(Modifier.padding(horizontal = 14.dp), color = clear.line)
+                    if (vm.cleanAppearance && index > 0) HorizontalDivider(Modifier.padding(horizontal = 14.dp), color = clear.line)
                     FileListItem(vm, r, recent)
                 }
                 Spacer(Modifier.height(4.dp))
             }
-        }
-    }
-}
-
-/** The same grouped rows sit on the wallpaper or an opaque surface in the current theme. */
-@Composable
-private fun FilesPanel(clean: Boolean, modifier: Modifier, content: @Composable ColumnScope.() -> Unit) {
-    if (clean) {
-        Column(modifier.clip(RoundedRectangle(28.dp)).background(clear.solidPanel), content = content)
-    } else WashPanel(modifier, content = content)
-}
-
-/** A solid segmented control in Clean, or the draggable glass capsule on the wallpaper. */
-@Composable
-private fun FilesTabs(tabs: List<GlassTab>, selected: Int, onSelect: (Int) -> Unit, clean: Boolean) {
-    val modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp).fillMaxWidth()
-    if (!clean) {
-        GlassTabs(tabs, selected, onSelect, modifier, height = 48.dp)
-        return
-    }
-    Row(modifier.clip(Capsule).background(clear.solidPanel).selectableGroup().padding(2.dp), verticalAlignment = Alignment.CenterVertically) {
-        tabs.forEachIndexed { index, tab ->
-            val active = index == selected
-            Box(
-                Modifier.weight(1f).heightIn(min = 44.dp).clip(Capsule)
-                    .background(if (active) Candy.Sky.copy(alpha = 0.16f) else Color.Transparent)
-                    .pressable({ onSelect(index) }, role = Role.Tab).semantics { this.selected = active },
-                contentAlignment = Alignment.Center,
-            ) { Text(tab.label, style = ClearType.Label, color = clear.ink, textAlign = TextAlign.Center) }
         }
     }
 }
@@ -353,7 +316,7 @@ private fun SelectionHeader(vm: AppViewModel, recent: Boolean, onDelete: () -> U
 private fun Places(vm: AppViewModel, onBrowse: () -> Unit, onDevice: () -> Unit) {
     Column {
         Text(stringResource(R.string.files_places), style = ClearType.Title, color = clear.ink, modifier = Modifier.padding(start = 24.dp, top = 26.dp, bottom = 8.dp))
-        FilesPanel(vm.cleanFiles, Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
+        WashPanel(Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
             Spacer(Modifier.height(4.dp))
             PlaceRow(LucideIcons.Smartphone, stringResource(R.string.home_on_this_device), Candy.Sky, onDevice)
             PlaceRow(LucideIcons.Images, stringResource(R.string.home_photos), Candy.Lemon) { vm.pickPhotosToPdf() }

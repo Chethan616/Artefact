@@ -122,7 +122,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun ClearApp(vm: AppViewModel, onBrowse: () -> Unit, onPickSignatureImage: () -> Unit) {
     val overlays = remember { GlassOverlayHost() }
-    ClearTheme(vm.theme) {
+    ClearTheme(vm.theme, vm.cleanAppearance) {
         PdfcraftTheme(vm.theme) {
             ProvideGlassHaptics {
                 // Adaptive luminance: one sampler of the window for every screen's glass
@@ -195,11 +195,7 @@ private fun Shell(vm: AppViewModel, onBrowse: () -> Unit, onPickSignatureImage: 
     // (nor while a document from Quick Preview opens: the desk is never seen on that way in)
     val underDoc = Modifier.drawWithContent { if (!reveal.covering && !vm.expandingPreview) drawContent() }
     GlassStage(
-        wallpaper = {
-            if (route == HomeTab.Files.name && vm.cleanFiles) {
-                Box(Modifier.fillMaxSize().then(underDoc).background(c.desk))
-            } else Aurora(mood, underDoc)
-        },
+        wallpaper = { Aurora(mood, underDoc) },
         screens = {
             Box(Modifier.fillMaxSize().then(underDoc).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
                 RouteHost(route) { r ->

@@ -156,7 +156,7 @@ private fun SettingsRoot(vm: AppViewModel, openLicences: () -> Unit, openGlass: 
             val motionName = MotionStyle.Presets.indexOf(MotionSettings.style).let { if (it < 0) custom else motionPresetNames()[it] }
             Panel {
                 ThemePicker(vm.theme) { vm.setThemeChoice(it) }
-                FilesAppearancePicker(vm.cleanFiles, vm::updateCleanFiles)
+                AppearancePicker(vm.cleanAppearance, vm::updateCleanAppearance)
                 SettingRow(LucideIcons.Globe, Candy.Sky, stringResource(R.string.settings_language), openAppLanguage, value = appLanguage, chevron = true)
                 SettingRow(LucideIcons.Sparkles, Candy.Grape, stringResource(R.string.settings_glass_motion), openGlass, value = "$glassName · $motionName", chevron = true)
                 ToggleRow(LucideIcons.Smartphone, Candy.Bubblegum, stringResource(R.string.settings_haptics), null, GlassSettings.haptics) { GlassSettings.updateHaptics(context, it) }
@@ -168,7 +168,7 @@ private fun SettingsRoot(vm: AppViewModel, openLicences: () -> Unit, openGlass: 
             Panel {
                 // the name Today greets (small, above "Good Morning"); empty: none
                 SettingRow(LucideIcons.UserRound, Candy.Tangerine, stringResource(R.string.settings_your_name), { naming = true }, value = vm.ownerName.ifBlank { null }, chevron = true, first = true)
-                WallpaperPicker(context)
+                if (!clear.clean) WallpaperPicker(context)
             }
         }
 
@@ -402,13 +402,13 @@ internal fun Panel(content: @Composable ColumnScope.() -> Unit) {
     }
 }
 
-/** The Files surface choice is independent of the app's light or dark theme. */
+/** The app surface choice is independent of the app's light or dark theme. */
 @Composable
-private fun FilesAppearancePicker(cleanFiles: Boolean, onPick: (Boolean) -> Unit) {
-    Choice(stringResource(R.string.settings_files_appearance)) {
+private fun AppearancePicker(cleanAppearance: Boolean, onPick: (Boolean) -> Unit) {
+    Choice(stringResource(R.string.settings_app_appearance)) {
         Column(Modifier.selectableGroup()) {
             for (clean in listOf(false, true)) {
-                val active = clean == cleanFiles
+                val active = clean == cleanAppearance
                 Row(
                     Modifier.fillMaxWidth().pressable({ onPick(clean) }, role = Role.RadioButton)
                         .semantics { selected = active }.heightIn(min = 48.dp).padding(horizontal = 8.dp, vertical = 4.dp),
@@ -418,8 +418,8 @@ private fun FilesAppearancePicker(cleanFiles: Boolean, onPick: (Boolean) -> Unit
                     RadioButton(selected = active, onClick = null,
                         colors = RadioButtonDefaults.colors(selectedColor = Candy.Sky, unselectedColor = clear.inkSoft))
                     Column {
-                        Text(stringResource(if (clean) R.string.files_style_clean else R.string.files_style_glass), style = ClearType.BodyStrong, color = clear.ink)
-                        Text(stringResource(if (clean) R.string.files_style_clean_detail else R.string.files_style_glass_detail), style = ClearType.Caption, color = clear.inkSoft)
+                        Text(stringResource(if (clean) R.string.app_style_clean else R.string.app_style_glass), style = ClearType.BodyStrong, color = clear.ink)
+                        Text(stringResource(if (clean) R.string.app_style_clean_detail else R.string.app_style_glass_detail), style = ClearType.Caption, color = clear.inkSoft)
                     }
                 }
             }
@@ -439,6 +439,16 @@ private fun ThemePicker(current: ThemeChoice, onPick: (ThemeChoice) -> Unit) {
         ThemeChoice.Light to stringResource(R.string.settings_theme_light),
         ThemeChoice.Dark to stringResource(R.string.settings_theme_dark),
     )
+    if (c.clean) {
+        Choice(stringResource(R.string.settings_theme)) {
+            GlassTabs(
+                choices.map { GlassTab(it.second, accent = Candy.Sky) },
+                choices.indexOfFirst { it.first == current }, { onPick(choices[it].first) },
+                Modifier.fillMaxWidth(), height = 48.dp,
+            )
+        }
+        return
+    }
     Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         choices.forEach { (choice, label) ->
             val on = choice == current
