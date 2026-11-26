@@ -418,6 +418,10 @@
     <string name="sheet_single_page">Одна страница</string>
     <string name="sheet_reading_mode">Режим чтения</string>
     <string name="sheet_night_mode">Ночной режим</string>
+
+    <!-- More menu: the small headings that group its rows -->
+    <string name="menu_section_page">Страница</string>
+    <string name="menu_section_file">Файл</string>
     <string name="sheet_tab_contents">Оглавление</string>
     <string name="sheet_tab_bookmarks">Закладки</string>
     <string name="sheet_no_contents">В этом документе нет оглавления.</string>

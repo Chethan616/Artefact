@@ -68,6 +68,7 @@ import com.chethan616.clearpdf.ui.SheetTitle
 import com.chethan616.clearpdf.ui.pdfColors
 import com.chethan616.clearpdf.ui.SheetCircleButton
 import com.chethan616.clearpdf.ui.SheetSection
+import com.chethan616.clearpdf.ui.glass.MenuTrail
 import com.chethan616.clearpdf.ui.glass.pressable
 import com.chethan616.clearpdf.ui.theme.Candy
 import com.chethan616.clearpdf.ui.theme.ClearType
@@ -93,50 +94,66 @@ fun MoreSheet(
     fromButton: Boolean = false,
     /** The circle is back in the bar (the glass has folded into it). */
     onGone: () -> Unit = {},
+    /** Opens More tools (the tools the bar cannot hold) from this menu's own button. */
+    onMoreTools: ((Rect) -> Unit)? = null,
 ) {
     val ctl = doc.controller
     val bookmarked = vm.bookmarks.isBookmarked(doc, doc.viewer.currentPage)
     val starred = vm.isStarred(doc)
+    // what the bottom bar already shows is not offered again here: one action, one place
+    val slots = toolbarSlots(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)
+    val inBar = QuickTool.barFor(doc, vm.quickToolbar.bar).take(slots).toSet()
+    val page = stringResource(R.string.menu_section_page)
+    val reading = stringResource(R.string.settings_reading)
+    val file = stringResource(R.string.menu_section_file)
+    val ink = com.chethan616.clearpdf.ui.glass.LocalGlassInk.current
+    val header: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit = {
+        Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)) {
+            Text(doc.title, style = ClearType.Title, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(8.dp))
+            Box(Modifier.fillMaxWidth().height(1.dp).background(ink.copy(alpha = 0.12f)))
+        }
+    }
     val items = buildList {
         add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(if (starred) R.string.sheet_remove_star else R.string.sheet_add_star), LucideIcons.Star) { vm.toggleStar(doc) })
         add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(if (bookmarked) R.string.sheet_remove_bookmark else R.string.sheet_add_bookmark), if (bookmarked) LucideIcons.BookmarkMinus else LucideIcons.BookmarkPlus) { vm.toggleBookmark(doc) })
-        add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_read_aloud), LucideIcons.Volume2) { vm.startReadAloud(doc) })
-        if (doc.isSlides) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_present), LucideIcons.Presentation) { vm.presenting = doc })
-        if (doc.isSlides) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_slide_notes), LucideIcons.FileText) { ctl.sheet = ViewerSheet.SlideNotes })
-        else if (!doc.isOffice) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_edit_pdf), LucideIcons.FilePenLine) { vm.enterTool(doc, ViewerTool.Edit) })
-        add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_print), LucideIcons.Printer) { vm.print(doc) })
-        add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_view_settings), LucideIcons.Glasses) { ctl.sheet = ViewerSheet.ViewSettings })
-        add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(
-            stringResource(if (ctl.nightMode) R.string.viewer_night_mode_on else R.string.viewer_night_mode_off),
-            if (ctl.nightMode) LucideIcons.Check else LucideIcons.Moon,
-        ) { vm.setNightMode(doc, !ctl.nightMode) })
-        add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_pages), LucideIcons.LayoutGrid) { ctl.pagesOpen = true })
-        add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_bookmarks_contents), LucideIcons.Bookmark) { ctl.sheet = ViewerSheet.Bookmarks })
-        if (doc.info.attachments > 0u) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_attachments), LucideIcons.Paperclip) { ctl.sheet = ViewerSheet.Attachments })
+        if (QuickTool.ReadAloud !in inBar) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_read_aloud), LucideIcons.Volume2) { vm.startReadAloud(doc) })
+        if (doc.isSlides && QuickTool.Present !in inBar) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_present), LucideIcons.Presentation) { vm.presenting = doc })
+        if (!doc.isOffice && QuickTool.Edit !in inBar) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_edit_pdf), LucideIcons.FilePenLine) { vm.enterTool(doc, ViewerTool.Edit) })
+        // the document itself: its pages, its contents and what is written on them
+        if (doc.isSlides) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_slide_notes), LucideIcons.FileText, section = page, trail = MenuTrail.Chevron) { ctl.sheet = ViewerSheet.SlideNotes })
+        add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_pages), LucideIcons.LayoutGrid, section = page, trail = MenuTrail.Chevron) { ctl.pagesOpen = true })
+        add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_bookmarks_contents), LucideIcons.Bookmark, section = page, trail = MenuTrail.Chevron) { ctl.sheet = ViewerSheet.Bookmarks })
+        if (doc.info.attachments > 0u) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_attachments), LucideIcons.Paperclip, section = page, trail = MenuTrail.Chevron) { ctl.sheet = ViewerSheet.Attachments })
         if (!doc.isOffice) {
-            add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_comment_list), LucideIcons.MessagesSquare) { ctl.sheet = ViewerSheet.Comments })
-            add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sign_signatures), LucideIcons.ShieldCheck) { ctl.sheet = ViewerSheet.Signatures })
+            add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_comment_list), LucideIcons.MessagesSquare, section = page, trail = MenuTrail.Chevron) { ctl.sheet = ViewerSheet.Comments })
+            add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sign_signatures), LucideIcons.ShieldCheck, section = page, trail = MenuTrail.Chevron) { ctl.sheet = ViewerSheet.Signatures })
         }
+        // how it reads
+        add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_night_mode), LucideIcons.Moon, section = reading, trail = MenuTrail.Switch(ctl.nightMode)) { vm.setNightMode(doc, !ctl.nightMode) })
+        add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_view_settings), LucideIcons.Glasses, section = reading, trail = MenuTrail.Chevron) { ctl.sheet = ViewerSheet.ViewSettings })
+        // the file itself: what the bar cannot hold
+        if (QuickTool.Print !in inBar) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_print), LucideIcons.Printer, section = file) { vm.print(doc) })
         if (doc.isOffice) {
-            add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_export_pdf), LucideIcons.FilePdf) { vm.exportOffice(doc, "pdf") })
-            add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_save_as), LucideIcons.SaveAs) { ctl.sheet = ViewerSheet.SaveAs })
+            if (QuickTool.ExportPdf !in inBar) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_export_pdf), LucideIcons.FilePdf, section = file) { vm.exportOffice(doc, "pdf") })
+            if (QuickTool.SaveAs !in inBar) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_save_as), LucideIcons.SaveAs, section = file, trail = MenuTrail.Chevron) { ctl.sheet = ViewerSheet.SaveAs })
         } else {
-            add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_export_as), LucideIcons.FileOutput) { vm.openExport(doc) })
-            add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_compress), LucideIcons.FileArchive) { vm.openCompress(doc) })
-            add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_combine), LucideIcons.Combine) { vm.openCombine(doc) })
-            add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_set_password), LucideIcons.FileLock2) { vm.openProtect(doc) })
-            add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_create_pdf), LucideIcons.FilePlus2) { vm.openCreate() })
-            add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_save_copy), LucideIcons.Copy) { vm.saveCopyAs(doc) })
+            add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_save_copy), LucideIcons.Copy, section = file) { vm.saveCopyAs(doc) })
+            // the rest of the tools (Export, Compress, Combine, Protect, Create PDF): a row, and the
+            // panel they live in
+            if (onMoreTools != null) {
+                add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_more_tools), LucideIcons.FileOutput, section = file, trail = MenuTrail.Chevron) { onMoreTools.invoke(anchor) })
+            }
         }
         doc.info.undo?.let { label -> add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_undo_action, label), LucideIcons.Undo2) { vm.undo(doc) }) }
         doc.info.redo?.let { label -> add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_redo_action, label), LucideIcons.Redo2) { vm.redo(doc) }) }
     }
     if (fromButton) {
-        com.chethan616.clearpdf.ui.glass.MorphButtonSurface(anchor, open = true, onDismiss = { ctl.sheet = ViewerSheet.None }, onGone = onGone, items = items) {
+        com.chethan616.clearpdf.ui.glass.MorphButtonSurface(anchor, open = true, onDismiss = { ctl.sheet = ViewerSheet.None }, onGone = onGone, items = items, header = header) {
             com.chethan616.clearpdf.ui.glass.GlassIcon(LucideIcons.Ellipsis, null, Modifier.size(21.dp))
         }
     } else {
-        com.chethan616.clearpdf.ui.glass.GlassMenu(anchor, { ctl.sheet = ViewerSheet.None }, items)
+        com.chethan616.clearpdf.ui.glass.GlassMenu(anchor, { ctl.sheet = ViewerSheet.None }, items, header = header)
     }
 }
 

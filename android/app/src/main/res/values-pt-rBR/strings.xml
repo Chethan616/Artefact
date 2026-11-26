@@ -406,6 +406,10 @@
     <string name="sheet_single_page">Página única</string>
     <string name="sheet_reading_mode">Modo de leitura</string>
     <string name="sheet_night_mode">Modo noturno</string>
+
+    <!-- More menu: the small headings that group its rows -->
+    <string name="menu_section_page">Página</string>
+    <string name="menu_section_file">Arquivo</string>
     <string name="sheet_tab_contents">Sumário</string>
     <string name="sheet_tab_bookmarks">Favoritos</string>
     <string name="sheet_no_contents">Este documento não tem sumário.</string>

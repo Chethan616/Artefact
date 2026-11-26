@@ -637,6 +637,10 @@
     <string name="sheet_reading_mode">Modo lectura</string>
     <string name="sheet_night_mode">Modo nocturno</string>
 
+    <!-- More menu: the small headings that group its rows -->
+    <string name="menu_section_page">Página</string>
+    <string name="menu_section_file">Archivo</string>
+
     <!-- Viewer sheets: Bookmarks & Table of Contents -->
     <!-- Translator note: the tab with the document's table of contents -->
     <string name="sheet_tab_contents">Índice</string>

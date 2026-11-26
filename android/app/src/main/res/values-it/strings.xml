@@ -624,6 +624,10 @@
     <string name="sheet_reading_mode">Modalità lettura</string>
     <string name="sheet_night_mode">Modalità notturna</string>
 
+    <!-- More menu: the small headings that group its rows -->
+    <string name="menu_section_page">Pagina</string>
+    <string name="menu_section_file">File</string>
+
     <!-- Segnalibri e indice -->
 
     <string name="sheet_tab_contents">Indice</string>

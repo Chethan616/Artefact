@@ -431,6 +431,10 @@
     <string name="sheet_single_page">صفحة واحدة</string>
     <string name="sheet_reading_mode">وضع القراءة</string>
     <string name="sheet_night_mode">الوضع الليلي</string>
+
+    <!-- More menu: the small headings that group its rows -->
+    <string name="menu_section_page">صفحة</string>
+    <string name="menu_section_file">ملف</string>
     <string name="sheet_tab_contents">الفهرس</string>
     <string name="sheet_tab_bookmarks">الإشارات المرجعية</string>
     <string name="sheet_no_contents">لا يحتوي هذا المستند على فهرس.</string>

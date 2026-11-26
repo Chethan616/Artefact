@@ -630,6 +630,10 @@
     <string name="sheet_reading_mode">Lesemodus</string>
     <string name="sheet_night_mode">Nachtmodus</string>
 
+    <!-- More menu: the small headings that group its rows -->
+    <string name="menu_section_page">Seite</string>
+    <string name="menu_section_file">Datei</string>
+
     <!-- Viewer sheets: Bookmarks & Table of Contents -->
     <!-- Translator note: the tab with the document's table of contents -->
     <string name="sheet_tab_contents">Inhalt</string>

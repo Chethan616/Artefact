@@ -672,6 +672,10 @@
     <string name="sheet_reading_mode">阅读模式</string>
     <string name="sheet_night_mode">夜间模式</string>
 
+    <!-- More menu: the small headings that group its rows -->
+    <string name="menu_section_page">页面</string>
+    <string name="menu_section_file">文件</string>
+
     <!-- Viewer sheets: Bookmarks & Table of Contents -->
     <!-- Translator note: the tab with the document's table of contents -->
     <string name="sheet_tab_contents">目录</string>

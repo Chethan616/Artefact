@@ -516,7 +516,11 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
         // Sheets and dialogs.
         SheetHost(ctl.sheet.takeIf { it != ViewerSheet.None }) { sheet ->
             when (sheet) {
-                ViewerSheet.More -> MoreSheet(vm, doc, moreMenuAnchor, fromButton = moreFromButton, onGone = { moreMorphUp = false })
+                ViewerSheet.More -> MoreSheet(vm, doc, moreMenuAnchor, fromButton = moreFromButton, onGone = { moreMorphUp = false }, onMoreTools = { at ->
+                    // the tools the bar cannot hold open from the same button, over the page
+                    moreToolsMenuAnchor = at
+                    ctl.sheet = ViewerSheet.MoreTools
+                })
                 ViewerSheet.ViewSettings -> ViewSettingsSheet(vm, doc)
                 ViewerSheet.Bookmarks -> BookmarksSheet(vm, doc)
                 ViewerSheet.Attachments -> AttachmentsSheet(vm, doc)

@@ -580,6 +580,10 @@
     <string name="sheet_reading_mode">Mode lecture</string>
     <string name="sheet_night_mode">Mode nuit</string>
 
+    <!-- More menu: the small headings that group its rows -->
+    <string name="menu_section_page">Page</string>
+    <string name="menu_section_file">Fichier</string>
+
     <!-- Viewer sheets: Bookmarks & Table of Contents -->
     <string name="sheet_tab_contents">Sommaire</string>
     <string name="sheet_tab_bookmarks">Signets</string>
