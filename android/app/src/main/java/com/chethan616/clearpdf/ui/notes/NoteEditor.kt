@@ -46,8 +46,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -87,6 +90,7 @@ import com.chethan616.clearpdf.ui.glass.GlassIcon
 import com.chethan616.clearpdf.ui.glass.GlassMenu
 import com.chethan616.clearpdf.ui.glass.GlassMenuItem
 import com.chethan616.clearpdf.ui.glass.GlassMotion
+import com.chethan616.clearpdf.ui.glass.LocalScreenInk
 import com.chethan616.clearpdf.ui.glass.glass
 import com.chethan616.clearpdf.ui.glass.pressable
 import com.chethan616.clearpdf.ui.home.NoteImage
@@ -139,6 +143,7 @@ fun NoteEditor(vm: AppViewModel, id: String) {
     LaunchedEffect(id) { if (note.isEmpty) runCatching { titleFocus.requestFocus() } }
 
     Box(Modifier.fillMaxSize()) {
+        ReadingVeil()
         LazyColumn(
             Modifier.fillMaxSize().imePadding(),
             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 140.dp),
@@ -159,7 +164,7 @@ fun NoteEditor(vm: AppViewModel, id: String) {
             item(key = "title") {
                 BasicTextField(
                     title, { title = it },
-                    textStyle = ClearType.Headline.copy(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold, color = c.ink),
+                    textStyle = ClearType.Headline.copy(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold, color = c.ink, shadow = LegibleShadow),
                     cursorBrush = SolidColor(Candy.Sky),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
                     keyboardActions = KeyboardActions(onNext = {
@@ -173,7 +178,8 @@ fun NoteEditor(vm: AppViewModel, id: String) {
                     modifier = Modifier.fillMaxWidth().padding(top = 34.dp).focusRequester(titleFocus),
                     decorationBox = { inner ->
                         Box {
-                            if (title.text.isEmpty()) Text(stringResource(if (isList) R.string.notes_list_title_hint else R.string.notes_title_hint), style = ClearType.Headline.copy(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold), color = c.ink.copy(alpha = 0.32f))
+                            // told from typed text by its weight, not only by faintness
+                            if (title.text.isEmpty()) Text(stringResource(if (isList) R.string.notes_list_title_hint else R.string.notes_title_hint), style = ClearType.Headline.copy(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.SemiBold, shadow = LegibleShadow), color = c.ink.copy(alpha = 0.62f))
                             inner()
                         }
                     },
@@ -182,7 +188,7 @@ fun NoteEditor(vm: AppViewModel, id: String) {
             item(key = "date") {
                 Text(
                     DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(note.updated)),
-                    style = ClearType.Caption, color = c.ink.copy(alpha = 0.5f), modifier = Modifier.padding(top = 10.dp, bottom = 18.dp),
+                    style = ClearType.Caption.copy(fontSize = 13.sp, shadow = LegibleShadow), color = c.ink.copy(alpha = 0.75f), modifier = Modifier.padding(top = 10.dp, bottom = 18.dp),
                 )
             }
             if (isList) {
@@ -210,16 +216,16 @@ fun NoteEditor(vm: AppViewModel, id: String) {
                         Modifier.fillMaxWidth().padding(top = 6.dp).pressable({ val n = checkItem(""); items = items + n; focusItem = n.id }).padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(LucideIcons.Plus, null, tint = c.ink.copy(alpha = 0.55f), modifier = Modifier.size(24.dp))
+                        Icon(LucideIcons.Plus, null, tint = c.ink.copy(alpha = 0.75f), modifier = Modifier.size(24.dp))
                         Spacer(Modifier.width(12.dp))
-                        Text(stringResource(R.string.notes_add_item), style = ClearType.Body.copy(fontSize = 17.sp), color = c.ink.copy(alpha = 0.55f))
+                        Text(stringResource(R.string.notes_add_item), style = ClearType.Body.copy(fontSize = 17.sp), color = c.ink.copy(alpha = 0.75f))
                     }
                 }
             } else {
                 item(key = "body") {
                     BasicTextField(
                         body, { body = it },
-                        textStyle = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 30.sp, color = c.ink.copy(alpha = 0.86f)),
+                        textStyle = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 30.sp, color = c.ink.copy(alpha = 0.94f), shadow = LegibleShadow),
                         cursorBrush = SolidColor(Candy.Sky),
                         visualTransformation = MarkdownLite(c.ink),
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
@@ -227,12 +233,12 @@ fun NoteEditor(vm: AppViewModel, id: String) {
                         decorationBox = { inner ->
                             Column {
                                 Box {
-                                    if (body.text.isEmpty()) Text(stringResource(R.string.notes_body_hint), style = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 30.sp), color = c.ink.copy(alpha = 0.38f))
+                                    if (body.text.isEmpty()) Text(stringResource(R.string.notes_body_hint), style = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 30.sp, shadow = LegibleShadow), color = c.ink.copy(alpha = 0.66f))
                                     inner()
                                 }
                                 if (reading) {
                                     Text(
-                                        stringResource(R.string.notes_body_hint), style = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 30.sp), color = c.ink.copy(alpha = 0.38f),
+                                        stringResource(R.string.notes_body_hint), style = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 30.sp, shadow = LegibleShadow), color = c.ink.copy(alpha = 0.66f),
                                         modifier = Modifier.padding(top = 30.dp).pressable({
                                             val text = body.text + "\n\n"
                                             body = TextFieldValue(text, TextRange(text.length))
@@ -304,6 +310,36 @@ fun NoteEditor(vm: AppViewModel, id: String) {
             ),
         )
     }
+}
+
+/**
+ * A soft shade under the editor's words: over a wallpaper with fine detail (the skeleton's wings and
+ * chains) the veil alone can leave a letter broken up, and a shadow binds it back together.
+ */
+private val LegibleShadow = Shadow(Color.Black.copy(alpha = 0.35f), Offset(0f, 1.5f), 6f)
+
+/**
+ * A reading veil over the wallpaper, behind the editor's words only: the light ink sits on a calmer
+ * surface without the wallpaper leaving, and the brighter the wallpaper the stronger the veil (its
+ * luminance is the window's own sampler, the one the glass reads). Faded out on a dark wallpaper, in
+ * the light theme (whose ink is dark) and in Clean appearance (already a solid page).
+ */
+@Composable
+private fun ReadingVeil() {
+    val c = clear
+    if (c.clean || !c.dark) return
+    // null while Adaptive luminance is off: then the theme's own dark backdrop is the guess
+    val luminance = LocalScreenInk.current?.frame?.average() ?: 0.14f
+    val top = (0.15f + 0.35f * luminance).coerceIn(0.15f, 0.50f)
+    Box(
+        Modifier.fillMaxSize().background(
+            Brush.verticalGradient(
+                0f to Color.Black.copy(alpha = top),
+                0.6f to Color.Black.copy(alpha = top * 0.88f),
+                1f to Color.Black.copy(alpha = top * 0.45f),
+            )
+        )
+    )
 }
 
 /** A list item being written: its round tick and its words; Enter makes the next, Backspace on nothing removes it. */
