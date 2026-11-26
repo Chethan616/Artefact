@@ -157,7 +157,8 @@ private fun SettingsRoot(vm: AppViewModel, openLicences: () -> Unit, openGlass: 
             Panel {
                 ThemePicker(vm.theme) { vm.setThemeChoice(it) }
                 AppearancePicker(vm.cleanAppearance, vm::updateCleanAppearance)
-                ToggleRow(
+                // a Liquid Glass setting: Clean is solid surfaces already
+                if (!vm.cleanAppearance) ToggleRow(
                     LucideIcons.Contrast, Candy.Sky, stringResource(R.string.settings_reduce_transparency),
                     stringResource(R.string.settings_reduce_transparency_detail), GlassSettings.reduceTransparency,
                 ) { GlassSettings.updateReduceTransparency(context, it) }

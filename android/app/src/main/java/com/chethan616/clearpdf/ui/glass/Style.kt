@@ -117,11 +117,10 @@ object GlassSettings {
         private set
 
     /**
-     * Reduce transparency (Settings ▸ Look & feel, either appearance): nothing shows through. In Liquid
-     * Glass every glass surface (buttons, title pills, bars, tabs, menus, sheets, panels) is drawn
-     * solid in the theme's frost; in Clean the controls that float over content (the reader's toolbar,
-     * the desk's pinned filters, the bottom pill) are solid too (#158). The wallpaper, colours and
-     * motion stay. Off by default, on by default when the system asks for high contrast.
+     * Reduce transparency (Settings ▸ Look & feel, in Liquid Glass): nothing shows through. Every glass
+     * surface (buttons, title pills, bars, tabs, menus, sheets, panels) is drawn solid in the theme's
+     * frost (#158); the wallpaper, colours and motion stay. Clean is solid surfaces already, so it is
+     * not offered there. Off by default, on by default when the system asks for high contrast.
      */
     var reduceTransparency: Boolean by mutableStateOf(false)
         private set
