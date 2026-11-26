@@ -1792,6 +1792,8 @@ fn styled_fallback_batches_keep_face_choices_and_range_styles() {
         underline: None,
         char_spacing: None,
         scale: None,
+        bold: None,
+        italic: None,
     };
     let style = text::BlockStyle {
         width: Some(520.0),
@@ -5211,6 +5213,8 @@ fn disjoint_style_ranges_preserve_unselected_runs_and_validate_utf8_atomically()
                 underline: Some(true),
                 char_spacing: None,
                 scale: None,
+                bold: None,
+                italic: None,
             },
             RangeStyle {
                 range: b..b + 4,
@@ -5221,6 +5225,8 @@ fn disjoint_style_ranges_preserve_unselected_runs_and_validate_utf8_atomically()
                 underline: None,
                 char_spacing: Some(0.2),
                 scale: Some(90.0),
+                bold: None,
+                italic: None,
             },
         ],
         width: Some(300.0),
@@ -5250,6 +5256,8 @@ fn disjoint_style_ranges_preserve_unselected_runs_and_validate_utf8_atomically()
             underline: None,
             char_spacing: None,
             scale: None,
+            bold: None,
+            italic: None,
         }],
         ..Default::default()
     };
@@ -5889,6 +5897,8 @@ fn turned_paragraph_keeps_its_line_breaks_when_a_word_is_added() {
         underline: None,
         char_spacing: None,
         scale: None,
+        bold: None,
+        italic: None,
     };
     let style = text::BlockStyle { ranges: vec![range], ..Default::default() };
     assert!(text::rewrite_block(&mut doc, 0, 0, Some("Only line"), &style).is_err());
@@ -6162,6 +6172,8 @@ fn rows_the_edit_does_not_reach_keep_their_source_operators() {
         underline: None,
         char_spacing: None,
         scale: None,
+        bold: None,
+        italic: None,
     };
     text::rewrite_block(&mut doc, 0, block, Some(&draft), &text::BlockStyle { ranges: vec![range], ..Default::default() }).unwrap();
     let bytes = String::from_utf8_lossy(&page_content_bytes(&doc, 0)).into_owned();
@@ -7995,6 +8007,8 @@ fn carriage_returns_break_rows_on_the_styled_path() {
         underline: None,
         char_spacing: None,
         scale: None,
+        bold: None,
+        italic: None,
     };
     for style in [text::BlockStyle::default(), text::BlockStyle { ranges: vec![red], ..Default::default() }] {
         let mut doc = text_page("BT /F1 12 Tf 72 700 Td (Hello world) Tj ET");

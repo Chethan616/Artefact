@@ -319,7 +319,7 @@ private fun RectMorphSurface(
         val frost = lerp(2f, 14f, tall.value.coerceIn(0f, 1f)).dp
         // the glass reads what is behind it and takes dark ink over light, white over dark (Night mode's
         // black pages, a white document, the aurora): the glyph and rows always stand out
-        val luminance = rememberGlassLuminance(enabled = true)
+        val luminance = rememberGlassLuminance(enabled = true, once = true)
         val inkColor = adaptiveInk(luminance, clear.ink)
         Layout(
             content = {

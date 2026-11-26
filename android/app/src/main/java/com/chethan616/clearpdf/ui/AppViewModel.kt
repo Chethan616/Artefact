@@ -1896,13 +1896,15 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         val end = range.max.coerceIn(start, words.length)
         if (start == end) return
         val bytes = { upTo: Int -> words.substring(0, upTo).toByteArray(Charsets.UTF_8).size }
-        val name = para.font.lowercase()
-        val family = editFont[para.page to para.number] ?: when {
-            "courier" in name || "mono" in name || "consol" in name -> "courier"
-            "times" in name || "serif" in name && "sans" !in name || "roman" in name || "georgia" in name || "garamond" in name -> "times"
-            else -> "helvetica"
+        // In the text's own face unless a family was chosen for the paragraph: the engine takes the
+        // page's own bold or italic of it, else draws the same glyphs stroked or slanted, so the
+        // words keep their widths and the paragraph its rows (#158; a standard family re-wrapped it).
+        val one = buildMap<String, Any?> {
+            put("range", listOf(bytes(start), bytes(end)))
+            editFont[para.page to para.number]?.let { put("font", it) }
+            put("bold", bold)
+            put("italic", italic)
         }
-        val one = mapOf("range" to listOf(bytes(start), bytes(end)), "font" to family, "bold" to bold, "italic" to italic)
         // the editor shows it at once; the page follows from the engine
         val chars = com.chethan616.clearpdf.ui.viewer.StyleRun.perChar(editRuns, words.length, para.bold, para.italic)
         for (i in start until end) chars[i] = bold to italic

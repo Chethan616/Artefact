@@ -344,7 +344,7 @@ internal fun LiquidMorphSurface(
             return Geo(menu, radius, k, circleR, motion)
         }
 
-        val luminance = rememberGlassLuminance(enabled = true)
+        val luminance = rememberGlassLuminance(enabled = true, once = true)
         // Adaptive luminance on: at the button's end the glass is the button's own adaptive glass (its
         // reading of what is around it, its frost, colour and milk or smoke), so neither the opening nor
         // the landing ever shows a moment of plain glass where the adaptive button was
@@ -554,5 +554,7 @@ private fun com.kyant.backdrop.BackdropEffectScope.morphEffects(style: GlassStyl
     )
     val buttonBlur = 2f * dp * style.blur * (if (b == null) 1f else if (b > 0f) lerp(1f, 1.5f, b) else lerp(1f, 0.6f, -b))
     val menuBlur = 16f * dp * style.blur * (if (l > 0f) lerp(1f, 1.35f, l) else lerp(1f, 0.75f, -l)) + 18f * dp * k
-    blur(lerp(buttonBlur, menuBlur, o) + 5f * dp * motion.coerceIn(0f, 1f))
+    // A steady frost: it used to rise with the jelly's swing, and over a page of print the words
+    // behind pulsed sharp and blurred as the menu settled (#158). The shape still swings.
+    blur(lerp(buttonBlur, menuBlur, o))
 }

@@ -253,12 +253,17 @@ private fun EditFormatBar(vm: AppViewModel, doc: OpenDocument, para: Paragraph) 
             val picked = vm.editRange?.takeIf { vm.editing != null }
             val boldNow = if (picked != null) vm.rangeStyled(para, picked) else para.bold
             val italicNow = if (picked != null) vm.rangeStyled(para, picked, italic = true) else para.italic
+            // the whole paragraph, as a range over all of it: in its own face, keeping its rows (#158)
+            val whole = androidx.compose.ui.text.TextRange(0, (vm.editDraft?.takeIf { vm.editing != null } ?: para.text).length)
+            val rtl = para.text.any { Character.getDirectionality(it).let { d -> d == Character.DIRECTIONALITY_RIGHT_TO_LEFT || d == Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC } }
             LetterButton("T", stringResource(R.string.edit_bold), boldNow, weight = FontWeight.Black) {
                 if (picked != null) vm.styleRange(doc, para, picked, bold = !boldNow, italic = italicNow)
+                else if (!rtl) vm.styleRange(doc, para, whole, bold = !para.bold, italic = para.italic)
                 else vm.styleParagraph(doc, para, mapOf("bold" to !para.bold))
             }
             LetterButton("T", stringResource(R.string.edit_italic), italicNow, italic = true) {
                 if (picked != null) vm.styleRange(doc, para, picked, bold = boldNow, italic = !italicNow)
+                else if (!rtl) vm.styleRange(doc, para, whole, bold = para.bold, italic = !para.italic)
                 else vm.styleParagraph(doc, para, mapOf("italic" to !para.italic))
             }
             LetterButton("T", stringResource(R.string.edit_underline), underline, underline = true) {

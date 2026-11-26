@@ -46,7 +46,7 @@ import kotlin.math.sign
  * (which ink) is composition state, and it flips with hysteresis so mid-grey never flickers.
  */
 @Stable
-class GlassLuminance internal constructor(initial: Float, internal val layer: GraphicsLayer) {
+class GlassLuminance internal constructor(initial: Float, internal val layer: GraphicsLayer, private val once: Boolean = false) {
     private val anim = Animatable(initial)
     private var recorded = false
     // how many times the backdrop has been recorded; the reading skips a record it has already read
@@ -132,6 +132,10 @@ class GlassLuminance internal constructor(initial: Float, internal val layer: Gr
                     // theme) and then swing to black.
                     anim.snapTo(lum)
                     measured = true
+                    // a menu reads what is behind it once, as it opens, and keeps it while it is up:
+                    // read again and again, the page under it (the viewer's header stepping aside,
+                    // its tiles sharpening) moved its glass and ink, and it seemed to breathe (#158)
+                    if (once) return@coroutineScope
                 } else if (kotlin.math.abs(lum - anim.targetValue) > 0.07f) {
                     // only a real change behind it moves it (a small one, read again and again, made it breathe)
                     anim.animateTo(lum, tween(420))
@@ -192,14 +196,14 @@ private const val BusyTo = 0.15
  * [GlassCard]) and take the ink from [adaptiveInk].
  */
 @Composable
-fun rememberGlassLuminance(enabled: Boolean = GlassSettings.adaptive): GlassLuminance? {
+fun rememberGlassLuminance(enabled: Boolean = GlassSettings.adaptive, once: Boolean = false): GlassLuminance? {
     if (!enabled || clear.clean) return null
     val layer = rememberGraphicsLayer()
     val dark = clear.dark
     // the first guess: what the screen as a whole looks like now (the window's sampler, running
     // while Adaptive luminance is on), else the theme
     val screen = LocalScreenInk.current
-    val state = remember(layer) { GlassLuminance(screen?.frame?.average() ?: if (dark) 0.14f else 0.86f, layer) }
+    val state = remember(layer) { GlassLuminance(screen?.frame?.average() ?: if (dark) 0.14f else 0.86f, layer, once) }
     LaunchedEffect(state) { state.run() }
     return state
 }

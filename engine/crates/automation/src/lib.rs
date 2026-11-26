@@ -2477,6 +2477,10 @@ fn parse_style_ranges(value: Option<&Value>) -> Result<Vec<pdfcraft_engine::Rang
                 underline: a.opt_bool("underline")?,
                 char_spacing: a.opt_num("char_spacing")?,
                 scale: a.opt_num("scale")?,
+                // with a font, bold and italic choose its face (above); without one they apply
+                // in the run's own face
+                bold: if a.get("font").is_none() { a.opt_bool("bold")? } else { None },
+                italic: if a.get("font").is_none() { a.opt_bool("italic")? } else { None },
             })
         })
         .collect()

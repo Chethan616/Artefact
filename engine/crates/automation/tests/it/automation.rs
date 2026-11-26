@@ -9304,6 +9304,79 @@ fn bold_range_is_one_word_and_listed_as_a_run() {
     std::fs::remove_dir_all(dir).unwrap();
 }
 
+/// A wrapped body paragraph above another one, for bolding a word in it (#158).
+fn bold_rows_fixture(dir: &std::path::Path) -> String {
+    use pdfcraft_cos::{Dict, Document, ObjRef, Object, SaveOptions, Stream, write_full};
+    use std::sync::Arc;
+    // Four full rows of 10 pt Helvetica 12 pt apart, then a paragraph of its own well below.
+    let content = "BT /F1 10 Tf 20 250 Td (The quick brown fox jumps over the lazy) Tj ET \
+                   BT /F1 10 Tf 20 238 Td (dog while the small cat watches from a) Tj ET \
+                   BT /F1 10 Tf 20 226 Td (window and the bird sings a happy song) Tj ET \
+                   BT /F1 10 Tf 20 214 Td (all through the long summer afternoon.) Tj ET \
+                   BT /F1 10 Tf 20 180 Td (Next paragraph stays where it was.) Tj ET";
+    let mut doc = Document::open(Arc::new(fixture(1))).unwrap();
+    doc.set(ObjRef::new(5, 0), Object::Stream(Stream::flate(Dict::new(), content.as_bytes())));
+    std::fs::write(dir.join("rows.pdf"), write_full(&doc, &SaveOptions::default()).unwrap()).unwrap();
+    "rows.pdf".into()
+}
+
+/// Bolds `word` in the first paragraph (as the viewer's Bold does: its editor text and a byte
+/// range, with `font` or in the run's own face), and checks nothing else moved (#158): the same
+/// rows, the untouched rows' text as it was, and the paragraph below where it was.
+fn bold_keeps_rows(name: &str, word: &str, font: Option<&str>) {
+    let dir = workdir(name);
+    let path = bold_rows_fixture(&dir);
+    let mut a = auto(&dir);
+    let id = ok(&mut a, "doc_open", json!({"path":path}))["doc"].as_u64().unwrap();
+    let before = ok(&mut a, "text_paragraphs", json!({"doc":id,"page":1}));
+    let p = &before["paragraphs"][0];
+    let rows = p["rows"].as_array().unwrap().len();
+    assert_eq!(rows, 4, "one wrapped paragraph of four rows: {before}");
+    let below = before["paragraphs"][1]["rect"].clone();
+    let text = p["edit_text"].as_str().unwrap().to_owned();
+    let at = text.find(word).unwrap();
+    let mut range = json!({"range":[at, at + word.len()],"bold":true,"italic":false});
+    if let Some(f) = font {
+        range["font"] = json!(f);
+    }
+    ok(&mut a, "text_edit", json!({"doc":id,"page":1,"paragraph":1,"text":text,"ranges":[range]}));
+    let after = ok(&mut a, "text_paragraphs", json!({"doc":id,"page":1}));
+    let q = &after["paragraphs"][0];
+    assert_eq!(q["rows"].as_array().unwrap().len(), rows, "bolding a word keeps the paragraph's rows: {after}");
+    assert_eq!(after["paragraphs"][1]["rect"], below, "the paragraph below stays: {after}");
+    assert_eq!(after["paragraphs"][1]["text"], "Next paragraph stays where it was.", "{after}");
+    // the paragraph doesn't grow down into the one below (view space: y grows down)
+    assert!(q["rect"][3].as_f64().unwrap() < below[1].as_f64().unwrap(), "no overlap: {after}");
+    let lines = ok(&mut a, "text_lines", json!({"doc":id,"page":1}));
+    let shown: Vec<String> = lines["lines"].as_array().unwrap().iter().map(|l| l["text"].as_str().unwrap().trim().to_owned()).collect();
+    for row in ["window and the bird sings a happy song", "all through the long summer afternoon."] {
+        assert!(shown.iter().any(|t| t == row), "an untouched row is left as it was: {row:?} in {shown:?}");
+    }
+    let editor = q["editor_text"].as_str().unwrap();
+    let bold: String = q["runs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|r| r["bold"] == true)
+        .map(|r| &editor[r["range"][0].as_u64().unwrap() as usize..r["range"][1].as_u64().unwrap() as usize])
+        .collect();
+    assert_eq!(bold.trim(), word, "only the word is bold: {after}");
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+/// #158: bold in the run's own face (no family): synthetic bold, the face's own widths, no re-wrap.
+#[test]
+fn bolding_a_word_in_its_own_face_keeps_the_rows() {
+    bold_keeps_rows("bold-own-face", "lazy", None);
+}
+
+/// #158: bold in a standard family, wider than the source's face: the rows stay (a full row is
+/// narrowed to the paragraph's width rather than wrapped onto a new one).
+#[test]
+fn bolding_a_word_in_a_wider_face_keeps_the_rows() {
+    bold_keeps_rows("bold-wider-face", "watches", Some("times"));
+}
+
 /// A heading over a short line and two body lines, read as one paragraph: adding a word at its end
 /// keeps the heading and the short line on rows of their own (#144). The editor's text breaks
 /// where the source ended a row on purpose and joins the rows it wrapped.
