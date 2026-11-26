@@ -252,6 +252,8 @@ fun PdfSheet(
                         shape = RoundedRectangle(34.dp),
                         wash = sheetWash,
                         blur = 18.dp,
+                        // with Adaptive luminance on, over a page of print it lifts and frosts (no grey smudges)
+                        assist = com.chethan616.clearpdf.ui.glass.rememberGlassLuminance(),
                     ) {
                         val haptics = com.chethan616.clearpdf.ui.glass.LocalHaptics.current
                         Box(
@@ -530,7 +532,7 @@ fun PdfField(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.weight(1f).padding(vertical = 13.dp), contentAlignment = Alignment.CenterStart) {
-            if (value.isEmpty()) Text(placeholder, style = ClearType.Body, color = if (error) Candy.Tomato else c.inkFaint)
+            if (value.isEmpty()) Text(placeholder, style = ClearType.Body, color = if (error) Candy.Tomato else c.inkSoft)
             BasicTextField(
                 value = value, onValueChange = onValue, singleLine = true,
                 textStyle = ClearType.Body.copy(color = c.ink),

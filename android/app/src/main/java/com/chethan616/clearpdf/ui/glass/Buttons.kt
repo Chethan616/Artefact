@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.chethan616.clearpdf.ui.theme.clear
 import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -80,6 +81,10 @@ private fun Modifier.glassControl(
     adaptWash: Boolean = true,
     /** Told the control's surround reading (the morph that grows out of a round button carries it on). */
     aroundOut: ((SurroundLuminance?) -> Unit)? = null,
+    /** A hairline round it ([InkProbe.edge]), read while drawing. */
+    edge: () -> Color = { Color.Unspecified },
+    /** How much it is over light print ([InkProbe.lift]): its glass is lifted to white, read while drawing. */
+    lift: () -> Float = { 0f },
 ): Modifier {
     val backdrop = LocalBackdrop.current
     if (clear.clean) {
@@ -133,6 +138,8 @@ private fun Modifier.glassControl(
             effects = {
                 if (around != null) adaptiveGlassEffects(style, around.value, blur.toPx(), 12f.dp.toPx(), 24f.dp.toPx())
                 else glassEffects(style, blur.toPx(), 12f.dp.toPx(), 24f.dp.toPx())
+                // over a white page of print: a little frost and lifted to white glass, not grey smudges
+                lift().let { if (it > 0.01f) { blur(6.dp.toPx() * it); pageLift(it) } }
             },
             highlight = { glassHighlight(style) },
             layerBlock = { liquidPressTransform(highlight) },
@@ -151,8 +158,10 @@ private fun Modifier.glassControl(
                 // read here, while drawing, so a colour animating in changes pixels and recomposes nothing
                 val f = fill?.invoke()
                 if (f != null && f.alpha > 0f) drawRect(f)
+                drawGlassEdge(shape, edge())
             },
         )
+        .focusRing(source, corner = 100.dp)
         .combinedClickable(
             interactionSource = source,
             indication = null,
@@ -198,7 +207,7 @@ fun rememberBeat(action: () -> Unit, millis: Long = BackBeatMillis): () -> Unit 
  * (Settings ▸ liquid glass), so it shows what's under it, the page in the viewer.
  */
 @Composable
-fun Modifier.glassBar(shape: Shape = ChromeCapsule, surface: Color = Color.Unspecified, blur: Dp = 2.dp): Modifier {
+fun Modifier.glassBar(shape: Shape = ChromeCapsule, surface: Color = Color.Unspecified, blur: Dp = 2.dp, edge: Color = Color.Unspecified, lift: Float = 0f): Modifier {
     if (clear.clean) {
         val panel = clear.solidPanel
         return clip(shape).background(if (surface.isSpecified) surface.compositeOver(panel) else panel)
@@ -207,7 +216,10 @@ fun Modifier.glassBar(shape: Shape = ChromeCapsule, surface: Color = Color.Unspe
     val scope = rememberCoroutineScope()
     val highlight = remember(scope) { InteractiveHighlight(scope) }
     val around = rememberSurroundLuminance()
+    // the user's own glass (Settings ▸ Liquid glass), as every other surface wears it
     val style = if (around != null) GlassSettings.style.adaptiveBase else GlassSettings.style
+    val currentEdge by rememberUpdatedState(edge)
+    val currentLift by rememberUpdatedState(lift)
     return this
         .then(around?.modifier ?: Modifier)
         .drawBackdrop(
@@ -217,12 +229,15 @@ fun Modifier.glassBar(shape: Shape = ChromeCapsule, surface: Color = Color.Unspe
             effects = {
                 if (around != null) adaptiveGlassEffects(style, around.value, blur.toPx(), 12f.dp.toPx(), 24f.dp.toPx())
                 else glassEffects(style, blur.toPx(), 12f.dp.toPx(), 24f.dp.toPx())
+                // over a white page of print: a little frost and lifted to white glass, not grey smudges
+                currentLift.let { if (it > 0.01f) { blur(6.dp.toPx() * it); pageLift(it) } }
             },
             highlight = { glassHighlight(style) },
             layerBlock = { liquidPressTransform(highlight) },
             onDrawSurface = {
                 if (around != null) drawRect(adaptiveWash(around.value).let { it.copy(alpha = it.alpha * 0.7f) })
                 if (surface.isSpecified) drawRect(surface.glassTint(style))
+                drawGlassEdge(shape, currentEdge)
             },
         )
         .then(highlight.modifier)
@@ -253,7 +268,7 @@ fun GlassPill(
         Row(
             modifier
                 .then(probe.modifier)
-                .glassControl(ChromeCapsule, onClick, onLongClick, tint, if (tintAt != null) Color.Unspecified else surface, blur, label, tap = tap, bloom = true, tintAt = tintAt)
+                .glassControl(ChromeCapsule, onClick, onLongClick, tint, if (tintAt != null) Color.Unspecified else surface, blur, label, tap = tap, bloom = true, tintAt = tintAt, edge = { probe.edge }, lift = { probe.lift })
                 .height(height)
                 .padding(horizontal = horizontalPadding),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -306,6 +321,9 @@ fun GlassChip(
  * clip costs nothing there. Chips and cards that scroll use the circular [Capsule].
  */
 val ChromeCapsule = com.kyant.shapes.Capsule
+
+/** The least a finger should have to hit (Material and WCAG: 48 dp), whatever the glyph's size. */
+val MinTouch = 48.dp
 
 /** The old app's header circle: 40 dp of natural glass (no wash), so every header reads the same. */
 val HeaderButtonSize = 40.dp
@@ -364,6 +382,8 @@ fun GlassCircle(
     label: String? = null,
     ink: Color = Color.Unspecified,
     tap: Feel? = Feel.Tap,
+    /** [tint] painted solid over the glass instead of blended into it, so a white glyph keeps its contrast over a white page. */
+    solid: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     // over a document the glyph takes dark or white ink from the page around it, as the old app's
@@ -390,7 +410,7 @@ fun GlassCircle(
                 // stepped aside while its glass is a menu: not drawn at all (a layer's alpha alone left it in
                 // the copy of the screen the menu's glass bends, where the lens smeared its glyph)
                 .drawWithContent { if (at?.let { MorphAnchors.hides(it) } != true) drawContent() }
-                .size(size).glassControl(CircleShape, onClick, onLongClick, tint, surface, 2.dp, label, tap = tap, bloom = true, candyBase = false, aroundOut = { around[0] = it }),
+                .size(size).glassControl(CircleShape, onClick, onLongClick, tint, surface, 2.dp, label, fill = if (solid && tint.isSpecified) ({ tint }) else null, tap = tap, bloom = true, candyBase = false, aroundOut = { around[0] = it }, edge = { probe.edge }, lift = { probe.lift }),
             contentAlignment = Alignment.Center,
         ) { content() }
     }

@@ -40,7 +40,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -54,6 +53,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -77,6 +77,9 @@ import kotlin.math.sign
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+/** The chosen tab's pill: solid enough that its dark label reads whatever is behind (#158). */
+private val SelectedPill = Color.White.copy(alpha = 0.92f)
+
 /** One choice of [GlassTabs]: an icon, a label, or both, and the candy it lights up in. */
 data class GlassTab(val label: String, val icon: ImageVector? = null, val accent: Color)
 
@@ -95,6 +98,10 @@ fun GlassTabs(
     textStyle: TextStyle = ClearType.Label,
 ) {
     val c = clear
+    // at a large system font size the bar grows and a label may take two lines, never cut short
+    val fontScale = LocalDensity.current.fontScale
+    val height = height + (24f * (fontScale - 1f).coerceIn(0f, 1f)).dp
+    val labelLines = if (fontScale > 1.15f) 2 else 1
     if (c.clean) {
         Row(modifier.clip(Capsule).background(c.solidPanel).selectableGroup().padding(2.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -107,7 +114,8 @@ fun GlassTabs(
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                 ) {
                     tab.icon?.let { Icon(it, null, Modifier.size(20.dp), tint = c.ink) }
-                    if (tab.label.isNotEmpty()) Text(tab.label, style = textStyle, color = c.ink, textAlign = TextAlign.Center)
+                    // the chosen one is told by its weight too, not by colour alone
+                    if (tab.label.isNotEmpty()) Text(tab.label, style = if (active) textStyle.copy(fontWeight = FontWeight.SemiBold) else textStyle, color = c.ink, textAlign = TextAlign.Center, maxLines = labelLines, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -117,6 +125,8 @@ fun GlassTabs(
     val haptics = LocalHaptics.current
     val count = tabs.size
     val container = c.glass
+    // the bar's dimming layer, as the search bar's: the labels read over any wallpaper (#158)
+    val dim = glassDim()
     val inner = (height - 8.dp).coerceAtLeast(0.dp)
     val accent by animateColorAsState(tabs.getOrNull(selected)?.accent ?: c.ink, GlassMotion.settle(), label = "tabAccent")
     val tabsLayer = rememberLayerBackdrop()
@@ -184,10 +194,14 @@ fun GlassTabs(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    val ink = c.ink
-                    if (t.icon != null) Icon(t.icon, null, tint = ink, modifier = Modifier.size(if (t.label.isEmpty()) 24.dp else 22.dp))
+                    // Under the blob the chosen one sits on a solid light pill in dark ink, its candy only in
+                    // its glyph and a breath of the pill: candy text on the blob's candy wash (Files' red
+                    // Recent on pink) was the hardest thing on screen to read (#158). Every label is
+                    // semibold, so none thins out over the glass.
+                    val ink = if (tinted) InkOnLight else c.ink
+                    if (t.icon != null) Icon(t.icon, null, tint = if (tinted) accent else ink, modifier = Modifier.size(if (t.label.isEmpty()) 24.dp else 22.dp))
                     if (t.icon != null && t.label.isNotEmpty()) Spacer(Modifier.height(3.dp))
-                    if (t.label.isNotEmpty()) Text(t.label, style = textStyle, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (t.label.isNotEmpty()) Text(t.label, style = textStyle.copy(fontWeight = FontWeight.SemiBold), color = ink, maxLines = labelLines, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
                 }
             }
         }
@@ -206,7 +220,10 @@ fun GlassTabs(
                         scaleX = s
                         scaleY = s
                     },
-                    onDrawSurface = { drawRect(container.glassTint(GlassSettings.style)) },
+                    onDrawSurface = {
+                        drawRect(container.glassTint(GlassSettings.style))
+                        drawRect(dim)
+                    },
                 )
                 .then(highlight.modifier)
                 .height(height)
@@ -234,12 +251,17 @@ fun GlassTabs(
                         lens(24f.dp.toPx() * p * style.refractionHeight, 24f.dp.toPx() * p * style.refractionAmount)
                     },
                     highlight = { Highlight.Default.copy(alpha = drag.pressProgress * GlassSettings.style.highlight.coerceIn(0f, 1f)) },
-                    onDrawSurface = { drawRect(container) },
+                    // the chosen pill: near-solid white with a breath of the tab's candy
+                    // (in the light theme a white pill vanished into the light bar: its candy shows more there,
+                    // a pale pink or blue that still keeps the dark label at well over 4.5:1)
+                    onDrawSurface = {
+                        drawRect(SelectedPill)
+                        drawRect(accent.copy(alpha = if (c.dark) 0.10f else 0.24f))
+                    },
                 )
                 .height(inner)
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp)
-                .graphicsLayer(colorFilter = ColorFilter.tint(accent)),
+                .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) { Cells(tinted = true) }
 
@@ -272,12 +294,8 @@ fun GlassTabs(
                         scaleX /= 1f - (v * 0.75f).fastCoerceIn(-0.2f, 0.2f)
                         scaleY *= 1f - (v * 0.25f).fastCoerceIn(-0.2f, 0.2f)
                     },
-                    onDrawSurface = {
-                        val p = drag.pressProgress
-                        drawRect(if (c.dark) Color.White.copy(0.08f) else Color.White.copy(0.14f), alpha = 1f - p)
-                        drawRect(accent.copy(alpha = if (c.dark) 0.20f else 0.12f), alpha = 1f - p)
-                        drawRect(Color.White.copy(alpha = 0.04f * p))
-                    },
+                    // the pill under it is already solid: only the lens's own glint while it is held
+                    onDrawSurface = { drawRect(Color.White.copy(alpha = 0.04f * drag.pressProgress)) },
                 )
                 .height(inner)
                 .fillMaxWidth(1f / count),

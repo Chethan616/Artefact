@@ -1150,7 +1150,7 @@ private fun exifFrame(file: File): PhotoFrame {
 @Composable
 private fun ModeSwitch(mode: Mode, modifier: Modifier, onPick: (Mode) -> Unit) {
     val ink = rememberGlassInk(Color.White)
-    BoxWithConstraints(modifier.height(48.dp).then(ink.modifier).glassBar().padding(4.dp)) {
+    BoxWithConstraints(modifier.height(48.dp).then(ink.modifier).glassBar(edge = ink.edge, lift = ink.lift).padding(4.dp)) {
         val each = maxWidth / Mode.entries.size
         val x by animateDpAsState(each * mode.ordinal, spring(dampingRatio = 0.78f, stiffness = 520f), label = "modeLight")
         Box(Modifier.offset(x = x).width(each).fillMaxHeight().clip(ChromeCapsule).background(Candy.Sky))
@@ -1278,7 +1278,7 @@ private fun ToolTab(icon: ImageVector, label: String, selected: Boolean, dot: Bo
         }
         Text(
             label,
-            style = ClearType.Label.copy(fontSize = 10.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal),
+            style = ClearType.Label.copy(fontSize = 11.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal),
             color = if (selected) ink else ink.copy(alpha = 0.62f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

@@ -65,6 +65,7 @@ data class ClearColors(
     val heroGlow: Color,
     val ink: Color,
     val inkSoft: Color,
+    /** Glyphs, rings, handles and disabled states only: 2.4:1 on white, too faint for words to read ([inkSoft]). */
     val inkFaint: Color,
     val line: Color,
     /** The wash on chrome glass (dock, bars, buttons, chips). */
@@ -271,8 +272,8 @@ object ClearType {
     val DeskNotes = display(fraunces(600, 50f, 72.sp), DeskTitleSize, DeskTitleLine, (-0.8).sp)
     val DeskTodo = display(Doto, DeskTitleSize, DeskTitleLine, 0.sp)
     val DeskPdfs = display(Serif, DeskTitleSize, DeskTitleLine, (-0.8).sp)
-    val DeskImages = display(jakarta(300, italic = true), DeskTitleSize, DeskTitleLine, (-1.4).sp).copy(fontStyle = FontStyle.Italic)
-    val DeskAudio = display(bricolage(300, 100f, 72.sp), DeskTitleSize, DeskTitleLine, (-1.0).sp)
+    val DeskImages = display(jakarta(400, italic = true), DeskTitleSize, DeskTitleLine, (-1.4).sp).copy(fontStyle = FontStyle.Italic)
+    val DeskAudio = display(bricolage(400, 100f, 72.sp), DeskTitleSize, DeskTitleLine, (-1.0).sp)
 
     /** The Tools screen's title: Fraunces at its softest and quirkiest, a face no other screen uses. */
     val ToolsTitle = display(fraunces(700, 100f, 72.sp, wonk = 1f), DeskTitleSize, DeskTitleLine, (-0.8).sp)
@@ -283,22 +284,26 @@ object ClearType {
     val Body = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp)
     val BodyStrong = Body.copy(fontWeight = FontWeight.SemiBold)
     val Label = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 18.sp)
-    val Caption = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.Normal, fontSize = 11.5.sp, lineHeight = 15.sp)
+    // 12 sp is the least for words that carry something (#158); they scale with the system font size
+    val Caption = TextStyle(fontFamily = Outfit, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 16.sp)
 
     // The Recent card keeps its own Plus Jakarta Sans (its title, when, and chips), set exactly as
     // before the interface moved to Outfit: the owner's chosen look for that card.
     val RecentTitle = display(jakarta(700), 17.sp, 22.sp, (-0.2).sp)
-    val RecentWhen = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Normal, fontSize = 10.5.sp, lineHeight = 15.sp)
+    val RecentWhen = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 16.sp)
     val RecentChip = TextStyle(fontFamily = Jakarta, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 18.sp)
 }
 
 /** A hero title's soft glow, so white type reads on the pale sky. */
 fun TextStyle.glowing(c: ClearColors): TextStyle = copy(shadow = Shadow(c.heroGlow, Offset(0f, 2f), 22f))
 
-/** Also reads the Files-only choice from earlier builds. */
+/**
+ * Also reads the Files-only choice from earlier builds. Never chosen: Clean when the system asks for
+ * high contrast (#158), else Liquid Glass.
+ */
 fun savedCleanAppearance(context: Context): Boolean {
     val prefs = context.getSharedPreferences("app", Context.MODE_PRIVATE)
-    return prefs.getBoolean("cleanAppearance", prefs.getBoolean("cleanFiles", false))
+    return prefs.getBoolean("cleanAppearance", prefs.getBoolean("cleanFiles", com.chethan616.clearpdf.ui.glass.SystemAccessibility.highContrast(context)))
 }
 
 @Composable

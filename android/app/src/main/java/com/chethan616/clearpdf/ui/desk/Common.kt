@@ -233,7 +233,7 @@ fun FileListItem(vm: AppViewModel, r: FileRow, recent: Boolean, modifier: Modifi
         PaperThumb(vm, r.thumbPath, 40.dp, 52.dp, corner = 6.dp, name = r.name)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(displayName(r.name), style = ClearType.BodyStrong, color = c.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(displayName(r.name), style = ClearType.BodyStrong.copy(fontSize = 16.sp, lineHeight = 21.sp), color = c.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(2.dp))
             Text(
                 listOfNotNull(whenLabel(r.date), r.size.takeIf { it > 0 }?.let { formatSize(it) }).joinToString("  ·  "),

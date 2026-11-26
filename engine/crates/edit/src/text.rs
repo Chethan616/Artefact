@@ -1564,8 +1564,10 @@ fn interpret(
                     base_font: m.base_font.clone(),
                     face: ts.face.clone(),
                     size: if size_user > 0.0 { size_user } else { ts.size },
-                    bold: m.bold,
-                    italic: m.italic,
+                    // Drawn filled and stroked (synthetic bold), or slanted by its matrix (synthetic
+                    // italic): what a weight or slant applied in the run's own face writes.
+                    bold: m.bold || (ts.render_mode == 2 && ts.line_width.unwrap_or(1.0) > 0.0),
+                    italic: m.italic || slanted(&tm.0),
                     visual_order: m.visual_order,
                     decodable,
                     scope: marked.last().copied().flatten(),
@@ -2533,6 +2535,28 @@ fn source_program_completes(doc: &Document, fonts: &Dict, line: &TextLine, text:
 
 /// A subset may contain all the letters but no space glyph: producers use another subset
 /// or a positioning operator for spaces. Do the same instead of substituting the whole font.
+/// Whether a text matrix leans its glyphs (a shear along the baseline, as a synthetic italic is).
+fn slanted(tm: &[f64; 6]) -> bool {
+    let along = tm[0] * tm[0] + tm[1] * tm[1];
+    along > 1e-12 && ((tm[0] * tm[2] + tm[1] * tm[3]) / along) > 0.12
+}
+
+/// A face's family without its subset tag, weight and slant words: "ABCDEF+Calibri-BoldItalic"
+/// and "Calibri" are one family, so a bold run can be drawn in the page's own bold of it.
+pub(crate) fn family_key(base_font: &str) -> String {
+    let mut key: String =
+        base_font.rsplit('+').next().unwrap_or(base_font).chars().filter(char::is_ascii_alphanumeric).flat_map(char::to_lowercase).collect();
+    for word in ["bolditalic", "boldoblique", "semibold", "demibold", "bold", "italic", "oblique", "regular", "roman", "book", "medium", "normal"] {
+        key = key.replace(word, "");
+    }
+    for suffix in ["mt", "ps"] {
+        if key.len() > suffix.len() + 2 && key.ends_with(suffix) {
+            key.truncate(key.len() - suffix.len());
+        }
+    }
+    key
+}
+
 fn source_encodes(metrics: &Metrics, text: &str) -> bool {
     text.split(' ').all(|word| metrics.encode(word).is_some())
 }
@@ -3010,6 +3034,12 @@ pub struct RangeStyle {
     pub underline: Option<bool>,
     pub char_spacing: Option<f64>,
     pub scale: Option<f64>,
+    /// Bold (or not) in the run's own face, with no family chosen: the page's own bold (regular)
+    /// font of the same face when it has one that shows the text, else the same glyphs drawn
+    /// filled and stroked (synthetic bold), whose advances are the face's own, so nothing moves.
+    pub bold: Option<bool>,
+    /// Italic (or not) the same way: the page's own italic face, else the same glyphs slanted.
+    pub italic: Option<bool>,
 }
 
 /// Rewrite paragraph `block` with new text (or its own) and formatting, rewrapped to its width.

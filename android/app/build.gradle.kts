@@ -1,3 +1,5 @@
+import java.security.KeyStore
+import java.security.MessageDigest
 import java.util.Properties
 import javax.inject.Inject
 import org.gradle.process.ExecOperations
@@ -60,6 +62,30 @@ fun signingValue(property: String, env: String): String? =
 val releaseKeystore: File? = signingValue("storeFile", "CLEARPDF_UPLOAD_STORE_FILE")
     ?.let { File(it).takeIf(File::isAbsolute) ?: File(repoDir, it) }
 val unsignedRelease: Boolean = providers.gradleProperty("artefact.unsigned").orNull == "true"
+
+/**
+ * The release key's certificate against the one every published release carries
+ * (gradle.properties' artefact.releaseCertSha256): another key could never update the installed app.
+ * A tag build (the release workflow) fails on any mismatch, as does -Partefact.requireReleaseKey=true;
+ * a local release build only warns, loudly, since its APK can't replace a published install.
+ */
+fun checkReleaseKey(logger: org.gradle.api.logging.Logger) {
+    val expected = providers.gradleProperty("artefact.releaseCertSha256").orNull?.lowercase()?.replace(":", "") ?: return
+    val strict = providers.environmentVariable("GITHUB_REF_TYPE").orNull == "tag" ||
+        providers.gradleProperty("artefact.requireReleaseKey").orNull == "true"
+    fun fail(why: String) {
+        if (strict) throw GradleException("Release signing: $why")
+        logger.warn("WARNING: release signing: $why. This APK cannot update a published install (uninstall first).")
+    }
+    val store = releaseKeystore ?: return fail("no release key (signed with the debug key)")
+    val actual = runCatching {
+        val ks = KeyStore.getInstance(if (store.name.endsWith(".jks")) "JKS" else KeyStore.getDefaultType())
+        store.inputStream().use { ks.load(it, signingValue("storePassword", "CLEARPDF_UPLOAD_STORE_PASSWORD")?.toCharArray()) }
+        val cert = ks.getCertificate(signingValue("keyAlias", "CLEARPDF_UPLOAD_KEY_ALIAS")) ?: error("no such key alias")
+        MessageDigest.getInstance("SHA-256").digest(cert.encoded).joinToString("") { "%02x".format(it) }
+    }.getOrElse { return fail("could not read the release key (${it.message})") }
+    if (actual != expected) fail("the key's certificate is $actual, but every published release is signed with $expected")
+}
 
 /** rustup's `cargo` (Android Studio may not see rustup's PATH), else `cargo` from PATH; `CARGO` overrides. */
 val cargoExecutable: String = run {
@@ -307,6 +333,14 @@ android {
         generateLocaleConfig = true
     }
 }
+
+// before every signed release build (not F-Droid's unsigned one, not the debug or fast builds)
+val releaseKeyCheck = tasks.register("checkReleaseKey") {
+    group = "verification"
+    description = "Checks the release key is the one every published release was signed with"
+    doLast { checkReleaseKey(logger) }
+}
+tasks.matching { it.name == "preReleaseBuild" }.configureEach { if (!unsignedRelease) dependsOn(releaseKeyCheck) }
 
 androidComponents {
     onVariants { variant ->

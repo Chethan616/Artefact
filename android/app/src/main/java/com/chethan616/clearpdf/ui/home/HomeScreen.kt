@@ -1,5 +1,10 @@
 package com.chethan616.clearpdf.ui.home
 
+import com.chethan616.clearpdf.ui.glass.cleanFloatingSurface
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.graphics.RectangleShape
+import com.chethan616.clearpdf.ui.glass.GlassLayer
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -43,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -227,7 +233,8 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
         }
     }
 
-    CompositionLocalProvider(LocalHomeVm provides vm) {
+    val clean = clear.clean
+    val deskGrid: @Composable () -> Unit = {
         LazyVerticalStaggeredGrid(
             columns = StaggeredGridCells.Fixed(2),
             state = grid,
@@ -261,7 +268,7 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
             }
             item(key = "title", span = StaggeredGridItemSpan.FullLine) { DeskTitle(filter) }
             item(key = "chips", span = StaggeredGridItemSpan.FullLine) {
-                FilterChips(filter) { filter = it }
+                if (clean) Spacer(Modifier.height(FilterRowHeight)) else FilterChips(filter) { filter = it }
             }
             itemsIndexed(items, key = { _, it -> it.key }) { i, item ->
                 // the others glide aside as a carried card passes; the carried one follows the finger
@@ -316,6 +323,33 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
             if (items.isEmpty()) {
                 item(key = "empty-$filter", span = StaggeredGridItemSpan.FullLine) { DeskEmpty(vm, filter, desk) }
             }
+        }
+    }
+
+    CompositionLocalProvider(LocalHomeVm provides vm) {
+        if (clean) {
+            val topInset = WindowInsets.statusBars.getTop(density)
+            // The row follows its grid slot until the cards begin to pass beneath it.
+            val filterY by remember(grid, topInset) {
+                derivedStateOf {
+                    val layout = grid.layoutInfo
+                    layout.visibleItemsInfo.firstOrNull { it.key == "chips" }?.offset?.y
+                        ?: if (grid.firstVisibleItemIndex > 1) topInset else layout.viewportEndOffset
+                }
+            }
+            val pinned by remember(grid, topInset) { derivedStateOf { filterY <= topInset } }
+            GlassLayer(Modifier.fillMaxSize(), content = { deskGrid() }, above = {
+                Box(
+                    Modifier.offset { IntOffset(0, maxOf(topInset, filterY)) }
+                        .fillMaxWidth()
+                        .then(if (pinned) Modifier.cleanFloatingSurface(RectangleShape, strongestAtTop = true) else Modifier)
+                        .padding(horizontal = 16.dp),
+                ) {
+                    FilterChips(filter) { filter = it }
+                }
+            })
+        } else {
+            deskGrid()
         }
     }
 
@@ -410,6 +444,8 @@ private fun DeskTitle(filter: DeskFilter) {
         }
     }
 }
+
+private val FilterRowHeight = 16.dp + 46.dp + 10.dp
 
 /**
  * The chips: glass capsules with a white rim; the chosen one is filled lemon. The row runs to the
@@ -571,7 +607,7 @@ internal fun NameSheet(vm: AppViewModel, n: Note, onDismiss: () -> Unit) {
                         Icon(LucideIcons.Mic, null, tint = Candy.Grape, modifier = Modifier.size(19.dp))
                         Spacer(Modifier.width(10.dp))
                         Box(Modifier.weight(1f)) {
-                            if (name.text.isEmpty()) Text(stringResource(R.string.voice_name_hint), style = ClearType.Body.copy(fontSize = 17.sp), color = c.inkFaint)
+                            if (name.text.isEmpty()) Text(stringResource(R.string.voice_name_hint), style = ClearType.Body.copy(fontSize = 17.sp), color = c.inkSoft)
                             inner()
                         }
                         if (name.text.isNotEmpty()) {

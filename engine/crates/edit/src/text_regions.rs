@@ -444,8 +444,14 @@ pub(super) fn rewrite_styled_block(
     max_glyphs: usize,
 ) -> Result<LineEdit, EditError> {
     let first = block.lines.first().and_then(|i| lines.get(*i)).ok_or_else(|| EditError::Invalid("the paragraph has no source runs".into()))?;
+    // The editor's own form of the paragraph (rows the source wrapped joined by spaces, rows it
+    // ended kept as breaks) is the unchanged text too: the source's, with a break at every row.
+    let unchanged = |t: &str| {
+        let e = block.editor_text.as_bytes();
+        t.len() == e.len() && t.bytes().zip(e).all(|(a, b)| a == *b || (a == b' ' && *b == b'\n'))
+    };
     let draft = match text {
-        Some(t) if t != block.text => t,
+        Some(t) if t != block.text && !unchanged(t) => t,
         _ => &block.editor_text,
     };
     if draft.len() > 4_000_000 {
@@ -473,6 +479,23 @@ pub(super) fn rewrite_styled_block(
     let mut styled_spans = Vec::new();
     let mut underlines = HashMap::new();
     let mut overrides = HashMap::new();
+    // The page's fonts, read once, for a weight or slant in a run's own face.
+    let page_fonts: Vec<(String, Metrics)> = {
+        let pd = page_dict(doc, page)?;
+        let res = pd.dict.get(b"Resources").and_then(|r| doc.resolve(r).as_dict().cloned()).unwrap_or_default();
+        let fonts = res.get(b"Font").and_then(|r| doc.resolve(r).as_dict().cloned()).unwrap_or_default();
+        fonts
+            .iter()
+            .take(256)
+            .filter_map(|(name, object)| {
+                doc.resolve(object).as_dict().map(|d| (String::from_utf8_lossy(name).into_owned(), Metrics::from_dict(doc, d)))
+            })
+            .collect()
+    };
+    // Styled runs drawn in another of the page's faces (their widths are that face's own) and
+    // runs slanted by their matrix (synthetic italic).
+    let mut own_variant = std::collections::HashSet::new();
+    let mut slant = std::collections::HashSet::new();
     for (span, source) in block.edited_spans(draft) {
         let mut edges = vec![span.start, span.end];
         for r in &ranges {
@@ -498,6 +521,8 @@ pub(super) fn rewrite_styled_block(
                     underline: None,
                     char_spacing: None,
                     scale: None,
+                    bold: None,
+                    italic: None,
                 };
                 let r = selected.unwrap_or(&default_range);
                 let mut line = lines.get(source).unwrap_or(first).clone();
@@ -509,6 +534,63 @@ pub(super) fn rewrite_styled_block(
                     line.base_font = base.to_owned();
                     line.bold = bold;
                     line.italic = italic;
+                }
+                // A weight or slant in the run's own face (no family chosen): the page's own bold or
+                // italic of that face if one shows the text, else the same glyphs stroked or slanted.
+                // Either way the face's widths stay, so a style alone never re-wraps the paragraph.
+                if r.family.is_none() && style.family.is_none() && (r.bold.is_some() || r.italic.is_some()) {
+                    let want_bold = r.bold.unwrap_or(line.bold);
+                    let want_italic = r.italic.unwrap_or(line.italic);
+                    let synthetic_bold = line.origin.state.render_mode == 2;
+                    let piece = draft.get(start..end).unwrap_or_default();
+                    let family = crate::text::family_key(&line.base_font);
+                    let native = page_fonts.iter().find(|(_, m)| {
+                        m.bold == want_bold && m.italic == want_italic && crate::text::family_key(&m.base_font) == family && source_encodes(m, piece)
+                    });
+                    if want_bold == line.bold && want_italic == line.italic {
+                        // nothing to change
+                    } else if let Some((name, m)) = native {
+                        line.font = name.clone();
+                        line.base_font = m.base_font.clone();
+                        line.bold = want_bold;
+                        line.italic = want_italic;
+                        if synthetic_bold {
+                            line.origin.state.render_mode = 0;
+                        }
+                        own_variant.insert(styled_lines.len());
+                    } else {
+                        // Bold: filled and stroked in the text's colour, about a thirtieth of its size
+                        // wide. Not bold: a synthetic bold stops stroking (a face that is itself
+                        // bold, with no regular on the page, takes the standard family's regular).
+                        if want_bold && !line.bold {
+                            let [r, g, b] = line.color;
+                            line.origin.state.render_mode = 2;
+                            line.origin.state.stroke = vec![Op::new("RG", vec![Object::Real(r), Object::Real(g), Object::Real(b)])];
+                            line.origin.state.line_width =
+                                Some((line.size * 0.03).max(0.05) / line.origin.ctm[0].hypot(line.origin.ctm[1]).max(1e-6));
+                            line.bold = true;
+                        } else if !want_bold && line.bold && synthetic_bold {
+                            line.origin.state.render_mode = 0;
+                            line.bold = false;
+                        } else if !want_bold && line.bold {
+                            let base = source_family(&line.base_font).base_font(false, want_italic && line.italic);
+                            line.font = format!("PCRange{}", base.replace('-', ""));
+                            line.base_font = base.to_owned();
+                            line.bold = false;
+                            own_variant.insert(styled_lines.len());
+                        }
+                        if want_italic && !line.italic {
+                            slant.insert(styled_lines.len());
+                            line.italic = true;
+                        } else if !want_italic && line.italic && !line.font.starts_with("PCRange") {
+                            // an italic face with no upright on the page: the standard family's upright
+                            let base = source_family(&line.base_font).base_font(line.bold && line.origin.state.render_mode != 2, false);
+                            line.font = format!("PCRange{}", base.replace('-', ""));
+                            line.base_font = base.to_owned();
+                            line.italic = false;
+                            own_variant.insert(styled_lines.len());
+                        }
+                    }
                 }
                 if let Some(resource) = &r.resource {
                     line.font = resource.clone();
@@ -775,7 +857,9 @@ pub(super) fn rewrite_styled_block(
                 source.origin.state.word_spacing,
             ) * source.origin.state.scale
                 * across(source);
-            let changed_face = style.resource.is_some() || overrides.get(&index).is_some_and(|r| r.family.is_some() || r.resource.is_some());
+            let changed_face = style.resource.is_some()
+                || own_variant.contains(&index)
+                || overrides.get(&index).is_some_and(|r| r.family.is_some() || r.resource.is_some());
             let factor = if nominal > 0.0 && !changed_face { ((source.rect[2] - source.rect[0]) / nominal).clamp(0.5, 2.0) } else { 1.0 };
             calibration.insert(index, factor);
         }
@@ -871,6 +955,40 @@ pub(super) fn rewrite_styled_block(
         close_row(&mut items, row_index)?;
     }
     let slack = slack.clamp(0.0, width * 0.15);
+    // A change of style alone (the same text, no new size, spacing, scale or width) keeps the
+    // paragraph's own rows: making a word bold used to re-wrap it, a row became two and ran into
+    // the paragraph below. A row a wider face pushes past the paragraph's width is narrowed to it.
+    let style_only = draft == block.editor_text
+        && style.width.is_none()
+        && style.size.is_none()
+        && style.char_spacing.is_none()
+        && style.scale.is_none()
+        && style.line_spacing.is_none()
+        && ranges.iter().all(|r| r.size.is_none() && r.char_spacing.is_none() && r.scale.is_none());
+    // Each draft character's visual row in the source, for a style-only change to break exactly
+    // where the source did (the editor's text joins rows the source wrapped, so its newlines
+    // alone don't say where every row ends).
+    let char_row: Vec<usize> = if style_only {
+        let row_of_line: HashMap<usize, usize> = block.rows.iter().enumerate().flat_map(|(r, ls)| ls.iter().map(move |l| (*l, r))).collect();
+        let mut rows_of = Vec::new();
+        let mut span = 0;
+        let mut owner = block.lines.first().copied().unwrap_or(0);
+        for (byte, _) in block.editor_text.char_indices() {
+            while block.spans.get(span).is_some_and(|(r, _)| byte >= r.end) {
+                span += 1;
+            }
+            if let Some((r, i)) = block.spans.get(span)
+                && r.contains(&byte)
+            {
+                owner = *i;
+            }
+            rows_of.push(row_of_line.get(&owner).copied().unwrap_or(0));
+        }
+        rows_of
+    } else {
+        Vec::new()
+    };
+    let mut current_row: Option<usize> = None;
     // Wrap at word boundaries, retaining explicit source row breaks and whitespace.
     let mut at = 0;
     while at < chars.len() {
@@ -886,7 +1004,22 @@ pub(super) fn rewrite_styled_block(
             row_width = 0.0;
             at += 1;
             row_start = at;
+            current_row = None;
             continue;
+        }
+        // A style-only change: a new row where the source began one, and nowhere else.
+        if style_only && !item.0.is_whitespace() {
+            let source_row = char_row.get(at).copied();
+            if !row.is_empty() && current_row.is_some() && source_row != current_row {
+                while row.last().is_some_and(|c: &(char, usize, String)| c.0.is_whitespace()) {
+                    row.pop();
+                }
+                row_ranges.push(row_start..row_start + row.len());
+                rows.push(std::mem::take(&mut row));
+                row_width = 0.0;
+                row_start = at;
+            }
+            current_row = source_row;
         }
         let mut end = at + 1;
         if !item.0.is_whitespace() {
@@ -900,7 +1033,7 @@ pub(super) fn rewrite_styled_block(
         }
         let word = chars.get(at..end).unwrap_or_default();
         let w = measure(word)?;
-        if !row.is_empty() && !item.0.is_whitespace() && row_width + w > width + 0.5 + slack {
+        if !style_only && !row.is_empty() && !item.0.is_whitespace() && row_width + w > width + 0.5 + slack {
             while row.last().is_some_and(|c: &(char, usize, String)| c.0.is_whitespace()) {
                 row.pop();
             }
@@ -923,7 +1056,11 @@ pub(super) fn rewrite_styled_block(
     // A row the edit doesn't reach keeps its source operators, so its kerning, TJ word gaps and
     // glyph widths stay exactly as they were instead of being rebuilt from the text state.
     let plain = BlockStyle { ranges: Vec::new(), ..style.clone() } == BlockStyle::default();
-    let mut kept = if plain {
+    let mut kept = if style_only && rows.len() == block.rows.len() {
+        // The rows are the source's own: one with nothing styled in it keeps its operators, so
+        // its words don't shift (rebuilt from the text state they lost their kerning and gaps).
+        rows.iter().map(|row| row.iter().all(|c| c.1 < source_count)).collect()
+    } else if plain {
         untouched_rows(block, draft, &row_ranges).into_iter().zip(&rows).map(|(same, row)| same && row.iter().all(|c| c.1 < source_count)).collect()
     } else {
         vec![false; rows.len()]
@@ -1025,6 +1162,9 @@ pub(super) fn rewrite_styled_block(
             continue;
         }
         let w = measured.get(row_index).copied().unwrap_or(0.0);
+        // A kept row (style alone) a wider face pushed past the paragraph's width: narrowed to it.
+        let squeeze = if style_only && w > width + 0.5 + slack && w > 0.0 { ((width + slack) / w).clamp(0.5, 1.0) } else { 1.0 };
+        let w = w * squeeze;
         let align = style.align.unwrap_or(if centered { crate::added::Align::Center } else { crate::added::Align::Left });
         let original_rect = block.rows.get(row_index).and_then(|row| row_rect(row, lines)).unwrap_or(block.rect);
         let left = if style.width.is_none() && style.align.is_none() { original_rect[0] } else { block.rect[0] };
@@ -1057,6 +1197,7 @@ pub(super) fn rewrite_styled_block(
             if !shaped_runs.contains_key(&(row_index, pos)) {
                 state.scale *= calibration.get(&item.1).copied().unwrap_or(1.0);
             }
+            state.scale *= squeeze;
             if let Some([r, g, b]) = overrides.get(&item.1).and_then(|r| r.color).or(style.color).filter(|c| !same_colour(*c, source.color)) {
                 state.fill = vec![Op::new("rg", vec![n(r), n(g), n(b)])];
             }
@@ -1065,7 +1206,12 @@ pub(super) fn rewrite_styled_block(
             let (ax, ay) = back.apply(x - source.origin.x, baseline - source.origin.baseline);
             tm[4] += ax;
             tm[5] += ay;
-            let mut segment_width = segment_advances.get(&(row_index, pos)).copied().unwrap_or(0.0);
+            if slant.contains(&item.1) {
+                // synthetic italic: the glyphs lean about 12 degrees along the baseline
+                tm[2] += 0.21 * tm[0];
+                tm[3] += 0.21 * tm[1];
+            }
+            let mut segment_width = segment_advances.get(&(row_index, pos)).copied().unwrap_or(0.0) * squeeze;
             // Each run in its own graphics state, restating what its source set inside its text
             // object (`gs`, stroke, line width, `Tr`; #3508/#3509) from the state the rewrite is
             // drawn in: a `gs` has no inverse, so one run's ExtGState would stay for the next.

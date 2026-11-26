@@ -392,6 +392,9 @@
     <string name="sheet_add_star">Adicionar estrela</string>
     <string name="sheet_remove_star">Remover a estrela</string>
     <string name="sheet_view_settings">Definições de visualização</string>
+    <string name="sheet_toolbars">Barras de ferramentas</string>
+    <string name="sheet_bars_beside">Ao lado da página</string>
+    <string name="sheet_bars_over">Sobre a página</string>
     <string name="sheet_pages">Páginas</string>
     <string name="sheet_attachments">Anexos</string>
     <string name="sheet_bookmarks_contents">Marcadores e índice</string>
@@ -1215,6 +1218,8 @@
     <string name="app_style_clean">Simples</string>
     <string name="app_style_glass_detail">Predefinido · Superfícies translúcidas</string>
     <string name="app_style_clean_detail">Superfícies opacas</string>
+    <string name="settings_reduce_transparency">Reduzir transparência</string>
+    <string name="settings_reduce_transparency_detail">As barras sobre páginas e listas ficam opacas, sem desfocagem por trás</string>
     <string name="qr_scanner">Leitor de QR</string>
     <string name="qr_scan_prompt">Aponte a câmara para um código QR</string>
 </resources>

@@ -95,6 +95,8 @@ object LucideIcons {
     val Images: ImageVector get() = Icons.Rounded.PhotoLibrary
     val Info: ImageVector get() = Icons.Rounded.Info
     val Layers: ImageVector get() = Icons.Rounded.Layers
+    /** A window with its own bar: the viewer's bars beside the page, not over it. */
+    val BarsBesidePage: ImageVector get() = Icons.Rounded.WebAsset
     val LayoutGrid: ImageVector get() = Icons.Rounded.GridView
     val Link: ImageVector get() = Icons.Rounded.Link
     val List: ImageVector get() = Icons.AutoMirrored.Rounded.List
