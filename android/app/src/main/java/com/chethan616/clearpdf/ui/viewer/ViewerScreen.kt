@@ -390,6 +390,11 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
                     )
                 }
                 val searchShown by remember { androidx.compose.runtime.derivedStateOf { ctl.searching || sp.value > 0.002f } }
+                // While More is its menu, the title pill, Undo and Share step out of its way: the card
+                // unfolds over them and left them cut off beside its edge (#158).
+                val besideMenu by androidx.compose.animation.core.animateFloatAsState(
+                    if (moreMorphUp) 0f else 1f, androidx.compose.animation.core.tween(140), label = "besideMenu",
+                )
                 Box(barSides) {
                     Box {
                         val fa = vm.fieldActions
@@ -427,7 +432,7 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
                                 }
                             },
                             moreHidden = moreMorphUp,
-                            contentAlpha = 1f - sp.value,
+                            contentAlpha = minOf(1f - sp.value, besideMenu),
                             undoLabel = if (doc.localUndo != null) stringResource(R.string.viewer_undo_drawing) else doc.info.undo,
                             redoLabel = if (doc.localUndo != null) stringResource(R.string.viewer_undo_drawing) else doc.info.redo,
                         )

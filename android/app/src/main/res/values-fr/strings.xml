@@ -1510,6 +1510,8 @@
     <string name="app_style_clean">Épuré</string>
     <string name="app_style_glass_detail">Par défaut · Surfaces translucides</string>
     <string name="app_style_clean_detail">Surfaces opaques</string>
+    <string name="settings_reduce_transparency">Réduire la transparence</string>
+    <string name="settings_reduce_transparency_detail">Les barres au-dessus des pages et des listes restent opaques, sans flou derrière</string>
     <string name="qr_scanner">Scanner QR</string>
     <string name="qr_scan_prompt">Pointez la caméra vers un code QR</string>
 </resources>

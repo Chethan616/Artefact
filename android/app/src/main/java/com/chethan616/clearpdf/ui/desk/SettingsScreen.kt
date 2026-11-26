@@ -156,6 +156,10 @@ private fun SettingsRoot(vm: AppViewModel, openLicences: () -> Unit, openGlass: 
             Panel {
                 ThemePicker(vm.theme) { vm.setThemeChoice(it) }
                 AppearancePicker(vm.cleanAppearance, vm::updateCleanAppearance)
+                if (vm.cleanAppearance) ToggleRow(
+                    LucideIcons.Contrast, Candy.Sky, stringResource(R.string.settings_reduce_transparency),
+                    stringResource(R.string.settings_reduce_transparency_detail), GlassSettings.reduceTransparency,
+                ) { GlassSettings.updateReduceTransparency(context, it) }
                 SettingRow(LucideIcons.Globe, Candy.Sky, stringResource(R.string.settings_language), openAppLanguage, value = appLanguage, chevron = true)
                 SettingRow(LucideIcons.Sparkles, Candy.Grape, stringResource(R.string.settings_glass_motion), openGlass, value = "$glassName · $motionName", chevron = true)
                 ToggleRow(LucideIcons.Smartphone, Candy.Bubblegum, stringResource(R.string.settings_haptics), null, GlassSettings.haptics) { GlassSettings.updateHaptics(context, it) }
@@ -368,7 +372,7 @@ private fun AppFooter(vm: AppViewModel) {
         Spacer(Modifier.height(14.dp))
         Text(stringResource(R.string.settings_credits_body), style = ClearType.Caption, color = c.inkSoft, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.home_legal_notice), style = ClearType.Caption, color = c.inkFaint, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Text(stringResource(R.string.home_legal_notice), style = ClearType.Caption, color = c.inkSoft, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 
@@ -714,14 +718,14 @@ private fun LicencesPage(onBack: () -> Unit) {
                                     Icon(LucideIcons.ArrowUpRight, stringResource(R.string.licences_source, k.name), tint = c.inkSoft, modifier = Modifier.size(18.dp))
                                 }
                             }
-                            Text(k.terms, style = ClearType.Caption.copy(fontSize = 11.5.sp), color = c.inkFaint, modifier = Modifier.padding(top = 2.dp))
+                            Text(k.terms, style = ClearType.Caption, color = c.inkSoft, modifier = Modifier.padding(top = 2.dp))
                             if (expanded) {
                                 val text = remember(k.text) {
                                     k.text?.let { f -> runCatching { context.assets.open("licences/$f").bufferedReader().readText() }.getOrNull() }
                                 }
                                 Text(
                                     text ?: stringResource(R.string.licences_text_at_source),
-                                    style = ClearType.Caption.copy(fontSize = 11.sp, lineHeight = 15.sp), color = c.inkSoft,
+                                    style = ClearType.Caption, color = c.inkSoft,
                                     modifier = Modifier.padding(top = 10.dp),
                                 )
                             }

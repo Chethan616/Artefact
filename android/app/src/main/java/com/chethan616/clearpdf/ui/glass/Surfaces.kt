@@ -6,9 +6,12 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -16,6 +19,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
@@ -39,7 +43,7 @@ import com.kyant.backdrop.drawBackdrop
 @Composable
 internal fun Modifier.cleanFloatingSurface(shape: Shape, strongestAtTop: Boolean = false): Modifier {
     val panel = clear.solidPanel
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || GlassSettings.reduceTransparency) {
         return clip(shape).background(panel)
     }
     val mask = remember(strongestAtTop) {
@@ -74,6 +78,11 @@ fun Modifier.glass(
     lensAmount: Dp = 24.dp,
     styleOverride: GlassStyle? = null,
     luminance: GlassLuminance? = null,
+    /**
+     * A dimming layer ([glassDim]) over the wash, at its own strength whatever the preset's tint: what
+     * guarantees the words on this glass their contrast, so it is not the preset's to thin out (#158).
+     */
+    dim: Color = Color.Unspecified,
 ): Modifier {
     if (clear.clean) return clip(shape).background(clear.solidPanel)
     val backdrop = LocalBackdrop.current
@@ -83,10 +92,13 @@ fun Modifier.glass(
         backdrop = backdrop,
         shape = { shape },
         shadow = null,
-        effects = { adaptiveGlassEffects(style, luminance.value, blur.toPx(), lensHeight.toPx(), lensAmount.toPx()) },
+        effects = { adaptiveGlassEffects(style, luminance.value, blur.toPx(), lensHeight.toPx(), lensAmount.toPx(), busy = luminance.busy) },
         highlight = { glassHighlight(style) },
         onDrawBackdrop = luminance.recorder,
-        onDrawSurface = { drawRect(adaptiveWash(luminance.value).glassTint(style)) },
+        onDrawSurface = {
+            drawRect(adaptiveWash(luminance.value, luminance.busy).glassTint(style))
+            drawGlassEdge(shape, lightEdge(luminance.value))
+        },
     )
     // Adaptive luminance on: a still surface (a bar, a panel, a sheet) takes its frost and light
     // from what is around it. It keeps its own wash: what is written on it is in the theme's ink.
@@ -99,7 +111,10 @@ fun Modifier.glass(
             shadow = null,
             effects = { adaptiveGlassEffects(base, around.value, blur.toPx(), lensHeight.toPx(), lensAmount.toPx()) },
             highlight = { glassHighlight(base) },
-            onDrawSurface = { if (wash.isSpecified) drawRect(wash) },
+            onDrawSurface = {
+                if (wash.isSpecified) drawRect(wash)
+                if (dim.isSpecified) drawRect(dim)
+            },
         )
     }
     return drawBackdrop(
@@ -108,8 +123,32 @@ fun Modifier.glass(
         shadow = null,
         effects = { glassEffects(style, blur.toPx(), lensHeight.toPx(), lensAmount.toPx()) },
         highlight = { glassHighlight(style) },
-        onDrawSurface = { if (wash.isSpecified) drawRect(wash.glassTint(style)) },
+        onDrawSurface = {
+            if (wash.isSpecified) drawRect(wash.glassTint(style))
+            if (dim.isSpecified) drawRect(dim)
+        },
     )
+}
+
+/**
+ * The dimming layer inside glass that carries words over the wallpaper (#158, after Apple's Liquid
+ * Glass: clear glass over a bright or busy backdrop needs one). Smoke in the dark theme, where the ink
+ * is white; milk in the light theme, where it is dark. [heavy] is the "regular" glass of a panel of
+ * rows (the Files list); light is a bar's (search, tabs). The blur, lens and rim stay the preset's.
+ */
+@Composable
+fun glassDim(heavy: Boolean = false): Color =
+    if (clear.dark) Color(0xFF0B0F1A).copy(alpha = if (heavy) 0.50f else 0.36f)
+    else Color.White.copy(alpha = if (heavy) 0.56f else 0.40f)
+
+/**
+ * A panel of rows on the same liquid glass as the search bar above it (#158): the wallpaper refracts
+ * and frosts through it like the bar, under a heavier dim so rows of names read over any picture. The
+ * rows lie flat on it (no glass of their own). Solid in the Clean appearance.
+ */
+@Composable
+fun GlassListPanel(modifier: Modifier = Modifier, shape: Shape = RoundedRectangle(28.dp), content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier.glass(shape, blur = 20.dp, lensHeight = 14.dp, lensAmount = 20.dp, dim = glassDim(heavy = true)), content = content)
 }
 
 /**
@@ -210,7 +249,7 @@ fun Modifier.pressable(
     return graphicsLayer {
         scaleX = jelly.scale
         scaleY = jelly.scale
-    }.combinedClickable(
+    }.focusRing(source).combinedClickable(
         interactionSource = source,
         indication = null,
         enabled = enabled,
@@ -218,6 +257,27 @@ fun Modifier.pressable(
         onClick = { if (feel != null) haptics?.play(feel); onClick() },
         onLongClick = onLongClick?.let { l -> { haptics?.play(Feel.Bloom); jelly.rest(); l() } },
     )
+}
+
+/**
+ * A ring round a control while it has keyboard, D-pad or Switch Access focus (#158): with no ripple
+ * (the press is the jelly), nothing else would show which control is focused. Touch never focuses it.
+ */
+@Composable
+fun Modifier.focusRing(source: MutableInteractionSource, corner: Dp = 12.dp): Modifier {
+    val focused by source.collectIsFocusedAsState()
+    if (!focused) return this
+    val ring = com.chethan616.clearpdf.ui.theme.Candy.Sky
+    return drawWithContent {
+        drawContent()
+        val w = 2.dp.toPx()
+        drawRoundRect(
+            ring, topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2),
+            size = androidx.compose.ui.geometry.Size(size.width - w, size.height - w),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(minOf(corner.toPx(), size.minDimension / 2)),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(w),
+        )
+    }
 }
 
 /** An icon in the ink of the glass it sits on. */
@@ -229,4 +289,35 @@ fun GlassIcon(icon: ImageVector, contentDescription: String?, modifier: Modifier
         else -> clear.ink
     }
     Icon(icon, contentDescription, modifier, tint = ink)
+}
+
+/**
+ * A soft fade at whichever end of a scrolling menu has more to show, so a cut-off last row reads as
+ * "scroll for more" rather than a clipped word (#158). Put it before [verticalScroll], with the same
+ * [state]: it is drawn over the viewport, not the content.
+ */
+fun Modifier.scrollEdgeFade(state: androidx.compose.foundation.ScrollState, length: Dp = 24.dp): Modifier = this
+    .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val f = (length.toPx() / size.height).coerceIn(0f, 0.5f)
+        val top = state.canScrollBackward
+        val bottom = state.canScrollForward
+        if (f <= 0f || (!top && !bottom)) return@drawWithContent
+        drawRect(
+            Brush.verticalGradient(
+                0f to (if (top) Color.Transparent else Color.Black),
+                f to Color.Black,
+                1f - f to Color.Black,
+                1f to (if (bottom) Color.Transparent else Color.Black),
+            ),
+            blendMode = BlendMode.DstIn,
+        )
+    }
+
+/** [verticalScroll] with its own state and a [scrollEdgeFade] at the ends that have more. */
+@Composable
+fun Modifier.fadingVerticalScroll(): Modifier {
+    val state = androidx.compose.foundation.rememberScrollState()
+    return scrollEdgeFade(state).then(Modifier.verticalScroll(state))
 }

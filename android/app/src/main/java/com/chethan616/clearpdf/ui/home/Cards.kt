@@ -270,7 +270,7 @@ fun NoteCard(
             NoteImage(name, Modifier.fillMaxWidth().height(86.dp).clip(RoundedRectangle(16.dp)))
         }
         Spacer(Modifier.height(12.dp).weight(1f, fill = false))
-        Text(shortDate(note.updated), style = ClearType.Caption.copy(fontSize = 10.5.sp), color = tone.ink.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.End))
+        Text(shortDate(note.updated), style = ClearType.Caption, color = tone.ink.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.End))
     }
 }
 
@@ -295,7 +295,7 @@ fun MapCard(note: Note, onOpen: () -> Unit, onLong: () -> Unit, modifier: Modifi
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(LucideIcons.Network, null, tint = tone.ink.copy(alpha = 0.75f), modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
-            Text(stringResource(R.string.mindmap_title), style = ClearType.Caption.copy(fontSize = 11.sp), color = tone.ink.copy(alpha = 0.75f))
+            Text(stringResource(R.string.mindmap_title), style = ClearType.Caption, color = tone.ink.copy(alpha = 0.75f))
         }
         Spacer(Modifier.height(6.dp))
         WordFitText(note.title.ifBlank { stringResource(R.string.mindmap_title) }, (if (clear.clean) ClearType.Title else ClearType.CardTitle).copy(color = tone.accent), maxLines = 3)
@@ -317,7 +317,7 @@ fun MapCard(note: Note, onOpen: () -> Unit, onLong: () -> Unit, modifier: Modifi
             }
         }
         Spacer(Modifier.height(12.dp).weight(1f, fill = false))
-        Text(shortDate(note.updated), style = ClearType.Caption.copy(fontSize = 10.5.sp), color = tone.ink.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.End))
+        Text(shortDate(note.updated), style = ClearType.Caption, color = tone.ink.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.End))
     }
 }
 
@@ -334,7 +334,7 @@ fun ThoughtCard(onOpen: () -> Unit, modifier: Modifier = Modifier) {
         Text("“$quote”", style = ClearType.Body.copy(fontSize = 14.sp, lineHeight = 19.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic), color = tone.ink.copy(alpha = 0.8f), maxLines = 5, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         Spacer(Modifier.weight(1f))
         Spacer(Modifier.height(12.dp))
-        Text(shortDate(System.currentTimeMillis()), style = ClearType.Caption.copy(fontSize = 10.5.sp), color = tone.ink.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.End))
+        Text(shortDate(System.currentTimeMillis()), style = ClearType.Caption, color = tone.ink.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.End))
     }
 }
 
@@ -392,7 +392,7 @@ fun VoiceCard(note: Note, playing: Boolean, progress: () -> Float, onPlay: () ->
                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
             )
             if (note.durationMs > 0) {
-                Text(com.chethan616.clearpdf.ui.viewer.clock(note.durationMs), style = ClearType.Caption.copy(fontSize = 10.5.sp, fontFeatureSettings = "tnum"), color = tone.ink.copy(alpha = 0.78f))
+                Text(com.chethan616.clearpdf.ui.viewer.clock(note.durationMs), style = ClearType.Caption.copy(fontFeatureSettings = "tnum"), color = tone.ink.copy(alpha = 0.78f))
             }
         }
         val bars = remember(note.wave) { voiceBars(note.wave) }
@@ -587,7 +587,7 @@ fun StackCard(
         ) {
             Column(Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp)) {
                 Text(title, style = ClearType.Title.copy(fontSize = 17.sp), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (subtitle != null) Text(subtitle, style = ClearType.Caption.copy(fontSize = 10.5.sp), color = Color.White.copy(alpha = 0.85f), maxLines = 1)
+                if (subtitle != null) Text(subtitle, style = ClearType.Caption, color = Color.White.copy(alpha = 0.85f), maxLines = 1)
             }
             chips()
             Box(Modifier.matchParentSize().border(1.dp, Color.White.copy(alpha = 0.35f), CardShape))

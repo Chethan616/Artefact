@@ -61,7 +61,9 @@ import com.chethan616.clearpdf.ui.glass.GlassPill
 import com.chethan616.clearpdf.ui.glass.GlassRow
 import com.chethan616.clearpdf.ui.glass.GlassTab
 import com.chethan616.clearpdf.ui.glass.GlassTabs
-import com.chethan616.clearpdf.ui.glass.WashPanel
+import com.chethan616.clearpdf.ui.glass.GlassListPanel
+import com.chethan616.clearpdf.ui.glass.glassDim
+import com.chethan616.clearpdf.ui.theme.glowing
 import com.chethan616.clearpdf.ui.glass.glass
 import com.chethan616.clearpdf.ui.glass.pressable
 import com.chethan616.clearpdf.ui.home.FileRow
@@ -246,8 +248,12 @@ private fun LazyListScope.panels(vm: AppViewModel, key: String, title: String?, 
     if (title != null) {
         item(key = "t-$key") {
             Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 8.dp), verticalAlignment = Alignment.Bottom) {
-                Text(title, style = ClearType.Title, color = clear.ink, modifier = Modifier.weight(1f))
-                Text(rows.size.toString(), style = ClearType.Number, color = if (vm.cleanAppearance) clear.ink else clear.inkFaint)
+                // straight on the wallpaper: the theme's ink, with the hero titles' glow under it so it
+                // reads over a picture too; the count is a figure to read, in full ink (#158)
+                val c = clear
+                val glow = !vm.cleanAppearance
+                Text(title, style = if (glow) ClearType.Title.glowing(c) else ClearType.Title, color = c.ink, modifier = Modifier.weight(1f))
+                Text(rows.size.toString(), style = if (glow) ClearType.Number.glowing(c) else ClearType.Number, color = c.ink)
             }
         }
     } else {
@@ -255,10 +261,11 @@ private fun LazyListScope.panels(vm: AppViewModel, key: String, title: String?, 
     }
     rows.chunked(PanelRows).forEachIndexed { i, chunk ->
         item(key = "p-$key-$i") {
-            WashPanel(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth()) {
+            GlassListPanel(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth()) {
                 Spacer(Modifier.height(4.dp))
                 chunk.forEachIndexed { index, r ->
-                    if (vm.cleanAppearance && index > 0) HorizontalDivider(Modifier.padding(horizontal = 14.dp), color = clear.line)
+                    // a hairline between rows, from the name on (past the thumbnail)
+                    if (index > 0) HorizontalDivider(Modifier.padding(start = if (vm.cleanAppearance) 14.dp else 68.dp, end = 14.dp), color = clear.line)
                     FileListItem(vm, r, recent)
                 }
                 Spacer(Modifier.height(4.dp))
@@ -274,19 +281,21 @@ private fun SearchCapsule(query: String, onQuery: (String) -> Unit, clean: Boole
     val hint = stringResource(R.string.home_search_your_files)
     Row(
         Modifier.padding(horizontal = 16.dp, vertical = 10.dp).fillMaxWidth().height(52.dp)
-            .then(if (clean) Modifier.background(c.solidPanel, Capsule) else Modifier.glass(Capsule, blur = 4.dp))
+            // the same liquid glass as the list below it, frosted and dimmed so the words read (#158)
+            .then(if (clean) Modifier.background(c.solidPanel, Capsule) else Modifier.glass(Capsule, blur = 10.dp, dim = glassDim()))
             .padding(start = 18.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(LucideIcons.Search, null, tint = c.inkSoft, modifier = Modifier.size(20.dp))
+        Icon(LucideIcons.Search, null, tint = c.ink.copy(alpha = 0.85f), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         BasicTextField(
             value = query, onValueChange = onQuery, singleLine = true,
-            textStyle = ClearType.Body.copy(color = c.ink), cursorBrush = SolidColor(Candy.Tomato),
+            textStyle = ClearType.Body.copy(color = c.ink, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium), cursorBrush = SolidColor(Candy.Tomato),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSearch() }),
             modifier = Modifier.weight(1f),
-            decorationBox = { inner -> Box { if (query.isEmpty()) Text(hint, style = ClearType.Body, color = if (clean) c.inkSoft else c.inkFaint); inner() } },
+            // the hint near the ink and semibold, not a grey that the wallpaper swallows
+            decorationBox = { inner -> Box { if (query.isEmpty()) Text(hint, style = ClearType.BodyStrong, color = if (clean) c.inkSoft else c.ink.copy(alpha = 0.80f)); inner() } },
         )
         if (query.isNotEmpty()) {
             Box(Modifier.size(40.dp).pressable({ onQuery("") }), contentAlignment = Alignment.Center) {
@@ -315,8 +324,8 @@ private fun SelectionHeader(vm: AppViewModel, recent: Boolean, onDelete: () -> U
 @Composable
 private fun Places(vm: AppViewModel, onBrowse: () -> Unit, onDevice: () -> Unit) {
     Column {
-        Text(stringResource(R.string.files_places), style = ClearType.Title, color = clear.ink, modifier = Modifier.padding(start = 24.dp, top = 26.dp, bottom = 8.dp))
-        WashPanel(Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
+        Text(stringResource(R.string.files_places), style = if (vm.cleanAppearance) ClearType.Title else ClearType.Title.glowing(clear), color = clear.ink, modifier = Modifier.padding(start = 24.dp, top = 26.dp, bottom = 8.dp))
+        GlassListPanel(Modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
             Spacer(Modifier.height(4.dp))
             PlaceRow(LucideIcons.Smartphone, stringResource(R.string.home_on_this_device), Candy.Sky, onDevice)
             PlaceRow(LucideIcons.Images, stringResource(R.string.home_photos), Candy.Lemon) { vm.pickPhotosToPdf() }

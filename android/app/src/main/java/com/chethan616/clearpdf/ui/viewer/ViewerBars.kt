@@ -72,6 +72,7 @@ import com.chethan616.clearpdf.ui.glass.GlassMenu
 import com.chethan616.clearpdf.ui.glass.GlassMenuItem
 import com.chethan616.clearpdf.ui.glass.GlassMotion
 import com.chethan616.clearpdf.ui.glass.GlassPill
+import com.chethan616.clearpdf.ui.glass.MinTouch
 import com.chethan616.clearpdf.ui.glass.RoundedRectangle
 import com.chethan616.clearpdf.ui.glass.LocalGlassInk
 import com.chethan616.clearpdf.ui.glass.glass
@@ -144,6 +145,8 @@ fun ViewerTopBar(
             modifier = Modifier.weight(1f).onGloballyPositioned { titleAnchor = it.boundsInWindow() }
                 .graphicsLayer { alpha = contentAlpha.coerceIn(0f, 1f) },
             height = 48.dp,
+            // frosted enough that a page heading scrolled behind the title doesn't read through it
+            blur = 10.dp,
             horizontalPadding = 16.dp,
         ) {
             val ink = LocalGlassInk.current
@@ -153,7 +156,7 @@ fun ViewerTopBar(
                 if (subtitle != null && toolTitle == null) Text(subtitle, style = ClearType.Caption, color = ink.copy(alpha = 0.72f), maxLines = 1)
             }
             if (onSearch != null && !toolActive) {
-                BarGlyphButton(onSearch, stringResource(R.string.viewer_find_in_document), size = 36.dp, enabled = contentAlpha > 0.5f) {
+                BarGlyphButton(onSearch, stringResource(R.string.viewer_find_in_document), size = MinTouch, enabled = contentAlpha > 0.5f) {
                     Icon(LucideIcons.Search, null, tint = ink, modifier = Modifier.size(19.dp))
                 }
             }
@@ -292,7 +295,8 @@ fun SearchBar(
                     layout(full, placeable.height) { placeable.place(0, 0) }
                 }
                 .then(ink.modifier)
-                .glassBar().padding(start = 16.dp, end = 4.dp)
+                // frosted more than the dock: page text scrolls behind the words typed here (#158)
+                .glassBar(blur = 10.dp, edge = ink.edge).padding(start = 16.dp, end = 4.dp)
                 .graphicsLayer { alpha = ((progress().coerceIn(0f, 1f) - 0.35f) / 0.45f).coerceIn(0f, 1f) },
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -313,7 +317,7 @@ fun SearchBar(
                     modifier = Modifier.weight(1f).focusRequester(focus).semantics { contentDescription = findLabel },
                     decorationBox = { inner ->
                         Box(contentAlignment = Alignment.CenterStart) {
-                            if (query.isEmpty()) Text(findLabel, style = ClearType.Body, color = ink.color.copy(alpha = 0.48f), maxLines = 1)
+                            if (query.isEmpty()) Text(findLabel, style = ClearType.Body, color = ink.color.copy(alpha = 0.62f), maxLines = 1)
                             inner()
                         }
                     },
@@ -329,7 +333,8 @@ fun SearchBar(
 
 @Composable
 private fun StepButton(icon: ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
-    Box(Modifier.size(38.dp).pressable(onClick, enabled = enabled).semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
+    // the glyph is all that shows; the box is the 48 dp a finger needs
+    Box(Modifier.size(MinTouch).pressable(onClick, enabled = enabled).semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
         val ink = LocalGlassInk.current.takeIf { it != Color.Unspecified } ?: clear.ink
         Icon(icon, null, tint = ink.copy(alpha = if (enabled) 0.82f else 0.30f), modifier = Modifier.size(19.dp))
     }
@@ -399,7 +404,7 @@ fun QuickToolbar(
     ) {
         val ink = rememberGlassInk(clear.ink)
         Row(
-            Modifier.weight(1f).fillMaxHeight().then(ink.modifier).glassBar().padding(horizontal = 6.dp),
+            Modifier.weight(1f).fillMaxHeight().then(ink.modifier).glassBar(edge = ink.edge).padding(horizontal = 6.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -416,6 +421,8 @@ fun QuickToolbar(
             onClick = { menuAt = moreRect },
             size = 48.dp,
             tint = Candy.Sky,
+            // solid, not blended over the page: a washed-out blue lost its white glyph on white (#158)
+            solid = true,
             label = stringResource(R.string.common_tool_more_tools),
             modifier = Modifier.onGloballyPositioned { moreRect = it.boundsInWindow() },
         ) {
@@ -448,18 +455,28 @@ private fun LabeledDockItem(icon: ImageVector, label: String, modifier: Modifier
 
 private fun Modifier.androidxRotate(degrees: Float) = this.graphicsLayer { rotationZ = degrees }
 
-/** A tool of the dock: its glyph in the bar's ink; [lit], white on a blue disc. */
+/**
+ * A tool of the dock: its glyph in the bar's ink over its name, so five look-alike glyphs (edit, comment,
+ * eraser, highlighter, scribble) are told apart without trying each (#158); [lit], white on a blue pill.
+ */
 @Composable
 private fun DockItem(icon: ImageVector, label: String, lit: Boolean, onClick: () -> Unit) {
     val disc by animateColorAsState(if (lit) Candy.Sky else Color.Transparent, GlassMotion.settle(), label = "dock")
     val ink = com.chethan616.clearpdf.ui.glass.LocalGlassInk.current.takeIf { it != Color.Unspecified } ?: clear.ink
     val glyph by animateColorAsState(if (lit) Color.White else ink, GlassMotion.settle(), label = "dockInk")
-    Box(
+    Column(
         Modifier.width(54.dp).fillMaxHeight().pressable(onClick, pressedScale = 0.86f).semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        Box(Modifier.size(42.dp).clip(CircleShape).background(disc))
-        Icon(icon, null, tint = glyph, modifier = Modifier.size(23.dp))
+        Box(Modifier.size(width = 44.dp, height = 28.dp).clip(Capsule).background(disc), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = glyph, modifier = Modifier.size(21.dp))
+        }
+        Spacer(Modifier.height(2.dp))
+        Text(
+            label, style = ClearType.Caption.copy(fontSize = 11.sp, lineHeight = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium),
+            color = ink, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -476,7 +493,7 @@ fun SubToolbar(content: @Composable () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxWidth().height(BottomBarHeight).padding(horizontal = 12.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
         val ink = rememberGlassInk(clear.ink)
         Row(
-            Modifier.widthIn(max = maxWidth).fillMaxHeight().then(ink.modifier).glassBar().horizontalScroll(scroll).padding(horizontal = 8.dp),
+            Modifier.widthIn(max = maxWidth).fillMaxHeight().then(ink.modifier).glassBar(edge = ink.edge).horizontalScroll(scroll).padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) { CompositionLocalProvider(LocalSubToolbarScroll provides scroll, LocalGlassInk provides ink.color) { content() } }

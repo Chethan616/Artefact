@@ -530,7 +530,7 @@ fun PdfField(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.weight(1f).padding(vertical = 13.dp), contentAlignment = Alignment.CenterStart) {
-            if (value.isEmpty()) Text(placeholder, style = ClearType.Body, color = if (error) Candy.Tomato else c.inkFaint)
+            if (value.isEmpty()) Text(placeholder, style = ClearType.Body, color = if (error) Candy.Tomato else c.inkSoft)
             BasicTextField(
                 value = value, onValueChange = onValue, singleLine = true,
                 textStyle = ClearType.Body.copy(color = c.ink),

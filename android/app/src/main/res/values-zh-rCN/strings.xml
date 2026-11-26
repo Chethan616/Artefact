@@ -1673,4 +1673,6 @@
     <string name="settings_your_name">称呼</string>
     <string name="settings_your_name_hint">显示在“今日”页的问候语上方</string>
     <string name="thoughts_audios">音频</string>
+    <string name="settings_reduce_transparency">降低透明度</string>
+    <string name="settings_reduce_transparency_detail">页面和列表上方的工具栏保持不透明，背后不做模糊</string>
 </resources>

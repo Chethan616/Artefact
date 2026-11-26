@@ -283,7 +283,7 @@ internal fun CommentRow(
                         cm.author?.takeIf { it.isNotBlank() } ?: stringResource(R.string.comments_guest), color = c.label, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 200.dp),
                     )
-                    commentDateLabel(cm.modified, stringResource(R.string.common_today), stringResource(R.string.common_yesterday))?.let { Text(it, color = c.textTertiary, fontSize = 16.sp) }
+                    commentDateLabel(cm.modified, stringResource(R.string.common_today), stringResource(R.string.common_yesterday))?.let { Text(it, color = c.textSecondary, fontSize = 16.sp) }
                 }
                 Box {
                     BarIcon(LucideIcons.EllipsisVertical, stringResource(R.string.comments_options), onMenu, size = 40.dp)

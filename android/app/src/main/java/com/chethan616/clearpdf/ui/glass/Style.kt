@@ -116,6 +116,19 @@ object GlassSettings {
     var adaptive: Boolean by mutableStateOf(false)
         private set
 
+    /**
+     * Reduce transparency (Settings, in the Clean appearance): the controls that float over content
+     * (the reader's toolbar, the desk's pinned filters, the bottom pill) stay solid, with no blur behind.
+     * Off by default, on by default when the system asks for high contrast.
+     */
+    var reduceTransparency: Boolean by mutableStateOf(false)
+        private set
+
+    fun updateReduceTransparency(context: Context, on: Boolean) {
+        reduceTransparency = on
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("reduceTransparency", on).apply()
+    }
+
     fun updateAdaptive(context: Context, on: Boolean) {
         adaptive = on
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("adaptive", on).apply()
@@ -144,6 +157,7 @@ object GlassSettings {
         }
         haptics = p.getBoolean("haptics", true)
         adaptive = p.getBoolean("adaptive", false)
+        reduceTransparency = p.getBoolean("reduceTransparency", SystemAccessibility.highContrast(context))
         wallpaper = runCatching { Wallpaper.valueOf(p.getString("wallpaper", null) ?: "Aurora") }.getOrDefault(Wallpaper.Aurora)
         if (wallpaper == Wallpaper.Custom) loadCustom(context)
         if (wallpaper == Wallpaper.Custom && customWallpaper == null) wallpaper = Wallpaper.Aurora

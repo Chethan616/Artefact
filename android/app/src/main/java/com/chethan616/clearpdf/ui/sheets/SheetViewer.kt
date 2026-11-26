@@ -767,7 +767,7 @@ fun SheetViewer(vm: AppViewModel, doc: OpenDocument) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     GlassCircle(onClick = { vm.closeDocument() }, label = stringResource(R.string.common_back)) { GlassIcon(LucideIcons.ChevronLeft, null, Modifier.size(22.dp)) }
                     Spacer(Modifier.size(10.dp))
-                    Column(Modifier.weight(1f).then(chrome.modifier).glassBar().padding(horizontal = 16.dp, vertical = 6.dp)) {
+                    Column(Modifier.weight(1f).then(chrome.modifier).glassBar(edge = chrome.edge).padding(horizontal = 16.dp, vertical = 6.dp)) {
                         Text(doc.title, style = ClearType.BodyStrong, color = LocalGlassInk.current, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         grid.sheets.getOrNull(grid.current)?.let { Text(it.name + if (doc.info.dirty) " · " + stringResource(R.string.sheet_edited) else "", style = ClearType.Caption, color = LocalGlassInk.current.copy(alpha = 0.62f), maxLines = 1) }
                     }

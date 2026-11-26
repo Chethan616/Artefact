@@ -274,7 +274,7 @@ internal fun menuInk(): androidx.compose.ui.graphics.Color =
 internal fun MenuIcon(icon: ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
     val ink = menuInk()
     Box(
-        Modifier.size(44.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = label },
+        Modifier.size(com.chethan616.clearpdf.ui.glass.MinTouch).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, null, tint = if (enabled) ink else ink.copy(alpha = 0.35f), modifier = Modifier.size(24.dp))

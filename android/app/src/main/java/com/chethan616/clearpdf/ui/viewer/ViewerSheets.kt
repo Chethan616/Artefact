@@ -169,7 +169,7 @@ private fun androidx.compose.foundation.layout.RowScope.ActionTile(icon: ImageVe
     ) {
         Icon(icon, null, tint = accent, modifier = Modifier.size(23.dp))
         Spacer(Modifier.height(6.dp))
-        Text(label, style = ClearType.Caption.copy(fontSize = 11.sp, lineHeight = 13.sp), color = c.ink, maxLines = 2, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
+        Text(label, style = ClearType.Caption.copy(fontSize = 11.5.sp, lineHeight = 14.sp), color = c.ink, maxLines = 2, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -323,7 +323,7 @@ fun BookmarksSheet(vm: AppViewModel, doc: OpenDocument) {
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(e.title, style = ClearType.Body.copy(fontSize = 16.sp), color = clear.ink, modifier = Modifier.weight(1f).padding(vertical = 10.dp), maxLines = 3, overflow = TextOverflow.Ellipsis)
-                                e.page?.let { Text((it.toInt() + 1).toString(), style = ClearType.Label, color = clear.inkFaint, modifier = Modifier.padding(horizontal = 6.dp)) }
+                                e.page?.let { Text((it.toInt() + 1).toString(), style = ClearType.Label, color = clear.inkSoft, modifier = Modifier.padding(horizontal = 6.dp)) }
                                 if (e.children > 0u) SheetCircleButton(LucideIcons.ChevronRight, stringResource(R.string.sheet_expand_entry, e.title), { parent = i }, size = 32.dp)
                             }
                         }
@@ -503,7 +503,7 @@ internal fun ToolTileFace(icon: ImageVector, label: String, tint: Color, modifie
             Icon(icon, null, tint = Color.White, modifier = Modifier.size(27.dp))
         }
         Spacer(Modifier.height(8.dp))
-        Text(label, style = ClearType.Caption.copy(fontSize = 11.sp, lineHeight = 13.sp), color = menuInk(), textAlign = TextAlign.Center, maxLines = 2, modifier = Modifier.padding(horizontal = 2.dp))
+        Text(label, style = ClearType.Caption.copy(fontSize = 11.5.sp, lineHeight = 14.sp), color = menuInk(), textAlign = TextAlign.Center, maxLines = 2, modifier = Modifier.padding(horizontal = 2.dp))
     }
 }
 

@@ -157,7 +157,7 @@ fun GlassDialog(
                         )
                         Spacer(Modifier.height(10.dp))
                     }
-                    Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) { content() }
+                    Column(Modifier.heightIn(max = 420.dp).fadingVerticalScroll()) { content() }
                     if (confirm != null || dismiss != null) {
                         Spacer(Modifier.height(20.dp))
                         Row(
@@ -392,7 +392,7 @@ fun GlassMenuLayout(
     maxHeight: Dp = 480.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    GlassMenuLayoutContent(anchor, onDismiss, width, maxHeight) { content() }
+    GlassMenuLayoutContent(anchor, onDismiss, width, menuMaxHeight(maxHeight)) { content() }
 }
 
 @Composable
@@ -438,7 +438,7 @@ private fun GlassMenuLayoutContent(
                             alpha = (p * 1.6f).coerceIn(0f, 1f)
                         },
                 ) {
-                    Column(Modifier.heightIn(max = maxHeight).verticalScroll(rememberScrollState()), content = content)
+                    Column(Modifier.heightIn(max = maxHeight).fadingVerticalScroll(), content = content)
                 }
             },
             modifier = Modifier.fillMaxSize(),
@@ -501,7 +501,7 @@ fun GlassTextField(
                     .then(if (error) Modifier.background(Candy.Tomato.copy(alpha = 0.12f)) else Modifier)
                     .padding(horizontal = 16.dp, vertical = 14.dp),
             ) {
-                if (value.isEmpty()) Text(placeholder, style = ClearType.Body, color = if (error) Candy.Tomato else c.inkFaint)
+                if (value.isEmpty()) Text(placeholder, style = ClearType.Body, color = if (error) Candy.Tomato else c.inkSoft)
                 inner()
             }
         },

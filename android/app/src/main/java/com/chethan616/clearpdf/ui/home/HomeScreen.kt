@@ -607,7 +607,7 @@ internal fun NameSheet(vm: AppViewModel, n: Note, onDismiss: () -> Unit) {
                         Icon(LucideIcons.Mic, null, tint = Candy.Grape, modifier = Modifier.size(19.dp))
                         Spacer(Modifier.width(10.dp))
                         Box(Modifier.weight(1f)) {
-                            if (name.text.isEmpty()) Text(stringResource(R.string.voice_name_hint), style = ClearType.Body.copy(fontSize = 17.sp), color = c.inkFaint)
+                            if (name.text.isEmpty()) Text(stringResource(R.string.voice_name_hint), style = ClearType.Body.copy(fontSize = 17.sp), color = c.inkSoft)
                             inner()
                         }
                         if (name.text.isNotEmpty()) {

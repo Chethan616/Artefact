@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.graphicsLayer
@@ -150,6 +151,7 @@ fun MorphButtonSurface(
         onGone()
     }
     val glyph: @Composable () -> Unit = icon ?: MorphAnchors.glyphAt(anchor) ?: {}
+    val maxHeight = menuMaxHeight(maxHeight)
     // Android 13+: the liquid version (the glass shaders it needs); before that the plain expansion
     if (!com.chethan616.clearpdf.ui.theme.clear.clean && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
         LiquidMorphSurface(anchor, open, onDismiss, gone, menuWidth, maxHeight, glyph, ghost, body)
@@ -319,6 +321,8 @@ private fun RectMorphSurface(
         // black pages, a white document, the aurora): the glyph and rows always stand out
         val luminance = rememberGlassLuminance(enabled = true)
         val inkColor = adaptiveInk(luminance, clear.ink)
+        // a breath of dim on the page around the open menu, over a light page only
+        if (luminance != null) Box(Modifier.fillMaxSize().drawBehind { drawRect(Color.Black, alpha = menuScrimAlpha(luminance.value, tall.value) * fade.value) })
         Layout(
             content = {
                 CompositionLocalProvider(LocalGlassInk provides inkColor, LocalMenuInk provides inkColor) {
@@ -346,7 +350,7 @@ private fun RectMorphSurface(
                                 .onSizeChanged { full = it.height }
                                 .graphicsLayer { alpha = ((tall.value - 0.25f) / 0.5f).coerceIn(0f, 1f) },
                         ) {
-                            Column(Modifier.heightIn(max = maxHeight).verticalScroll(rememberScrollState())) {
+                            Column(Modifier.heightIn(max = maxHeight).fadingVerticalScroll()) {
                                 Spacer(Modifier.height(6.dp))
                                 body(shut) { action -> if (chosenAction == null) { chosenAction = action; onDismiss() } }
                                 Spacer(Modifier.height(6.dp))

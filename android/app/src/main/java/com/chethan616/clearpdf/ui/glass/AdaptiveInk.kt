@@ -239,8 +239,11 @@ fun rememberSurroundLuminance(): SurroundLuminance? {
     return state
 }
 
-/** One control's ink: put [modifier] on the control (first, so it measures the resting box). */
-class InkProbe(val modifier: Modifier, val color: Color) {
+/**
+ * One control's ink: put [modifier] on the control (first, so it measures the resting box). [edge] is
+ * the hairline its glass takes over a near-white page, where its white rim light alone leaves no edge.
+ */
+class InkProbe(val modifier: Modifier, val color: Color, val edge: Color = Color.Unspecified) {
     val soft: Color get() = color.copy(alpha = 0.62f)
 }
 
@@ -258,6 +261,8 @@ fun rememberAdaptiveInk(fallback: Color): InkProbe {
     val fallbackOnLight = fallback.luminance() < 0.5f
     var onLight by remember { mutableStateOf(fallbackOnLight) }
     var measured by remember { mutableStateOf(false) }
+    // over a page (near white), not merely over light: the light theme's aurora stays edgeless
+    var onPage by remember { mutableStateOf(false) }
     val box = remember { arrayOfNulls<Rect>(1) }
     val currentFallback by rememberUpdatedState(fallbackOnLight)
     val inset = with(LocalDensity.current) { 5.dp.toPx() }
@@ -281,6 +286,7 @@ fun rememberAdaptiveInk(fallback: Color): InkProbe {
                     lum < 0.58f -> false
                     else -> onLight
                 }
+                onPage = if (onPage) lum > 0.86f else lum > 0.92f
                 measured = true
             }
         }
@@ -292,8 +298,9 @@ fun rememberAdaptiveInk(fallback: Color): InkProbe {
         else -> Color.White
     }
     val color by animateColorAsState(target, tween(200), label = "adaptiveInk")
+    val edgeAlpha by androidx.compose.animation.core.animateFloatAsState(if (sampler != null && measured && onPage) 0.14f else 0f, tween(200), label = "adaptiveEdge")
     val modifier = remember { Modifier.onGloballyPositioned { box[0] = it.boundsInWindow() } }
-    return InkProbe(modifier, color)
+    return InkProbe(modifier, color, if (edgeAlpha > 0.005f) Color.Black.copy(alpha = edgeAlpha) else Color.Unspecified)
 }
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {

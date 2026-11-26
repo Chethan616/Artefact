@@ -104,7 +104,9 @@ object MotionSettings {
             curve = EaseCurve(it[0], it[1], it[2], it[3])
         }
         duration = p.getFloat("motion_duration", 1f)
-        val d = MotionStyle.Default
+        // the system's "Remove animations": until the user picks a motion of their own, the calmest one
+        // (no wobble, little swell); the animations themselves already run at the system's scale
+        val d = if (!p.contains("motion_bounce") && SystemAccessibility.animationsOff(context)) MotionStyle.Calm else MotionStyle.Default
         style = MotionStyle(
             bounce = p.getFloat("motion_bounce", d.bounce),
             speed = p.getFloat("motion_speed", d.speed),
