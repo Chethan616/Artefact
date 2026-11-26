@@ -437,7 +437,8 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
                                 }
                             },
                             moreHidden = moreMorphUp,
-                            contentAlpha = minOf(1f - sp.value, besideMenu),
+                            contentAlpha = 1f - sp.value,
+                            besideMenu = besideMenu,
                             undoLabel = if (doc.localUndo != null) stringResource(R.string.viewer_undo_drawing) else doc.info.undo,
                             redoLabel = if (doc.localUndo != null) stringResource(R.string.viewer_undo_drawing) else doc.info.redo,
                         )

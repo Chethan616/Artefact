@@ -124,6 +124,12 @@ fun ViewerTopBar(
     onShare: () -> Unit,
     onMore: (Rect) -> Unit,
     contentAlpha: Float = 1f,
+    /**
+     * The title pill, Undo and Share while More is its menu: they step aside (0) so the menu doesn't
+     * cut them off. More itself never follows this: it is the menu's glass, and when the menu folds
+     * back the real button must be there at once (fading in from nothing, it blinked).
+     */
+    besideMenu: Float = 1f,
     undoLabel: String? = null,
     redoLabel: String? = null,
     /** More has become its menu ([com.chethan616.clearpdf.ui.glass.MorphButtonSurface]): the circle is that glass now. */
@@ -141,9 +147,9 @@ fun ViewerTopBar(
         }
         var titleAnchor by remember { mutableStateOf(Rect.Zero) }
         GlassPill(
-            onClick = { if (contentAlpha > 0.5f) onTitle(titleAnchor) },
+            onClick = { if (minOf(contentAlpha, besideMenu) > 0.5f) onTitle(titleAnchor) },
             modifier = Modifier.weight(1f).onGloballyPositioned { titleAnchor = it.boundsInWindow() }
-                .graphicsLayer { alpha = contentAlpha.coerceIn(0f, 1f) },
+                .graphicsLayer { alpha = minOf(contentAlpha, besideMenu).coerceIn(0f, 1f) },
             height = 48.dp,
             horizontalPadding = 16.dp,
         ) {
@@ -154,7 +160,7 @@ fun ViewerTopBar(
                 if (subtitle != null && toolTitle == null) Text(subtitle, style = ClearType.Caption, color = ink.copy(alpha = 0.72f), maxLines = 1)
             }
             if (onSearch != null && !toolActive) {
-                BarGlyphButton(onSearch, stringResource(R.string.viewer_find_in_document), size = MinTouch, enabled = contentAlpha > 0.5f) {
+                BarGlyphButton(onSearch, stringResource(R.string.viewer_find_in_document), size = MinTouch, enabled = minOf(contentAlpha, besideMenu) > 0.5f) {
                     Icon(LucideIcons.Search, null, tint = ink, modifier = Modifier.size(19.dp))
                 }
             }
@@ -171,10 +177,10 @@ fun ViewerTopBar(
         } else {
             if (canUndo) UndoMenuButton(
                 canUndo, canRedo, onUndo, onRedo, undoLabel, redoLabel,
-                modifier = Modifier.graphicsLayer { alpha = contentAlpha.coerceIn(0f, 1f) },
-                enabled = contentAlpha > 0.5f,
+                modifier = Modifier.graphicsLayer { alpha = minOf(contentAlpha, besideMenu).coerceIn(0f, 1f) },
+                enabled = minOf(contentAlpha, besideMenu) > 0.5f,
             )
-            GlassCircle(onClick = { if (contentAlpha > 0.5f) onShare() }, modifier = Modifier.graphicsLayer { alpha = contentAlpha.coerceIn(0f, 1f) }, label = stringResource(R.string.common_share)) {
+            GlassCircle(onClick = { if (minOf(contentAlpha, besideMenu) > 0.5f) onShare() }, modifier = Modifier.graphicsLayer { alpha = minOf(contentAlpha, besideMenu).coerceIn(0f, 1f) }, label = stringResource(R.string.common_share)) {
                 GlassIcon(LucideIcons.Share2, null, Modifier.size(19.dp))
             }
             var moreAnchor by remember { mutableStateOf(Rect.Zero) }
