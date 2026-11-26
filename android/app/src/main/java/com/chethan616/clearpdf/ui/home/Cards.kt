@@ -93,9 +93,12 @@ import kotlinx.coroutines.withContext
 /** The corner every desk card shares: big and continuous, like the mock's. */
 val CardShape = RoundedRectangle(30.dp)
 
-/** A desk card's paint: its tone's gradient, a soft light in one corner, a lit rim. */
+/**
+ * A desk card's paint: its tone's gradient, a soft light in one corner, a lit rim, and [tint] over all
+ * of it (a smoked face, so pale ink and a pale accent still read on it).
+ */
 @Composable
-fun Modifier.cardPaint(tone: CardTone, glow: Offset = Offset(0.85f, 0.05f)): Modifier {
+fun Modifier.cardPaint(tone: CardTone, glow: Offset = Offset(0.85f, 0.05f), tint: Color = Color.Transparent): Modifier {
     if (clear.clean) return clip(CardShape).background(clear.solidPanel)
     val dark = clear.dark
     return clip(CardShape)
@@ -108,6 +111,7 @@ fun Modifier.cardPaint(tone: CardTone, glow: Offset = Offset(0.85f, 0.05f)): Mod
                 ),
                 radius = size.maxDimension * 0.75f, center = Offset(glow.x * size.width, glow.y * size.height),
             )
+            if (tint.alpha > 0f) drawRect(tint)
         }
         .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = if (dark) 0.18f else 0.6f), Color.White.copy(alpha = 0.05f))), CardShape)
 }
@@ -257,20 +261,22 @@ fun NoteCard(
     val tone = clear.tone(Tone.Paper)
     val title = note.title.ifBlank { note.body.lineSequence().firstOrNull { it.isNotBlank() }?.trim()?.removePrefix("# ").orEmpty() }
     val body = if (note.title.isBlank()) "" else note.body.lineSequence().filter { it.isNotBlank() }.joinToString(" ") { it.trim().removePrefix("# ").replace("**", "") }
+    // at night the card is smoked glass: its pale title blue sits on a dark face, not on pale glass
+    val tint = if (clear.dark) Color(0xFF0B0F1A).copy(alpha = 0.34f) else Color.Transparent
     Column(
-        modifier.heightIn(min = 156.dp).pressable(onOpen, onLong, pressedScale = 0.96f).cardPaint(tone, Offset(0.1f, 0.0f)).padding(18.dp),
+        modifier.heightIn(min = 156.dp).pressable(onOpen, onLong, pressedScale = 0.96f).cardPaint(tone, Offset(0.1f, 0.0f), tint).padding(18.dp),
     ) {
         WordFitText(title.ifBlank { stringResource(R.string.notes_untitled_note) }, (if (clear.clean) ClearType.Title else ClearType.CardTitle).copy(color = tone.accent), maxLines = 4)
         if (body.isNotBlank() && title.length < 40) {
             Spacer(Modifier.height(8.dp))
-            Text(body, style = ClearType.Label, color = tone.ink.copy(alpha = 0.62f), maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = if (fitHeight) Modifier.weight(1f, fill = false) else Modifier)
+            Text(body, style = ClearType.Label, color = tone.ink.copy(alpha = 0.82f), maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = if (fitHeight) Modifier.weight(1f, fill = false) else Modifier)
         }
         note.images.firstOrNull()?.let { name ->
             Spacer(Modifier.height(12.dp))
             NoteImage(name, Modifier.fillMaxWidth().height(86.dp).clip(RoundedRectangle(16.dp)))
         }
         Spacer(Modifier.height(12.dp).weight(1f, fill = false))
-        Text(shortDate(note.updated), style = ClearType.Caption, color = tone.ink.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.End))
+        Text(shortDate(note.updated), style = ClearType.Caption.copy(fontSize = 12.sp), color = tone.ink.copy(alpha = 0.75f), modifier = Modifier.align(Alignment.End))
     }
 }
 
