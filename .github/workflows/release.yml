@@ -126,11 +126,18 @@ jobs:
       - name: APK
         run: |
           apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n 1)apksigner"
+          # the certificate every earlier release was signed with: an update from any other key can't install
+          expected="$(sed -n 's/^artefact.releaseCertSha256=//p' android/gradle.properties | tr -d ':[:space:]' | tr 'A-F' 'a-f')"
           echo >>"$GITHUB_STEP_SUMMARY"
           for apk in dist/*.apk; do
             certs="$("$apksigner" verify --print-certs "$apk")"
             if [ "$GITHUB_REF_TYPE" = tag ] && grep -q "CN=Android Debug" <<<"$certs"; then
               echo "::error::$apk is signed with the debug key"
+              exit 1
+            fi
+            actual="$(sed -n 's/.*certificate SHA-256 digest: //p' <<<"$certs" | head -n 1)"
+            if [ "$GITHUB_REF_TYPE" = tag ] && [ -n "$expected" ] && [ "$actual" != "$expected" ]; then
+              echo "::error::$apk is signed with $actual, not the release key $expected: it could not update earlier installs"
               exit 1
             fi
             {
