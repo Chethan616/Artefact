@@ -252,9 +252,11 @@ fun GlassTabs(
                     },
                     highlight = { Highlight.Default.copy(alpha = drag.pressProgress * GlassSettings.style.highlight.coerceIn(0f, 1f)) },
                     // the chosen pill: near-solid white with a breath of the tab's candy
+                    // (in the light theme a white pill vanished into the light bar: its candy shows more there,
+                    // a pale pink or blue that still keeps the dark label at well over 4.5:1)
                     onDrawSurface = {
                         drawRect(SelectedPill)
-                        drawRect(accent.copy(alpha = 0.10f))
+                        drawRect(accent.copy(alpha = if (c.dark) 0.10f else 0.24f))
                     },
                 )
                 .height(inner)

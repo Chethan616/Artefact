@@ -363,7 +363,7 @@ internal fun LiquidMorphSurface(
         val frame = remember { intArrayOf(0) }
         // a breath of dim on the page around the open menu, over a light page only
         if (luminance != null) androidx.compose.foundation.layout.Box(
-            Modifier.fillMaxSize().drawBehind { drawRect(Color.Black, alpha = menuScrimAlpha(luminance.value, washIn()) * fade.value) },
+            Modifier.fillMaxSize().drawBehind { drawRect(Color.Black, alpha = menuScrimAlpha(luminance.value, washIn(), luminance.busy) * fade.value) },
         )
 
         fun RuntimeShader.shapeUniforms(g: Geo) {
@@ -408,9 +408,10 @@ internal fun LiquidMorphSurface(
                         val w = washIn()
                         val lum = luminance?.value ?: if (dark) 0.14f else 0.86f
                         // the milk or smoke a menu wears, thicker than a button's, so its rows read
-                        // and thicker again over a page of print, so it never shows through as ghost text
-                        val busyAlpha = adaptiveWash(lum, luminance?.busy ?: 0f).alpha
-                        val menuWash = adaptiveWash(lum).let { it.copy(alpha = maxOf((it.alpha * 1.7f).coerceAtMost(0.55f), busyAlpha)) }.glassTint(style)
+                        // at the user's tint, and thicker over a page of print (that part not the preset's
+                        // to thin: it is what keeps the rows from ghost text behind them)
+                        val busyAlpha = (adaptiveWash(lum, luminance?.busy ?: 0f).alpha - adaptiveWash(lum).alpha).coerceAtLeast(0f)
+                        val menuWash = adaptiveWash(lum).glassTint(style).let { it.copy(alpha = (it.alpha + busyAlpha).coerceAtMost(0.75f)) }
                         val plain = menuWash.let { it.copy(alpha = it.alpha * w) }
                         val wash = when {
                             tint.isSpecified -> androidx.compose.ui.graphics.lerp(tint.copy(alpha = 0.75f), plain, w)
@@ -539,7 +540,12 @@ private fun signedLum(luminance: Float): Float = (luminance * 2f - 1f).let { kot
 private fun com.kyant.backdrop.BackdropEffectScope.morphEffects(style: GlassStyle, luminance: Float, dark: Boolean, open: Float, motion: Float, dp: Float, buttonLuminance: Float? = null, busy: Float = 0f) {
     val l = signedLum(luminance.coerceIn(0f, 1f))
     val o = open.coerceIn(0f, 1f)
-    val menuBrightness = if (l > 0f) lerp(0.08f, 0.3f, l) else lerp(if (dark) -0.12f else 0.04f, -0.24f, -l)
+    val k = busy.coerceIn(0f, 1f)
+    // The open menu is the user's own glass (Settings ▸ Liquid glass: Crystal stays clear and bent,
+    // Frosted frosted), lifted only a little over light. Frost, milk and flattening come in with what
+    // is behind it: over a page of print ([busy]) they rise until the rows read, over the calm
+    // aurora they stay away, so the menu is liquid glass rather than a frosted card (#158).
+    val menuBrightness = if (l > 0f) lerp(0.04f, lerp(0.12f, 0.3f, k), l) else lerp(if (dark) -0.12f else 0.04f, -0.24f, -l)
     // the button's end: plain glass, or (Adaptive luminance) the adaptive button's own colour and frost,
     // as adaptiveGlassEffects sets them from the reading around the button
     val b = buttonLuminance?.let { signedLum(it.coerceIn(0f, 1f)) }
@@ -547,10 +553,10 @@ private fun com.kyant.backdrop.BackdropEffectScope.morphEffects(style: GlassStyl
     val buttonContrast = if (b != null && b > 0f) lerp(1f, 0.25f, b) else 1f
     colorControls(
         brightness = lerp(buttonBrightness, menuBrightness, o),
-        contrast = lerp(buttonContrast, if (l > 0f) lerp(1f, 0.5f, l) else 1f, o),
-        saturation = lerp(style.saturation, 1.25f, o),
+        contrast = lerp(buttonContrast, if (l > 0f) lerp(1f, lerp(0.85f, 0.5f, k), l) else 1f, o),
+        saturation = style.saturation,
     )
     val buttonBlur = 2f * dp * style.blur * (if (b == null) 1f else if (b > 0f) lerp(1f, 1.5f, b) else lerp(1f, 0.6f, -b))
-    val menuBlur = 22f * dp * (if (l > 0f) lerp(1f, 1.35f, l) else lerp(1f, 0.75f, -l)) * (1f + 0.4f * busy.coerceIn(0f, 1f))
+    val menuBlur = 16f * dp * style.blur * (if (l > 0f) lerp(1f, 1.35f, l) else lerp(1f, 0.75f, -l)) + 18f * dp * k
     blur(lerp(buttonBlur, menuBlur, o) + 5f * dp * motion.coerceIn(0f, 1f))
 }

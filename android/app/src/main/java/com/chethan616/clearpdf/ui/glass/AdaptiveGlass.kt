@@ -180,10 +180,11 @@ internal fun backdropStats(px: IntArray, side: Int): BackdropStats? {
 
 /**
  * The neighbour step at which a backdrop starts to count as busy, and where it is fully so. Measured on
- * a phone: a page of print behind a menu steps 0.14-0.18, the desk (title, chips, card edges) 0.06-0.10.
+ * a phone: a page of print behind a menu steps 0.14-0.18, the desk (title, chips, card edges) 0.06-0.10,
+ * which should keep its clear glass.
  */
-private const val BusyFrom = 0.03
-private const val BusyTo = 0.14
+private const val BusyFrom = 0.06
+private const val BusyTo = 0.15
 
 /**
  * A luminance reading for one glass surface, or null when [enabled] is false. Pass it to [glass] (or
@@ -278,11 +279,12 @@ fun lightEdge(luminance: Float): Color {
 }
 
 /**
- * How much an open menu dims the page around it ([open] 0 … 1): over a light page a little (at most 16%
- * black), so the white menu stands off a white page; over anything darker not at all (#158).
+ * How much an open menu dims the page around it ([open] 0 … 1): over a light page of print a little (at
+ * most 16% black), so the white menu stands off a white page; over the wallpaper, or anything darker,
+ * not at all (#158).
  */
-fun menuScrimAlpha(luminance: Float, open: Float): Float =
-    0.16f * open.coerceIn(0f, 1f) * ((luminance - 0.5f) / 0.25f).coerceIn(0f, 1f)
+fun menuScrimAlpha(luminance: Float, open: Float, busy: Float): Float =
+    0.16f * open.coerceIn(0f, 1f) * ((luminance - 0.5f) / 0.25f).coerceIn(0f, 1f) * busy.coerceIn(0f, 1f)
 
 /** The tallest a menu grows: its own most, or 72% of the screen, so its last row is never off-screen. */
 @Composable

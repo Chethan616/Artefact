@@ -83,8 +83,14 @@ fun Modifier.glass(
      * guarantees the words on this glass their contrast, so it is not the preset's to thin out (#158).
      */
     dim: Color = Color.Unspecified,
+    /**
+     * A reading of what is behind, used only to add frost and milk over print ([GlassLuminance.busy]),
+     * not to change the glass's colour or ink (that is [luminance], Adaptive luminance's).
+     */
+    assist: GlassLuminance? = null,
 ): Modifier {
     if (clear.clean) return clip(shape).background(clear.solidPanel)
+    val clearDark = clear.dark
     val backdrop = LocalBackdrop.current
     val style = styleOverride ?: GlassSettings.style
     // adaptive: the glass answers what is behind it instead of wearing the theme's wash
@@ -121,11 +127,16 @@ fun Modifier.glass(
         backdrop = backdrop,
         shape = { shape },
         shadow = null,
-        effects = { glassEffects(style, blur.toPx(), lensHeight.toPx(), lensAmount.toPx()) },
+        effects = {
+            glassEffects(style, blur.toPx(), lensHeight.toPx(), lensAmount.toPx())
+            if (assist != null && assist.busy > 0.01f) blur(18.dp.toPx() * assist.busy)
+        },
         highlight = { glassHighlight(style) },
+        onDrawBackdrop = assist?.recorder ?: { it() },
         onDrawSurface = {
             if (wash.isSpecified) drawRect(wash.glassTint(style))
             if (dim.isSpecified) drawRect(dim)
+            if (assist != null && assist.busy > 0.01f) drawRect(if (clearDark) Color.Black else Color.White, alpha = 0.5f * assist.busy)
         },
     )
 }
@@ -137,9 +148,14 @@ fun Modifier.glass(
  * rows (the Files list); light is a bar's (search, tabs). The blur, lens and rim stay the preset's.
  */
 @Composable
-fun glassDim(heavy: Boolean = false): Color =
-    if (clear.dark) Color(0xFF0B0F1A).copy(alpha = if (heavy) 0.50f else 0.36f)
-    else Color.White.copy(alpha = if (heavy) 0.56f else 0.40f)
+fun glassDim(heavy: Boolean = false): Color {
+    // A picture of the user's own can be as busy as it likes, so it gets the whole dim. The app's own
+    // wallpapers are calm: there the dim is a breath, at the preset's tint, and the glass stays clear
+    // liquid glass rather than a frosted card.
+    val k = if (GlassSettings.wallpaper == Wallpaper.Custom) 1f else 0.4f * GlassSettings.style.tint.coerceIn(0.5f, 1.8f)
+    return if (clear.dark) Color(0xFF0B0F1A).copy(alpha = (if (heavy) 0.50f else 0.36f) * k)
+    else Color.White.copy(alpha = (if (heavy) 0.56f else 0.40f) * k)
+}
 
 /**
  * A panel of rows on the same liquid glass as the search bar above it (#158): the wallpaper refracts
@@ -163,13 +179,14 @@ fun GlassCard(
     blur: Dp = 8.dp,
     styleOverride: GlassStyle? = null,
     luminance: GlassLuminance? = null,
+    assist: GlassLuminance? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val below = LocalBackdrop.current
     val layer = rememberLayerBackdrop()
     val combined = rememberCombinedBackdrop(below, layer)
     Box(modifier) {
-        Box(Modifier.matchParentSize().layerBackdrop(layer).glass(shape, wash, blur, styleOverride = styleOverride, luminance = luminance))
+        Box(Modifier.matchParentSize().layerBackdrop(layer).glass(shape, wash, blur, styleOverride = styleOverride, luminance = luminance, assist = assist))
         CompositionLocalProvider(LocalBackdrop provides combined) { Column(content = content) }
     }
 }
