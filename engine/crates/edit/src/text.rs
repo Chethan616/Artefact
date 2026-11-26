@@ -2544,7 +2544,8 @@ fn slanted(tm: &[f64; 6]) -> bool {
 /// A face's family without its subset tag, weight and slant words: "ABCDEF+Calibri-BoldItalic"
 /// and "Calibri" are one family, so a bold run can be drawn in the page's own bold of it.
 pub(crate) fn family_key(base_font: &str) -> String {
-    let mut key: String = base_font.rsplit('+').next().unwrap_or(base_font).chars().filter(char::is_ascii_alphanumeric).flat_map(char::to_lowercase).collect();
+    let mut key: String =
+        base_font.rsplit('+').next().unwrap_or(base_font).chars().filter(char::is_ascii_alphanumeric).flat_map(char::to_lowercase).collect();
     for word in ["bolditalic", "boldoblique", "semibold", "demibold", "bold", "italic", "oblique", "regular", "roman", "book", "medium", "normal"] {
         key = key.replace(word, "");
     }

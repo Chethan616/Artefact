@@ -487,7 +487,9 @@ pub(super) fn rewrite_styled_block(
         fonts
             .iter()
             .take(256)
-            .filter_map(|(name, object)| doc.resolve(object).as_dict().map(|d| (String::from_utf8_lossy(name).into_owned(), Metrics::from_dict(doc, d))))
+            .filter_map(|(name, object)| {
+                doc.resolve(object).as_dict().map(|d| (String::from_utf8_lossy(name).into_owned(), Metrics::from_dict(doc, d)))
+            })
             .collect()
     };
     // Styled runs drawn in another of the page's faces (their widths are that face's own) and
@@ -564,7 +566,8 @@ pub(super) fn rewrite_styled_block(
                             let [r, g, b] = line.color;
                             line.origin.state.render_mode = 2;
                             line.origin.state.stroke = vec![Op::new("RG", vec![Object::Real(r), Object::Real(g), Object::Real(b)])];
-                            line.origin.state.line_width = Some((line.size * 0.03).max(0.05) / line.origin.ctm[0].hypot(line.origin.ctm[1]).max(1e-6));
+                            line.origin.state.line_width =
+                                Some((line.size * 0.03).max(0.05) / line.origin.ctm[0].hypot(line.origin.ctm[1]).max(1e-6));
                             line.bold = true;
                         } else if !want_bold && line.bold && synthetic_bold {
                             line.origin.state.render_mode = 0;
@@ -854,8 +857,9 @@ pub(super) fn rewrite_styled_block(
                 source.origin.state.word_spacing,
             ) * source.origin.state.scale
                 * across(source);
-            let changed_face =
-                style.resource.is_some() || own_variant.contains(&index) || overrides.get(&index).is_some_and(|r| r.family.is_some() || r.resource.is_some());
+            let changed_face = style.resource.is_some()
+                || own_variant.contains(&index)
+                || overrides.get(&index).is_some_and(|r| r.family.is_some() || r.resource.is_some());
             let factor = if nominal > 0.0 && !changed_face { ((source.rect[2] - source.rect[0]) / nominal).clamp(0.5, 2.0) } else { 1.0 };
             calibration.insert(index, factor);
         }
