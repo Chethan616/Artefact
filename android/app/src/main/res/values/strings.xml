@@ -1125,6 +1125,9 @@
     <string name="photo_shape_original">Original</string>
     <string name="photo_mirror">Mirror</string>
     <string name="photo_font_sample">Aa</string>
+    <string name="photo_font_choose">Font</string>
+    <string name="photo_font_add">Add a font…</string>
+    <string name="photo_font_unusable">That file isn\'t a font Artefact can use</string>
     <string name="photo_not_saved">The picture couldn\'t be saved.</string>
     <!-- Draw tool: lines drawn are turned into neat shapes. -->
     <string name="msg_snap_to_shape_on">Snap to shape on</string>
@@ -1693,7 +1696,7 @@
     <string name="app_style_glass_detail">Default · Translucent surfaces</string>
     <string name="app_style_clean_detail">Solid surfaces</string>
     <string name="settings_reduce_transparency">Reduce transparency</string>
-    <string name="settings_reduce_transparency_detail">Toolbars over pages and lists stay solid, with no blur behind them</string>
+    <string name="settings_reduce_transparency_detail">Floating bars stay solid, nothing shows through</string>
     <string name="qr_scanner">QR Scanner</string>
     <string name="qr_scan_prompt">Point the camera at a QR code</string>
 </resources>

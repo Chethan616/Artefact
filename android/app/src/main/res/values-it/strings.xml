@@ -1462,6 +1462,9 @@
     <string name="photo_shape_original">Originale</string>
     <string name="photo_mirror">Specchia</string>
     <string name="photo_font_sample">Aa</string>
+    <string name="photo_font_choose">Carattere</string>
+    <string name="photo_font_add">Aggiungi un carattere…</string>
+    <string name="photo_font_unusable">Quel file non è un carattere che Artefact può usare</string>
     <string name="photo_not_saved">Impossibile salvare l\'immagine.</string>
     <string name="msg_busy_removing_password">Rimozione della password…</string>
     <string name="msg_unlock_failed">La protezione di questo file non può essere rimossa</string>
@@ -1624,7 +1627,7 @@
     <string name="app_style_glass_detail">Predefinito · Superfici traslucide</string>
     <string name="app_style_clean_detail">Superfici opache</string>
     <string name="settings_reduce_transparency">Riduci trasparenza</string>
-    <string name="settings_reduce_transparency_detail">Le barre sopra pagine ed elenchi restano opache, senza sfocatura dietro</string>
+    <string name="settings_reduce_transparency_detail">Le barre mobili restano opache, non traspare nulla</string>
     <string name="qr_scanner">Scanner QR</string>
     <string name="qr_scan_prompt">Inquadra un codice QR</string>
 </resources>
