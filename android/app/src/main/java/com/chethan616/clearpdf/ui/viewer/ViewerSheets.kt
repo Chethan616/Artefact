@@ -215,6 +215,15 @@ fun ViewSettingsSheet(vm: AppViewModel, doc: OpenDocument) {
                 vm.openReadingMode(doc)
             }
         }
+        // where the bars sit: beside the page, never over it, or floating over it
+        Text(
+            stringResource(R.string.sheet_toolbars), style = ClearType.Label, color = clear.inkSoft,
+            modifier = Modifier.padding(start = 24.dp, top = 12.dp, bottom = 6.dp),
+        )
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LayoutChoice(LucideIcons.BarsBesidePage, stringResource(R.string.sheet_bars_beside), !vm.barsOverPage) { vm.updateBarsOverPage(false) }
+            LayoutChoice(LucideIcons.Layers, stringResource(R.string.sheet_bars_over), vm.barsOverPage) { vm.updateBarsOverPage(true) }
+        }
         Spacer(Modifier.height(6.dp))
         SheetSection {
             // Keep this sheet mounted while the page inversion changes so the switch's touch
@@ -250,7 +259,13 @@ private fun androidx.compose.foundation.layout.RowScope.LayoutChoice(icon: Image
     ) {
         Icon(icon, null, tint = if (chosen) Candy.Sky else c.inkSoft, modifier = Modifier.size(26.dp))
         Spacer(Modifier.height(8.dp))
-        Text(label, style = ClearType.Label.copy(fontSize = 12.5.sp), color = if (chosen) Candy.Sky else c.ink, maxLines = 2, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
+        // a one-word name ("Continuous") shrinks to fit its line rather than break mid-word
+        androidx.compose.foundation.text.BasicText(
+            label,
+            style = ClearType.Label.copy(fontSize = 12.5.sp, color = if (chosen) Candy.Sky else c.ink, textAlign = TextAlign.Center),
+            maxLines = if (' ' in label.trim()) 2 else 1,
+            autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = 12.5.sp),
+        )
     }
 }
 

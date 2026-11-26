@@ -390,6 +390,9 @@
     <string name="sheet_add_star">Adicionar aos favoritos</string>
     <string name="sheet_remove_star">Remover dos favoritos</string>
     <string name="sheet_view_settings">Configurações de visualização</string>
+    <string name="sheet_toolbars">Barras de ferramentas</string>
+    <string name="sheet_bars_beside">Ao lado da página</string>
+    <string name="sheet_bars_over">Sobre a página</string>
     <string name="sheet_pages">Páginas</string>
     <string name="sheet_attachments">Anexos</string>
     <string name="sheet_bookmarks_contents">Favoritos e sumário</string>

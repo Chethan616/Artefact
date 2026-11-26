@@ -157,6 +157,22 @@ internal class InkFrame(
      * double weight, just outside its left and right edges level with its centre, where the icon
      * itself sits. A control straddling a page edge so follows what is beside its glyph.
      */
+    /**
+     * How much the ground round [box] jumps between light and dark: the spread of the same samples as
+     * [cornerLuminance]. Print (black on white) spreads wide; the aurora, a photo's sky, a blank page don't.
+     */
+    fun cornerSpread(box: Rect, inset: Float): Float {
+        val d = inset.coerceAtMost(minOf(box.width, box.height) * 0.14f)
+        val cy = box.center.y
+        val s = doubleArrayOf(
+            luminanceAt(box.left + d, box.top + d), luminanceAt(box.right - d, box.top + d),
+            luminanceAt(box.left + d, box.bottom - d), luminanceAt(box.right - d, box.bottom - d),
+            luminanceAt(box.left - d * 0.6f, cy), luminanceAt(box.right + d * 0.6f, cy),
+            luminanceAt(box.center.x, box.top + d), luminanceAt(box.center.x, box.bottom - d),
+        )
+        return (s.max() - s.min()).toFloat()
+    }
+
     fun cornerLuminance(box: Rect, inset: Float): Float {
         val d = inset.coerceAtMost(minOf(box.width, box.height) * 0.14f)
         val corners = luminanceAt(box.left + d, box.top + d) + luminanceAt(box.right - d, box.top + d) +
@@ -243,9 +259,12 @@ fun rememberSurroundLuminance(): SurroundLuminance? {
  * One control's ink: put [modifier] on the control (first, so it measures the resting box). [edge] is
  * the hairline its glass takes over a near-white page, where its white rim light alone leaves no edge.
  */
-class InkProbe(val modifier: Modifier, val color: Color, val edge: Color = Color.Unspecified) {
+class InkProbe(val modifier: Modifier, val color: Color, val edge: Color = Color.Unspecified, val lift: Float = 0f) {
     val soft: Color get() = color.copy(alpha = 0.62f)
 }
+
+/** The hairline's full strength over a page ([InkProbe.edge]); its share of it says how much on one a control is. */
+const val PageEdgeAlpha = 0.14f
 
 /** Ink over a light background. */
 val InkOnLight = Color(0xFF15171C)
@@ -263,6 +282,8 @@ fun rememberAdaptiveInk(fallback: Color): InkProbe {
     var measured by remember { mutableStateOf(false) }
     // over a page (near white), not merely over light: the light theme's aurora stays edgeless
     var onPage by remember { mutableStateOf(false) }
+    // over light print (light, and jumping between black and white): its glass is lifted ([pageLift])
+    var onPrint by remember { mutableStateOf(false) }
     val box = remember { arrayOfNulls<Rect>(1) }
     val currentFallback by rememberUpdatedState(fallbackOnLight)
     val inset = with(LocalDensity.current) { 5.dp.toPx() }
@@ -287,6 +308,8 @@ fun rememberAdaptiveInk(fallback: Color): InkProbe {
                     else -> onLight
                 }
                 onPage = if (onPage) lum > 0.86f else lum > 0.92f
+                val spread = frame.cornerSpread(b, inset)
+                onPrint = if (onPrint) lum > 0.5f && spread > 0.1f else lum > 0.55f && spread > 0.14f
                 measured = true
             }
         }
@@ -298,9 +321,13 @@ fun rememberAdaptiveInk(fallback: Color): InkProbe {
         else -> Color.White
     }
     val color by animateColorAsState(target, tween(200), label = "adaptiveInk")
-    val edgeAlpha by androidx.compose.animation.core.animateFloatAsState(if (sampler != null && measured && onPage) 0.14f else 0f, tween(200), label = "adaptiveEdge")
+    // the hairline over a white page, and over light print too, where the lifted glass is white on white
+    // both only with Adaptive luminance on (Settings ▸ Liquid glass): off, a control is the preset's glass
+    val adaptive = GlassSettings.adaptive
+    val edgeAlpha by androidx.compose.animation.core.animateFloatAsState(if (adaptive && sampler != null && measured && (onPage || onPrint)) PageEdgeAlpha else 0f, tween(200), label = "adaptiveEdge")
+    val lift by androidx.compose.animation.core.animateFloatAsState(if (adaptive && sampler != null && measured && onPrint) 1f else 0f, tween(260), label = "adaptiveLift")
     val modifier = remember { Modifier.onGloballyPositioned { box[0] = it.boundsInWindow() } }
-    return InkProbe(modifier, color, if (edgeAlpha > 0.005f) Color.Black.copy(alpha = edgeAlpha) else Color.Unspecified)
+    return InkProbe(modifier, color, if (edgeAlpha > 0.005f) Color.Black.copy(alpha = edgeAlpha) else Color.Unspecified, lift)
 }
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {

@@ -145,8 +145,6 @@ fun ViewerTopBar(
             modifier = Modifier.weight(1f).onGloballyPositioned { titleAnchor = it.boundsInWindow() }
                 .graphicsLayer { alpha = contentAlpha.coerceIn(0f, 1f) },
             height = 48.dp,
-            // frosted enough that a page heading scrolled behind the title doesn't read through it
-            blur = 10.dp,
             horizontalPadding = 16.dp,
         ) {
             val ink = LocalGlassInk.current
@@ -295,8 +293,7 @@ fun SearchBar(
                     layout(full, placeable.height) { placeable.place(0, 0) }
                 }
                 .then(ink.modifier)
-                // frosted more than the dock: page text scrolls behind the words typed here (#158)
-                .glassBar(blur = 10.dp, edge = ink.edge).padding(start = 16.dp, end = 4.dp)
+                .glassBar(edge = ink.edge, lift = ink.lift).padding(start = 16.dp, end = 4.dp)
                 .graphicsLayer { alpha = ((progress().coerceIn(0f, 1f) - 0.35f) / 0.45f).coerceIn(0f, 1f) },
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -404,7 +401,7 @@ fun QuickToolbar(
     ) {
         val ink = rememberGlassInk(clear.ink)
         Row(
-            Modifier.weight(1f).fillMaxHeight().then(ink.modifier).glassBar(edge = ink.edge).padding(horizontal = 6.dp),
+            Modifier.weight(1f).fillMaxHeight().then(ink.modifier).glassBar(edge = ink.edge, lift = ink.lift).padding(horizontal = 6.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -493,7 +490,7 @@ fun SubToolbar(content: @Composable () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxWidth().height(BottomBarHeight).padding(horizontal = 12.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
         val ink = rememberGlassInk(clear.ink)
         Row(
-            Modifier.widthIn(max = maxWidth).fillMaxHeight().then(ink.modifier).glassBar(edge = ink.edge).horizontalScroll(scroll).padding(horizontal = 8.dp),
+            Modifier.widthIn(max = maxWidth).fillMaxHeight().then(ink.modifier).glassBar(edge = ink.edge, lift = ink.lift).horizontalScroll(scroll).padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) { CompositionLocalProvider(LocalSubToolbarScroll provides scroll, LocalGlassInk provides ink.color) { content() } }

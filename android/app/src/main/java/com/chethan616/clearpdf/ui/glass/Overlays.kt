@@ -340,8 +340,6 @@ private val MenuDarkWash = Color(0xFF101014).copy(alpha = 0.54f)
 fun MenuCard(modifier: Modifier = Modifier, shape: androidx.compose.ui.graphics.Shape = RoundedRectangle(24.dp), content: @Composable ColumnScope.() -> Unit) {
     val c = clear
     val luminance = rememberGlassLuminance()
-    // Adaptive luminance off: still read what is behind, but only to frost over print (#158)
-    val assist = if (luminance == null) rememberGlassLuminance(enabled = true) else null
     GlassCard(
         // unseen for the frame or two it takes to read what is behind it (see [GlassLuminance])
         modifier.graphicsLayer { alpha = if (luminance == null || luminance.measured) 1f else 0f },
@@ -349,10 +347,9 @@ fun MenuCard(modifier: Modifier = Modifier, shape: androidx.compose.ui.graphics.
         wash = if (c.dark) MenuDarkWash else MenuLightWash,
         blur = 16.dp,
         // the user's own glass (Settings ▸ Liquid glass), lifted or dimmed a touch for its ink, as every
-        // other surface; over print the assist frosts it (it used to be a fixed frost of its own)
+        // other surface (it used to be a fixed frost of its own); Adaptive luminance adds the rest
         styleOverride = GlassSettings.style.copy(brightness = GlassSettings.style.brightness + if (c.dark) -0.3f else 0.08f),
         luminance = luminance,
-        assist = assist,
     ) {
         val ink = adaptiveInk(luminance, c.ink)
         CompositionLocalProvider(LocalGlassInk provides ink, LocalMenuInk provides ink) { content() }

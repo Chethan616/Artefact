@@ -1036,7 +1036,7 @@ fun MindMapEditor(vm: AppViewModel, id: String) {
                     if (editing != null) finishEdit()
                     vm.closeNote()
                 }, immediate = true)
-                Row(Modifier.weight(1f).height(44.dp).then(ink.modifier).glassBar(edge = ink.edge).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f).height(44.dp).then(ink.modifier).glassBar(edge = ink.edge, lift = ink.lift).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(LucideIcons.Network, null, tint = Candy.Grape, modifier = Modifier.size(17.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
@@ -1072,7 +1072,7 @@ fun MindMapEditor(vm: AppViewModel, id: String) {
                 when {
                     typing != null -> {
                         Row(
-                            Modifier.fillMaxWidth().heightIn(min = 58.dp).then(ink.modifier).glassBar(RoundedCornerShape29, edge = ink.edge).padding(start = 18.dp, end = 7.dp, top = 7.dp, bottom = 7.dp),
+                            Modifier.fillMaxWidth().heightIn(min = 58.dp).then(ink.modifier).glassBar(RoundedCornerShape29, edge = ink.edge, lift = ink.lift).padding(start = 18.dp, end = 7.dp, top = 7.dp, bottom = 7.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
@@ -1135,7 +1135,7 @@ fun MindMapEditor(vm: AppViewModel, id: String) {
                     chosen != null -> {
                         AnimatedVisibility(palette && chosen !== doc.root, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
                             Row(
-                                Modifier.then(ink.modifier).glassBar(edge = ink.edge).padding(horizontal = 12.dp, vertical = 10.dp),
+                                Modifier.then(ink.modifier).glassBar(edge = ink.edge, lift = ink.lift).padding(horizontal = 12.dp, vertical = 10.dp),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -1146,7 +1146,7 @@ fun MindMapEditor(vm: AppViewModel, id: String) {
                             }
                         }
                         Row(
-                            Modifier.then(ink.modifier).glassBar(edge = ink.edge).padding(horizontal = 6.dp, vertical = 4.dp),
+                            Modifier.then(ink.modifier).glassBar(edge = ink.edge, lift = ink.lift).padding(horizontal = 6.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             CompositionLocalProvider(LocalGlassInk provides ink.color) {

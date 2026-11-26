@@ -415,6 +415,9 @@
     <string name="sheet_add_star">تمييز الملف</string>
     <string name="sheet_remove_star">إلغاء التمييز</string>
     <string name="sheet_view_settings">إعدادات العرض</string>
+    <string name="sheet_toolbars">أشرطة الأدوات</string>
+    <string name="sheet_bars_beside">بجانب الصفحة</string>
+    <string name="sheet_bars_over">فوق الصفحة</string>
     <string name="sheet_pages">الصفحات</string>
     <string name="sheet_attachments">المرفقات</string>
     <string name="sheet_bookmarks_contents">الإشارات المرجعية والفهرس</string>

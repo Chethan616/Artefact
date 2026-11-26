@@ -909,6 +909,19 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
     private var nightModeDefaultState by mutableStateOf(appPrefs.getBoolean("nightMode", false))
     val savedNightMode: Boolean get() = nightModeDefaultState
 
+    /**
+     * Where the viewer's bars sit (View settings ▸ Toolbars; remembered app-wide): beside the page (the
+     * page area runs between the top row and the dock, so they never cover it), or over it (the page
+     * runs under both, as the viewer first had it).
+     */
+    var barsOverPage by mutableStateOf(appPrefs.getBoolean("barsOverPage", false))
+        private set
+
+    fun updateBarsOverPage(on: Boolean) {
+        barsOverPage = on
+        appPrefs.edit().putBoolean("barsOverPage", on).apply()
+    }
+
     /** Two pages side by side in continuous mode (View settings; remembered app-wide). */
     var twoPages by mutableStateOf(appPrefs.getBoolean("twoPages", false))
         private set

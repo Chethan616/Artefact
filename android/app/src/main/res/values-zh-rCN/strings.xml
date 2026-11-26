@@ -650,6 +650,9 @@
     <string name="sheet_add_star">收藏</string>
     <string name="sheet_remove_star">取消收藏</string>
     <string name="sheet_view_settings">视图设置</string>
+    <string name="sheet_toolbars">工具栏</string>
+    <string name="sheet_bars_beside">在页面旁边</string>
+    <string name="sheet_bars_over">浮于页面上</string>
     <string name="sheet_pages">页面</string>
     <string name="sheet_attachments">附件</string>
     <string name="sheet_bookmarks_contents">书签和目录</string>

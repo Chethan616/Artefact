@@ -616,6 +616,9 @@
     <string name="sheet_add_star">Añadir a destacados</string>
     <string name="sheet_remove_star">Quitar de destacados</string>
     <string name="sheet_view_settings">Ajustes de vista</string>
+    <string name="sheet_toolbars">Barras de herramientas</string>
+    <string name="sheet_bars_beside">Junto a la página</string>
+    <string name="sheet_bars_over">Sobre la página</string>
     <string name="sheet_pages">Páginas</string>
     <string name="sheet_attachments">Archivos adjuntos</string>
     <string name="sheet_bookmarks_contents">Marcadores e índice</string>

@@ -561,6 +561,9 @@
     <string name="sheet_add_star">Ajouter aux favoris</string>
     <string name="sheet_remove_star">Retirer des favoris</string>
     <string name="sheet_view_settings">Réglages d\'affichage</string>
+    <string name="sheet_toolbars">Barres d\'outils</string>
+    <string name="sheet_bars_beside">À côté de la page</string>
+    <string name="sheet_bars_over">Sur la page</string>
     <string name="sheet_pages">Pages</string>
     <string name="sheet_attachments">Pièces jointes</string>
     <string name="sheet_bookmarks_contents">Signets et table des matières</string>

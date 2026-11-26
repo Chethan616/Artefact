@@ -143,16 +143,21 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
     var quickExtraPx by remember { mutableIntStateOf(0) }
     val bottomPx = with(density) { if (ctl.tool == ViewerTool.None) QuickBarHeight.toPx() + quickExtraPx else BottomBarHeight.toPx() }
     // keyed on the document too: one opened over another (Create, Combine) has a fresh page view
-    LaunchedEffect(doc, statusPx, navPx, ctl.tool, vm.readingMode, bottomPx) {
+    LaunchedEffect(doc, statusPx, navPx, ctl.tool, vm.readingMode, bottomPx, vm.barsOverPage) {
         // Keep the page viewport fixed while Find replaces the top bar. Releasing the bottom-bar
         // space here shifts every page at the same time as the search pill animates.
         val bottomShown = !vm.readingMode
-        // the first page starts at the top of the screen, under the camera; the glass row floats over
-        // it as over the rest (no empty band above it)
-        doc.viewer.setPadding(
-            top = 0f,
-            bottom = if (bottomShown) bottomPx + navPx else navPx,
-        )
+        if (vm.barsOverPage) {
+            // over the page: it runs from the top of the screen, under the camera, and on under the
+            // dock; the glass bars float over it (only the gesture bar is kept clear)
+            doc.viewer.setPadding(top = 0f, bottom = navPx)
+        } else {
+            // beside the page: the page area runs between the top row and the dock, so neither covers it
+            doc.viewer.setPadding(
+                top = if (vm.readingMode) statusPx else statusPx + topPx,
+                bottom = if (bottomShown) bottomPx + navPx else navPx,
+            )
+        }
     }
 
     // Reopen where the reader left off.

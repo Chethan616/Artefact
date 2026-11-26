@@ -361,10 +361,6 @@ internal fun LiquidMorphSurface(
         fun washIn() = ((p.value - 0.08f) / 0.4f).coerceIn(0f, 1f)
         // the luminance reading copies the backdrop: every few frames is plenty (its ink eases anyway)
         val frame = remember { intArrayOf(0) }
-        // a breath of dim on the page around the open menu, over a light page only
-        if (luminance != null) androidx.compose.foundation.layout.Box(
-            Modifier.fillMaxSize().drawBehind { drawRect(Color.Black, alpha = menuScrimAlpha(luminance.value, washIn(), luminance.busy) * fade.value) },
-        )
 
         fun RuntimeShader.shapeUniforms(g: Geo) {
             setFloatUniform("circle", local.center.x - stage.left, local.center.y - stage.top, g.circleR, 0f)
@@ -424,7 +420,7 @@ internal fun LiquidMorphSurface(
                         surface.shapeUniforms(g)
                         drawRect(ShaderBrush(surface))
                         // a dark hairline round the opened menu over a white page, where its rim light is lost
-                        val edge = lightEdge(lum)
+                        val edge = adaptiveEdge(lum)
                         if (edge != Color.Unspecified && w > 0f) drawRoundRect(
                             edge.copy(alpha = edge.alpha * w),
                             topLeft = androidx.compose.ui.geometry.Offset(g.menu.left - stage.left, g.menu.top - stage.top),
@@ -545,7 +541,7 @@ private fun com.kyant.backdrop.BackdropEffectScope.morphEffects(style: GlassStyl
     // Frosted frosted), lifted only a little over light. Frost, milk and flattening come in with what
     // is behind it: over a page of print ([busy]) they rise until the rows read, over the calm
     // aurora they stay away, so the menu is liquid glass rather than a frosted card (#158).
-    val menuBrightness = if (l > 0f) lerp(0.04f, lerp(0.12f, 0.3f, k), l) else lerp(if (dark) -0.12f else 0.04f, -0.24f, -l)
+    val menuBrightness = if (l > 0f) lerp(0.04f, lerp(0.12f, 0.42f, k), l) else lerp(if (dark) -0.12f else 0.04f, -0.24f, -l)
     // the button's end: plain glass, or (Adaptive luminance) the adaptive button's own colour and frost,
     // as adaptiveGlassEffects sets them from the reading around the button
     val b = buttonLuminance?.let { signedLum(it.coerceIn(0f, 1f)) }
@@ -553,7 +549,7 @@ private fun com.kyant.backdrop.BackdropEffectScope.morphEffects(style: GlassStyl
     val buttonContrast = if (b != null && b > 0f) lerp(1f, 0.25f, b) else 1f
     colorControls(
         brightness = lerp(buttonBrightness, menuBrightness, o),
-        contrast = lerp(buttonContrast, if (l > 0f) lerp(1f, lerp(0.85f, 0.5f, k), l) else 1f, o),
+        contrast = lerp(buttonContrast, if (l > 0f) lerp(1f, lerp(0.85f, 0.35f, k), l) else 1f, o),
         saturation = style.saturation,
     )
     val buttonBlur = 2f * dp * style.blur * (if (b == null) 1f else if (b > 0f) lerp(1f, 1.5f, b) else lerp(1f, 0.6f, -b))

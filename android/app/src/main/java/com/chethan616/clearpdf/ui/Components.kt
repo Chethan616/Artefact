@@ -252,6 +252,8 @@ fun PdfSheet(
                         shape = RoundedRectangle(34.dp),
                         wash = sheetWash,
                         blur = 18.dp,
+                        // with Adaptive luminance on, over a page of print it lifts and frosts (no grey smudges)
+                        assist = com.chethan616.clearpdf.ui.glass.rememberGlassLuminance(),
                     ) {
                         val haptics = com.chethan616.clearpdf.ui.glass.LocalHaptics.current
                         Box(

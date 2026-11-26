@@ -321,8 +321,6 @@ private fun RectMorphSurface(
         // black pages, a white document, the aurora): the glyph and rows always stand out
         val luminance = rememberGlassLuminance(enabled = true)
         val inkColor = adaptiveInk(luminance, clear.ink)
-        // a breath of dim on the page around the open menu, over a light page only
-        if (luminance != null) Box(Modifier.fillMaxSize().drawBehind { drawRect(Color.Black, alpha = menuScrimAlpha(luminance.value, tall.value, luminance.busy) * fade.value) })
         Layout(
             content = {
                 CompositionLocalProvider(LocalGlassInk provides inkColor, LocalMenuInk provides inkColor) {

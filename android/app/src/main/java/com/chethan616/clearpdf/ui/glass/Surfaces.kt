@@ -103,7 +103,7 @@ fun Modifier.glass(
         onDrawBackdrop = luminance.recorder,
         onDrawSurface = {
             drawRect(adaptiveWash(luminance.value, luminance.busy).glassTint(style))
-            drawGlassEdge(shape, lightEdge(luminance.value))
+            drawGlassEdge(shape, adaptiveEdge(luminance.value))
         },
     )
     // Adaptive luminance on: a still surface (a bar, a panel, a sheet) takes its frost and light
@@ -129,14 +129,18 @@ fun Modifier.glass(
         shadow = null,
         effects = {
             glassEffects(style, blur.toPx(), lensHeight.toPx(), lensAmount.toPx())
-            if (assist != null && assist.busy > 0.01f) blur(18.dp.toPx() * assist.busy)
+            if (assist != null && assist.busy > 0.01f) {
+                blur(18.dp.toPx() * assist.busy)
+                pageLift(pageLiftAmount(assist.value, assist.busy))
+            }
         },
         highlight = { glassHighlight(style) },
         onDrawBackdrop = assist?.recorder ?: { it() },
         onDrawSurface = {
             if (wash.isSpecified) drawRect(wash.glassTint(style))
             if (dim.isSpecified) drawRect(dim)
-            if (assist != null && assist.busy > 0.01f) drawRect(if (clearDark) Color.Black else Color.White, alpha = 0.5f * assist.busy)
+            // over print: milk over a light page (the lift has whitened it already, so less is needed)
+            if (assist != null && assist.busy > 0.01f) drawRect(if (clearDark) Color.Black else Color.White, alpha = 0.35f * assist.busy)
         },
     )
 }

@@ -60,9 +60,10 @@ class GlassLuminance internal constructor(initial: Float, internal val layer: Gr
     /**
      * 0 (calm: the wallpaper, an empty page) … 1 (busy: lines of text, a photo) behind the glass. Read
      * while drawing: a busy backdrop takes a thicker wash and frost, so what is behind does not ghost
-     * through the words on the glass (#158), while a calm one stays as clear as it was.
+     * through the words on the glass (#158), while a calm one stays as clear as it was. Only with
+     * Adaptive luminance on (Settings ▸ Liquid glass): off, the glass is the preset's and nothing else.
      */
-    val busy: Float get() = busyAnim.value
+    val busy: Float get() = if (GlassSettings.adaptive) busyAnim.value else 0f
 
     /** Whether the glass sits over something light, so its ink should be dark. */
     var onLight by mutableStateOf(initial > 0.5f)
@@ -241,6 +242,7 @@ fun BackdropEffectScope.adaptiveGlassEffects(
         saturation = style.saturation,
     )
     blur(blurPx * style.blur * (if (l > 0f) lerp(1f, 1.5f, l) else lerp(1f, 0.6f, -l)) * (1f + 0.6f * busy.coerceIn(0f, 1f)))
+    pageLift(pageLiftAmount(luminance, busy))
     lens(
         refractionHeightPx * style.refractionHeight,
         refractionAmountPx * style.refractionAmount,
@@ -268,8 +270,28 @@ fun adaptiveWash(luminance: Float, busy: Float = 0f): Color {
 }
 
 /**
+ * Glass over a light page of print lifts it: brighter and flatter, so the frosted print behind reads
+ * as white glass, not as grey smudges (black text blurred averages to grey). Apple's glass brightens
+ * over light content the same way. [amount] 0 (the wallpaper, a dark page: nothing) … 1 (white page
+ * of print). The lens and colour are untouched.
+ */
+fun BackdropEffectScope.pageLift(amount: Float) {
+    val a = amount.coerceIn(0f, 1f)
+    if (a <= 0.01f) return
+    // contrast pivots on mid grey, so lowering it alone greys the white too: the brightness puts
+    // white back at white (0.5 * (1 - contrast)) and a touch over, and the print lifts toward it
+    val contrast = lerp(1f, 0.5f, a)
+    colorControls(brightness = 0.5f * (1f - contrast) + 0.03f * a, contrast = contrast)
+}
+
+/** How much a reading asks for [pageLift]: light behind (from 0.55 up) and busy with print. */
+fun pageLiftAmount(luminance: Float, busy: Float): Float =
+    ((luminance - 0.55f) / 0.3f).coerceIn(0f, 1f) * busy.coerceIn(0f, 1f)
+
+/**
  * A dark hairline for glass over something near-white (a page): its white rim light vanishes there, so
  * without one a light menu or bar has no edge at all on a white page (#158). None over anything darker.
+ * Callers draw it only with Adaptive luminance on ([adaptiveEdge]).
  */
 fun lightEdge(luminance: Float): Color {
     // measured on a phone: a menu over a white page with the viewer's dark header band above reads
@@ -278,18 +300,13 @@ fun lightEdge(luminance: Float): Color {
     return if (a <= 0.005f) Color.Unspecified else Color.Black.copy(alpha = a)
 }
 
-/**
- * How much an open menu dims the page around it ([open] 0 … 1): over a light page of print a little (at
- * most 16% black), so the white menu stands off a white page; over the wallpaper, or anything darker,
- * not at all (#158).
- */
-fun menuScrimAlpha(luminance: Float, open: Float, busy: Float): Float =
-    0.16f * open.coerceIn(0f, 1f) * ((luminance - 0.5f) / 0.25f).coerceIn(0f, 1f) * busy.coerceIn(0f, 1f)
-
 /** The tallest a menu grows: its own most, or 72% of the screen, so its last row is never off-screen. */
 @Composable
 fun menuMaxHeight(designed: androidx.compose.ui.unit.Dp): androidx.compose.ui.unit.Dp =
     minOf(designed, (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.72f).dp)
+
+/** [lightEdge] while Adaptive luminance is on; none while it is off. */
+fun adaptiveEdge(luminance: Float): Color = if (GlassSettings.adaptive) lightEdge(luminance) else Color.Unspecified
 
 /** Draws [edge] (from [lightEdge]) along [shape]'s outline, about a dp of it showing inside. */
 fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGlassEdge(shape: androidx.compose.ui.graphics.Shape, edge: Color) {
