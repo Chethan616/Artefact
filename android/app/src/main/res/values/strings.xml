@@ -1696,7 +1696,7 @@
     <string name="app_style_glass_detail">Default · Translucent surfaces</string>
     <string name="app_style_clean_detail">Solid surfaces</string>
     <string name="settings_reduce_transparency">Reduce transparency</string>
-    <string name="settings_reduce_transparency_detail">Floating bars stay solid, nothing shows through</string>
+    <string name="settings_reduce_transparency_detail">Glass and floating bars go solid, nothing shows through</string>
     <string name="qr_scanner">QR Scanner</string>
     <string name="qr_scan_prompt">Point the camera at a QR code</string>
 </resources>

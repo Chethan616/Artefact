@@ -1255,7 +1255,7 @@
     <string name="app_style_glass_detail">По умолчанию · Полупрозрачные панели</string>
     <string name="app_style_clean_detail">Непрозрачные панели</string>
     <string name="settings_reduce_transparency">Уменьшить прозрачность</string>
-    <string name="settings_reduce_transparency_detail">Плавающие панели непрозрачны, ничего не просвечивает</string>
+    <string name="settings_reduce_transparency_detail">Стекло и плавающие панели становятся непрозрачными, ничего не просвечивает</string>
     <string name="qr_scanner">QR-сканер</string>
     <string name="qr_scan_prompt">Наведите камеру на QR-код</string>
 </resources>

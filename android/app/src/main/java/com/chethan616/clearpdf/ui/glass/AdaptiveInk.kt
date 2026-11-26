@@ -342,5 +342,5 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
  */
 @Composable
 fun rememberGlassInk(fallback: Color): InkProbe =
-    if (clear.clean) InkProbe(Modifier, clear.ink)
+    if (solidGlass) InkProbe(Modifier, clear.ink)
     else if (LocalScreenInk.current != null) rememberAdaptiveInk(fallback) else remember(fallback) { InkProbe(Modifier, fallback) }

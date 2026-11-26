@@ -1680,5 +1680,5 @@
     <string name="settings_your_name_hint">显示在“今日”页的问候语上方</string>
     <string name="thoughts_audios">音频</string>
     <string name="settings_reduce_transparency">降低透明度</string>
-    <string name="settings_reduce_transparency_detail">浮动栏保持不透明，不透出任何内容</string>
+    <string name="settings_reduce_transparency_detail">玻璃与浮动栏变为不透明，不透出任何内容</string>
 </resources>

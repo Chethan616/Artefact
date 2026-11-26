@@ -1517,7 +1517,7 @@
     <string name="app_style_glass_detail">Par défaut · Surfaces translucides</string>
     <string name="app_style_clean_detail">Surfaces opaques</string>
     <string name="settings_reduce_transparency">Réduire la transparence</string>
-    <string name="settings_reduce_transparency_detail">Les barres flottantes restent opaques, rien ne transparaît</string>
+    <string name="settings_reduce_transparency_detail">Le verre et les barres flottantes deviennent opaques, rien ne transparaît</string>
     <string name="qr_scanner">Scanner QR</string>
     <string name="qr_scan_prompt">Pointez la caméra vers un code QR</string>
 </resources>

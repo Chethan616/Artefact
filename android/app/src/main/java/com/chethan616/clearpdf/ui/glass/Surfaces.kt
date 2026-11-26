@@ -39,6 +39,13 @@ import com.chethan616.clearpdf.ui.theme.clear
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.drawBackdrop
 
+/**
+ * Whether glass is drawn solid, nothing showing through: the Clean appearance, or Reduce transparency
+ * in either appearance (#158). Every glass surface asks this where it used to ask for Clean alone.
+ */
+val solidGlass: Boolean
+    @Composable get() = clear.clean || GlassSettings.reduceTransparency
+
 /** A quiet, theme-tinted backdrop for controls that float over Clean mode content. */
 @Composable
 internal fun Modifier.cleanFloatingSurface(shape: Shape, strongestAtTop: Boolean = false): Modifier {
@@ -91,7 +98,7 @@ fun Modifier.glass(
      */
     assist: GlassLuminance? = null,
 ): Modifier {
-    if (clear.clean) return clip(shape).background(clear.solidPanel)
+    if (solidGlass) return clip(shape).background(clear.solidPanel)
     val clearDark = clear.dark
     val backdrop = LocalBackdrop.current
     val style = styleOverride ?: GlassSettings.style
@@ -227,7 +234,7 @@ fun GlassHost(
  */
 @Composable
 fun Modifier.wash(shape: Shape = RoundedRectangle(28.dp), tint: Color = clear.glass): Modifier {
-    if (clear.clean) return clip(shape).background(clear.solidPanel)
+    if (solidGlass) return clip(shape).background(clear.solidPanel)
     val dark = clear.dark
     val rimTop = Color.White.copy(alpha = if (dark) 0.16f else 0.70f)
     val rimBottom = Color.White.copy(alpha = if (dark) 0.03f else 0.18f)
