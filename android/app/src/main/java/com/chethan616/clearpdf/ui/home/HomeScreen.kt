@@ -236,7 +236,7 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
     val clean = clear.clean
     val deskGrid: @Composable () -> Unit = {
         LazyVerticalStaggeredGrid(
-            columns = StaggeredGridCells.Fixed(2),
+            columns = com.chethan616.clearpdf.ui.deskColumns(),
             state = grid,
             // glass in the scrolling desk samples the soft wallpaper: while it scrolls, ten times a second is plenty
             modifier = Modifier.fillMaxSize().throttleBackdrops { grid.isScrollInProgress }

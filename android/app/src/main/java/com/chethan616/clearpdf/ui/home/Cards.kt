@@ -261,8 +261,10 @@ fun NoteCard(
     val tone = clear.tone(Tone.Paper)
     val title = note.title.ifBlank { note.body.lineSequence().firstOrNull { it.isNotBlank() }?.trim()?.removePrefix("# ").orEmpty() }
     val body = if (note.title.isBlank()) "" else note.body.lineSequence().filter { it.isNotBlank() }.joinToString(" ") { it.trim().removePrefix("# ").replace("**", "") }
-    // at night the card is smoked glass: its pale title blue sits on a dark face, not on pale glass
-    val tint = if (clear.dark) Color(0xFF0B0F1A).copy(alpha = 0.34f) else Color.Transparent
+    // at night, over a picture of the user's own, the card is smoked glass: its pale title blue sits on
+    // a dark face, not on pale glass; on the app's own wallpapers the card is as it was
+    val smoked = clear.dark && com.chethan616.clearpdf.ui.glass.GlassSettings.wallpaper == com.chethan616.clearpdf.ui.glass.Wallpaper.Custom
+    val tint = if (smoked) Color(0xFF0B0F1A).copy(alpha = 0.34f) else Color.Transparent
     Column(
         modifier.heightIn(min = 156.dp).pressable(onOpen, onLong, pressedScale = 0.96f).cardPaint(tone, Offset(0.1f, 0.0f), tint).padding(18.dp),
     ) {
@@ -323,7 +325,7 @@ fun MapCard(note: Note, onOpen: () -> Unit, onLong: () -> Unit, modifier: Modifi
             }
         }
         Spacer(Modifier.height(12.dp).weight(1f, fill = false))
-        Text(shortDate(note.updated), style = ClearType.Caption, color = tone.ink.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.End))
+        Text(shortDate(note.updated), style = ClearType.Caption, color = tone.ink.copy(alpha = 0.72f), modifier = Modifier.align(Alignment.End))
     }
 }
 
@@ -340,7 +342,7 @@ fun ThoughtCard(onOpen: () -> Unit, modifier: Modifier = Modifier) {
         Text("“$quote”", style = ClearType.Body.copy(fontSize = 14.sp, lineHeight = 19.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic), color = tone.ink.copy(alpha = 0.8f), maxLines = 5, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         Spacer(Modifier.weight(1f))
         Spacer(Modifier.height(12.dp))
-        Text(shortDate(System.currentTimeMillis()), style = ClearType.Caption, color = tone.ink.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.End))
+        Text(shortDate(System.currentTimeMillis()), style = ClearType.Caption, color = tone.ink.copy(alpha = 0.72f), modifier = Modifier.align(Alignment.End))
     }
 }
 

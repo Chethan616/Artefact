@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
@@ -135,9 +137,21 @@ fun SnapshotsCard(vm: AppViewModel, scans: List<FileRow>, onOpen: () -> Unit, mo
  * Outfit (its face), weight by weight.
  */
 
-/** Mock pixels to dp on this screen. */
+/**
+ * Mock pixels to dp on this screen. A tablet or an unfolded phone is not a wider phone: there the
+ * page keeps a phone's proportions in a column of [PageMaxWidth] (#157), where it used to be scaled
+ * up with the width (about 2.3 times a phone's on a tablet upright, 3.6 times turned). Every phone is
+ * narrower than the cap, so on a phone this is exactly what it was.
+ */
 @Composable
-private fun mockScale(): Float = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp / MockWidth
+private fun mockScale(): Float = minOf(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.toFloat(), PageMaxWidth) / MockWidth
+
+/** The widest a desk page grows (dp): wider than any phone, so only larger screens are held to it. */
+private const val PageMaxWidth = 480f
+
+/** A desk page's column: the full width on a phone; on a larger screen, [PageMaxWidth] in the middle. */
+private fun Modifier.pageColumn(): Modifier =
+    fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = PageMaxWidth.dp).fillMaxWidth()
 
 private const val MockWidth = 491f
 
@@ -259,7 +273,7 @@ fun ThoughtsScreen(vm: AppViewModel, desk: DeskState) {
     var actionsFor by remember { mutableStateOf<Note?>(null) }
     var actionsAnchor by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Box(Modifier.fillMaxWidth().height(m(1068, k))) {
+        Box(Modifier.pageColumn().height(m(1068, k))) {
             // Back and More: the desk's own header buttons, where the desk's header puts them
             DeskHeaderRow(
                 leading = { GlassBackButton({ vm.closeDeskPage() }) },
@@ -625,7 +639,7 @@ fun TodayScreen(vm: AppViewModel) {
             .flatMap { n -> n.items.filter { !it.done && it.text.isNotBlank() } }
     }
     Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Box(Modifier.fillMaxWidth().then(if (clear.clean) Modifier else Modifier.height(m(1068, k)))) {
+        Box(Modifier.pageColumn().then(if (clear.clean) Modifier else Modifier.height(m(1068, k)))) {
             // the desk's own header: its mark (a tap goes back to the desk) and its menu button
             DeskHeaderRow(
                 leading = {

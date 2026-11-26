@@ -61,6 +61,7 @@ import com.chethan616.clearpdf.R
 import com.chethan616.clearpdf.notes.checkItem
 import com.chethan616.clearpdf.ui.AppViewModel
 import com.chethan616.clearpdf.ui.LucideIcons
+import com.chethan616.clearpdf.ui.screenColumn
 import com.chethan616.clearpdf.ui.glass.Fluid
 import androidx.compose.ui.draw.drawBehind
 import com.chethan616.clearpdf.ui.glass.Feel
@@ -119,7 +120,9 @@ fun Onboarding(vm: AppViewModel, pager: PagerState = rememberPagerState { Welcom
             first = false
         }
     }
-    Box(Modifier.fillMaxSize()) {
+    // on a wider screen, a phone-sized column in the middle: its cards and Continue were spread
+    // to the screen's edges (#157); on a phone the full width, as before
+    Box(Modifier.fillMaxSize().screenColumn(600.dp)) {
         HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
             // how far this page is from the middle, read only while drawing: a swipe moves the
             // pages and their cards without recomposing a thing

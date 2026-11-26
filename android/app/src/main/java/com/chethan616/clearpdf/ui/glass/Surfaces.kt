@@ -62,7 +62,9 @@ internal fun Modifier.cleanFloatingSurface(shape: Shape, strongestAtTop: Boolean
         },
         highlight = null,
         shadow = null,
-    ).background(panel.copy(alpha = 0.82f), shape)
+    // Frosted enough to read on, clear enough to see what passes under: at 82% the blur showed so
+    // little that Reduce transparency (fully solid) seemed to change nothing (#158)
+    ).background(panel.copy(alpha = 0.66f), shape)
 }
 
 /**

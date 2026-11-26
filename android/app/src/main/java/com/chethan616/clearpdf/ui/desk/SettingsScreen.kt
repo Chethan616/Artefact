@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.sp
 import com.chethan616.clearpdf.R
 import com.chethan616.clearpdf.ui.AppViewModel
 import com.chethan616.clearpdf.ui.LucideIcons
+import com.chethan616.clearpdf.ui.screenColumn
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.togetherWith
 import com.chethan616.clearpdf.ui.ThemeChoice
@@ -140,7 +141,7 @@ private fun SettingsRoot(vm: AppViewModel, openLicences: () -> Unit, openGlass: 
     var leaving by remember { mutableStateOf<String?>(null) }
     var naming by remember { mutableStateOf(false) }
     var authorDialog by remember { mutableStateOf(false) }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
+    LazyColumn(Modifier.fillMaxSize().screenColumn(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item { Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars)) }
         item(key = "title") {
             Spacer(Modifier.height(14.dp))
@@ -244,7 +245,7 @@ private fun AppLanguagePage(onBack: () -> Unit) {
     val systemName = AppLocale.systemDisplayName(context)
     val languages = AppLocale.supportedTags
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
+    LazyColumn(Modifier.fillMaxSize().screenColumn(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item { Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars)) }
         item {
             Spacer(Modifier.height(14.dp))
@@ -305,7 +306,7 @@ private fun ReadAloudLanguagePage(onBack: () -> Unit) {
         onDispose { runCatching { tts.shutdown() } }
     }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
+    LazyColumn(Modifier.fillMaxSize().screenColumn(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item { Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars)) }
         item {
             Spacer(Modifier.height(14.dp))
@@ -691,7 +692,7 @@ private fun LicencesPage(onBack: () -> Unit) {
         )),
     )
     var open by remember { mutableStateOf<String?>(null) }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
+    LazyColumn(Modifier.fillMaxSize().screenColumn(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item { Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars)) }
         item {
             Spacer(Modifier.height(14.dp))
