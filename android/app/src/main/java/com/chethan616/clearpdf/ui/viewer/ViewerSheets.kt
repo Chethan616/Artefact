@@ -94,24 +94,25 @@ fun MoreSheet(
     fromButton: Boolean = false,
     /** The circle is back in the bar (the glass has folded into it). */
     onGone: () -> Unit = {},
-    /** Opens More tools (the tools the bar cannot hold) from this menu's own button. */
-    onMoreTools: ((Rect) -> Unit)? = null,
 ) {
     val ctl = doc.controller
     val bookmarked = vm.bookmarks.isBookmarked(doc, doc.viewer.currentPage)
     val starred = vm.isStarred(doc)
-    // what the bottom bar already shows is not offered again here: one action, one place
-    val slots = toolbarSlots(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp)
-    val inBar = QuickTool.barFor(doc, vm.quickToolbar.bar).take(slots).toSet()
+    // what the bottom bar already shows is not offered again here: one action, one place. The
+    // rows come from the same layout both menus are built from, so they cannot drift.
+    val layout = toolLayout(
+        docKind(doc), vm.quickToolbar.bar,
+        toolbarSlots(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp, clear.clean),
+    )
     val page = stringResource(R.string.menu_section_page)
     val reading = stringResource(R.string.settings_reading)
     val file = stringResource(R.string.menu_section_file)
     val items = buildList {
         add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(if (starred) R.string.sheet_remove_star else R.string.sheet_add_star), LucideIcons.Star) { vm.toggleStar(doc) })
         add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(if (bookmarked) R.string.sheet_remove_bookmark else R.string.sheet_add_bookmark), if (bookmarked) LucideIcons.BookmarkMinus else LucideIcons.BookmarkPlus) { vm.toggleBookmark(doc) })
-        if (QuickTool.ReadAloud !in inBar) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_read_aloud), LucideIcons.Volume2) { vm.startReadAloud(doc) })
-        if (doc.isSlides && QuickTool.Present !in inBar) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_present), LucideIcons.Presentation) { vm.presenting = doc })
-        if (!doc.isOffice && QuickTool.Edit !in inBar) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_edit_pdf), LucideIcons.FilePenLine) { vm.enterTool(doc, ViewerTool.Edit) })
+        if (QuickTool.ReadAloud in layout.header) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_read_aloud), LucideIcons.Volume2) { vm.startReadAloud(doc) })
+        if (QuickTool.Present in layout.header) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_present), LucideIcons.Presentation) { vm.presenting = doc })
+        if (QuickTool.Edit in layout.header && !doc.isOffice) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_edit_pdf), LucideIcons.FilePenLine) { vm.enterTool(doc, ViewerTool.Edit) })
         // the document itself: its pages, its contents and what is written on them
         if (doc.isSlides) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_slide_notes), LucideIcons.FileText, section = page, trail = MenuTrail.Chevron) { ctl.sheet = ViewerSheet.SlideNotes })
         add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_pages), LucideIcons.LayoutGrid, section = page, trail = MenuTrail.Chevron) { ctl.pagesOpen = true })
@@ -125,17 +126,14 @@ fun MoreSheet(
         add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_night_mode), LucideIcons.Moon, section = reading, trail = MenuTrail.Switch(ctl.nightMode)) { vm.setNightMode(doc, !ctl.nightMode) })
         add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_view_settings), LucideIcons.Glasses, section = reading, trail = MenuTrail.Chevron) { ctl.sheet = ViewerSheet.ViewSettings })
         // the file itself: what the bar cannot hold
-        if (QuickTool.Print !in inBar) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_print), LucideIcons.Printer, section = file) { vm.print(doc) })
+        if (QuickTool.Print in layout.header) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_print), LucideIcons.Printer, section = file) { vm.print(doc) })
         if (doc.isOffice) {
-            if (QuickTool.ExportPdf !in inBar) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_export_pdf), LucideIcons.FilePdf, section = file) { vm.exportOffice(doc, "pdf") })
-            if (QuickTool.SaveAs !in inBar) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_save_as), LucideIcons.SaveAs, section = file, trail = MenuTrail.Chevron) { ctl.sheet = ViewerSheet.SaveAs })
+            if (QuickTool.ExportPdf in layout.header) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_export_pdf), LucideIcons.FilePdf, section = file) { vm.exportOffice(doc, "pdf") })
+            if (QuickTool.SaveAs in layout.header) add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.office_save_as), LucideIcons.SaveAs, section = file, trail = MenuTrail.Chevron) { ctl.sheet = ViewerSheet.SaveAs })
         } else {
             add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_save_copy), LucideIcons.Copy, section = file) { vm.saveCopyAs(doc) })
-            // the rest of the tools (Export, Compress, Combine, Protect, Create PDF): a row, and the
-            // panel they live in
-            if (onMoreTools != null) {
-                add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.common_tool_more_tools), LucideIcons.FileOutput, section = file, trail = MenuTrail.Chevron) { onMoreTools.invoke(anchor) })
-            }
+            // the rest of the tools (Export, Compress, Combine, Protect, Create PDF) live in the
+            // dock's own More list, each under its group
         }
         doc.info.undo?.let { label -> add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_undo_action, label), LucideIcons.Undo2) { vm.undo(doc) }) }
         doc.info.redo?.let { label -> add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_redo_action, label), LucideIcons.Redo2) { vm.redo(doc) }) }
