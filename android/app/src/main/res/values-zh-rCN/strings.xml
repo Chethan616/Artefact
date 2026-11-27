@@ -466,6 +466,9 @@
     <string name="settings_language_system">跟随系统（%1$s）</string>
     <string name="settings_open_in_night_mode">文档默认用夜间模式</string>
     <string name="settings_open_in_night_mode_body">每次打开 PDF 或其他文档时，自动开启夜间模式。</string>
+    <!-- bars: a name under each tool's glyph -->
+    <string name="settings_toolbar_labels">工具栏文字</string>
+    <string name="settings_toolbar_labels_body">在各栏图标下方显示工具名称。</string>
     <string name="viewer_night_mode_on">已切换到夜间模式</string>
     <string name="viewer_night_mode_off">已退出夜间模式</string>
     <!-- Translator note: opens the choice of the language the voice reads in. -->

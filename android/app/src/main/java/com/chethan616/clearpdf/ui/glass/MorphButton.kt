@@ -113,11 +113,8 @@ fun MorphButtonSurface(
     items: List<GlassMenuItem>,
     menuWidth: Dp = 236.dp,
     maxHeight: Dp = 480.dp,
-    /** A heading over the rows (the document's name, say): the menu's own header. */
-    header: (@Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit)? = null,
     icon: (@Composable () -> Unit)? = null,
 ) = MorphButtonSurface(anchor, open, onDismiss, onGone, menuWidth, maxHeight, icon) { shut, choose ->
-    header?.invoke(this)
     // the surface runs the row's action once its glass has folded back into the button, and only once
     var picked by remember { mutableStateOf(false) }
     MenuRows(items) { item -> if (!picked && !shut) { picked = true; choose(item.onClick) } }

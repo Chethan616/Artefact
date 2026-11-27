@@ -106,14 +106,6 @@ fun MoreSheet(
     val page = stringResource(R.string.menu_section_page)
     val reading = stringResource(R.string.settings_reading)
     val file = stringResource(R.string.menu_section_file)
-    val ink = com.chethan616.clearpdf.ui.glass.LocalGlassInk.current
-    val header: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit = {
-        Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp)) {
-            Text(doc.title, style = ClearType.Title, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(8.dp))
-            Box(Modifier.fillMaxWidth().height(1.dp).background(ink.copy(alpha = 0.12f)))
-        }
-    }
     val items = buildList {
         add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(if (starred) R.string.sheet_remove_star else R.string.sheet_add_star), LucideIcons.Star) { vm.toggleStar(doc) })
         add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(if (bookmarked) R.string.sheet_remove_bookmark else R.string.sheet_add_bookmark), if (bookmarked) LucideIcons.BookmarkMinus else LucideIcons.BookmarkPlus) { vm.toggleBookmark(doc) })
@@ -149,11 +141,11 @@ fun MoreSheet(
         doc.info.redo?.let { label -> add(com.chethan616.clearpdf.ui.glass.GlassMenuItem(stringResource(R.string.sheet_redo_action, label), LucideIcons.Redo2) { vm.redo(doc) }) }
     }
     if (fromButton) {
-        com.chethan616.clearpdf.ui.glass.MorphButtonSurface(anchor, open = true, onDismiss = { ctl.sheet = ViewerSheet.None }, onGone = onGone, items = items, header = header) {
+        com.chethan616.clearpdf.ui.glass.MorphButtonSurface(anchor, open = true, onDismiss = { ctl.sheet = ViewerSheet.None }, onGone = onGone, items = items) {
             com.chethan616.clearpdf.ui.glass.GlassIcon(LucideIcons.Ellipsis, null, Modifier.size(21.dp))
         }
     } else {
-        com.chethan616.clearpdf.ui.glass.GlassMenu(anchor, { ctl.sheet = ViewerSheet.None }, items, header = header)
+        com.chethan616.clearpdf.ui.glass.GlassMenu(anchor, { ctl.sheet = ViewerSheet.None }, items)
     }
 }
 
@@ -208,7 +200,7 @@ internal fun modifiedLabel(t: Long, yesterday: String, now: Long = System.curren
 fun ViewSettingsSheet(vm: AppViewModel, doc: OpenDocument) {
     val ctl = doc.controller
     PdfSheet(onDismiss = { ctl.sheet = ViewerSheet.None }) {
-        SheetBackHeader(stringResource(R.string.sheet_view_settings), onBack = { ctl.sheet = ViewerSheet.More })
+        SheetBackHeader(stringResource(R.string.sheet_view_settings), onBack = { ctl.sheet = ViewerSheet.None })
         // how the pages run, as three cards to choose from (the chosen one lit in blue)
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LayoutChoice(LucideIcons.GalleryVerticalEnd, stringResource(R.string.sheet_continuous), doc.viewer.mode == PageMode.Continuous && !vm.twoPages && !vm.readingMode) {
@@ -299,7 +291,7 @@ fun BookmarksSheet(vm: AppViewModel, doc: OpenDocument) {
     var parent by remember { mutableStateOf(-1) }
     var renaming by remember { mutableStateOf<Int?>(null) }
     PdfSheet(onDismiss = { ctl.sheet = ViewerSheet.None }, maxHeightFraction = 0.69f, fill = true) {
-        SheetBackHeader(stringResource(R.string.sheet_bookmarks_contents), onBack = { ctl.sheet = ViewerSheet.More })
+        SheetBackHeader(stringResource(R.string.sheet_bookmarks_contents), onBack = { ctl.sheet = ViewerSheet.None })
         // Contents | Bookmarks: the glass segmented control
         com.chethan616.clearpdf.ui.glass.GlassTabs(
             listOf(
@@ -467,7 +459,7 @@ fun AttachmentsSheet(vm: AppViewModel, doc: OpenDocument) {
     // the document's own files, as the reference lists them (a comment's file is opened from the comment)
     val files = list.filter { !it.onPage }
     PdfSheet(onDismiss = { ctl.sheet = ViewerSheet.None }, maxHeightFraction = 0.7f) {
-        SheetBackHeader(stringResource(R.string.sheet_attachments), onBack = { ctl.sheet = ViewerSheet.More })
+        SheetBackHeader(stringResource(R.string.sheet_attachments), onBack = { ctl.sheet = ViewerSheet.None })
         LazyColumn(Modifier.padding(horizontal = 12.dp).clip(RoundedRectangle(22.dp)).background(cellFill())) {
             items(files) { a ->
                 SheetRow(LucideIcons.FileText, a.name, { ctl.sheet = ViewerSheet.None; vm.openAttachment(doc, a.name) }, tint = Candy.Grape, chevron = true)

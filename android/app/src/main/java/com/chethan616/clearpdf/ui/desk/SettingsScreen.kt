@@ -156,6 +156,10 @@ private fun SettingsRoot(vm: AppViewModel, openLicences: () -> Unit, openGlass: 
             Panel {
                 ThemePicker(vm.theme) { vm.setThemeChoice(it) }
                 AppearancePicker(vm.cleanAppearance, vm::updateCleanAppearance)
+                ToggleRow(
+                    LucideIcons.Type, Candy.Mint, stringResource(R.string.settings_toolbar_labels),
+                    stringResource(R.string.settings_toolbar_labels_body), vm.toolbarLabels,
+                ) { vm.updateToolbarLabels(it) }
                 if (vm.cleanAppearance) ToggleRow(
                     LucideIcons.Contrast, Candy.Sky, stringResource(R.string.settings_reduce_transparency),
                     stringResource(R.string.settings_reduce_transparency_detail), GlassSettings.reduceTransparency,

@@ -477,6 +477,9 @@
     <string name="settings_language_system">System default (%1$s)</string>
     <string name="settings_open_in_night_mode">Always open PDFs and documents in night mode</string>
     <string name="settings_open_in_night_mode_body">Open each PDF and document with night mode enabled.</string>
+    <!-- bars: a name under each tool's glyph -->
+    <string name="settings_toolbar_labels">Toolbar labels</string>
+    <string name="settings_toolbar_labels_body">Name each tool under its glyph in the bars.</string>
     <string name="viewer_night_mode_on">Night mode on</string>
     <string name="viewer_night_mode_off">Night mode off</string>
     <!-- Translator note: opens the choice of the language the voice reads in. -->

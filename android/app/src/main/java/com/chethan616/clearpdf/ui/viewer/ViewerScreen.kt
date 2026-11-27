@@ -482,6 +482,7 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
                         QuickToolbar(
                             tools = QuickTool.barFor(doc, vm.quickToolbar.bar),
                             onTool = { vm.runQuickTool(doc, it) },
+                            labels = vm.toolbarLabels,
                             moreTools = if (doc.isOffice) emptyList() else vm.quickToolbar.grid,
                             // Rearranging is deliberately kept as its dedicated editor; every
                             // normal command now comes straight from the anchored GlassMenu.

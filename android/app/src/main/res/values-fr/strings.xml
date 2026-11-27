@@ -8,6 +8,9 @@
     <string name="settings_language_system">Langue du système (%1$s)</string>
     <string name="settings_open_in_night_mode">Toujours ouvrir les PDF et documents en mode nuit</string>
     <string name="settings_open_in_night_mode_body">Ouvrir chaque PDF et document avec le mode nuit activé.</string>
+    <!-- bars: a name under each tool's glyph -->
+    <string name="settings_toolbar_labels">Étiquettes de la barre</string>
+    <string name="settings_toolbar_labels_body">Nommer chaque outil sous son icône dans les barres.</string>
     <string name="open_with">Ouvrir dans Artefact</string>
 
     <!-- Shared: buttons and words used on many screens -->

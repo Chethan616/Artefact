@@ -8,6 +8,9 @@
     <string name="settings_language_system">Systemstandard (%1$s)</string>
     <string name="settings_open_in_night_mode">PDFs und Dokumente immer im Nachtmodus öffnen</string>
     <string name="settings_open_in_night_mode_body">PDFs und Dokumente standardmäßig im Nachtmodus öffnen.</string>
+    <!-- bars: a name under each tool's glyph -->
+    <string name="settings_toolbar_labels">Beschriftungen der Werkzeugleiste</string>
+    <string name="settings_toolbar_labels_body">Jedes Werkzeug unter seinem Symbol benennen.</string>
     <string name="open_with">In Artefact öffnen</string>
 
     <!-- Shared: buttons and words used on many screens -->

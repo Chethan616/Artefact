@@ -10,6 +10,9 @@
     <string name="settings_language_system">لغة النظام (%1$s)</string>
     <string name="settings_open_in_night_mode">افتح ملفات PDF والمستندات دائمًا بالوضع الليلي</string>
     <string name="settings_open_in_night_mode_body">افتح كل ملف PDF ومستند مع تفعيل الوضع الليلي.</string>
+    <!-- bars: a name under each tool's glyph -->
+    <string name="settings_toolbar_labels">تسميات شريط الأدوات</string>
+    <string name="settings_toolbar_labels_body">ضع اسم كل أداة أسفل رمزها في الأشرطة.</string>
     <string name="open_with">فتح باستخدام Artefact</string>
     <string name="common_ok">موافق</string>
     <string name="common_cancel">إلغاء</string>

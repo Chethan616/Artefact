@@ -5,6 +5,9 @@
     <string name="settings_language_system">Язык системы (%1$s)</string>
     <string name="settings_open_in_night_mode">Всегда открывать PDF и документы в ночном режиме</string>
     <string name="settings_open_in_night_mode_body">Открывать каждый PDF и документ с включённым ночным режимом.</string>
+    <!-- bars: a name under each tool's glyph -->
+    <string name="settings_toolbar_labels">Подписи на панели</string>
+    <string name="settings_toolbar_labels_body">Показывать название каждого инструмента под значком.</string>
     <string name="open_with">Открыть в Artefact</string>
     <string name="common_ok">ОК</string>
     <string name="common_cancel">Отмена</string>

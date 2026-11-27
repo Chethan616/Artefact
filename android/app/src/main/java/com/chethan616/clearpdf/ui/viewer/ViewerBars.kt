@@ -360,6 +360,8 @@ internal fun dockSlots(widthDp: Int): Int = when {
 fun QuickToolbar(
     tools: List<QuickTool>,
     onTool: (QuickTool) -> Unit,
+    /** Name each tool under its glyph (Settings ▸ Toolbar labels). */
+    labels: Boolean = true,
     moreTools: List<QuickTool> = emptyList(),
     onCustomize: ((Rect) -> Unit)? = null,
 ) {
@@ -388,7 +390,7 @@ fun QuickToolbar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             for (tool in shown) {
-                LabeledDockItem(tool.icon, stringResource(tool.label), Modifier.weight(1f), lit == tool) {
+                LabeledDockItem(tool.icon, stringResource(tool.label), Modifier.weight(1f), lit == tool, labels) {
                     lit = tool
                     onTool(tool)
                 }
@@ -396,7 +398,7 @@ fun QuickToolbar(
             if (overflow.isNotEmpty() || onCustomize != null) {
                 LabeledDockItem(
                     LucideIcons.LayoutGrid, stringResource(R.string.common_tool_more_tools),
-                    Modifier.weight(1f).onGloballyPositioned { moreRect = it.boundsInWindow() }, menuAt != null,
+                    Modifier.weight(1f).onGloballyPositioned { moreRect = it.boundsInWindow() }, menuAt != null, labels,
                 ) { menuAt = moreRect }
             }
         }
@@ -412,7 +414,7 @@ fun QuickToolbar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             CompositionLocalProvider(LocalGlassInk provides ink.color) {
-                for (t in shown) DockItem(t.icon, stringResource(t.label), lit == t) {
+                for (t in shown) DockItem(t.icon, stringResource(t.label), lit == t, labels) {
                     lit = t
                     onTool(t)
                 }
@@ -441,7 +443,7 @@ fun QuickToolbar(
 }
 
 @Composable
-private fun LabeledDockItem(icon: ImageVector, label: String, modifier: Modifier, lit: Boolean, onClick: () -> Unit) {
+private fun LabeledDockItem(icon: ImageVector, label: String, modifier: Modifier, lit: Boolean, showLabel: Boolean, onClick: () -> Unit) {
     val c = clear
     Column(
         modifier.fillMaxHeight().clip(RoundedRectangle(12.dp))
@@ -450,9 +452,11 @@ private fun LabeledDockItem(icon: ImageVector, label: String, modifier: Modifier
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(icon, null, Modifier.size(20.dp), tint = c.ink)
-        Text(label, style = ClearType.Caption, color = c.ink, maxLines = 2, overflow = TextOverflow.Ellipsis,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Icon(icon, null, Modifier.size(if (showLabel) 20.dp else 24.dp), tint = c.ink)
+        if (showLabel) Text(
+            label, style = ClearType.Caption, color = c.ink, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
     }
 }
 
@@ -463,7 +467,7 @@ private fun Modifier.androidxRotate(degrees: Float) = this.graphicsLayer { rotat
  * eraser, highlighter, scribble) are told apart without trying each (#158); [lit], white on a blue pill.
  */
 @Composable
-private fun DockItem(icon: ImageVector, label: String, lit: Boolean, onClick: () -> Unit) {
+private fun DockItem(icon: ImageVector, label: String, lit: Boolean, showLabel: Boolean, onClick: () -> Unit) {
     val disc by animateColorAsState(if (lit) Candy.Sky else Color.Transparent, GlassMotion.settle(), label = "dock")
     val ink = com.chethan616.clearpdf.ui.glass.LocalGlassInk.current.takeIf { it != Color.Unspecified } ?: clear.ink
     val glyph by animateColorAsState(if (lit) Color.White else ink, GlassMotion.settle(), label = "dockInk")
@@ -475,13 +479,18 @@ private fun DockItem(icon: ImageVector, label: String, lit: Boolean, onClick: ()
         Box(Modifier.size(width = 44.dp, height = 28.dp).clip(Capsule).background(disc), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = glyph, modifier = Modifier.size(21.dp))
         }
-        Spacer(Modifier.height(2.dp))
-        Text(
-            label, style = ClearType.Caption.copy(fontSize = 11.sp, lineHeight = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium),
-            color = ink, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
-        )
+        if (showLabel) {
+            Spacer(Modifier.height(2.dp))
+            Text(
+                label, style = ClearType.Caption.copy(fontSize = 11.sp, lineHeight = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium),
+                color = ink, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
+
+/** Whether the bars name each tool under its glyph (Settings ▸ Toolbar labels). */
+val LocalToolbarLabels = androidx.compose.runtime.compositionLocalOf { true }
 
 /** No line along bars any more: glass floats. Kept so the tools' own bars can call it. */
 fun Modifier.barTopLine(): Modifier = this
@@ -563,6 +572,7 @@ private fun SubButton(icon: ImageVector, description: String, selected: Boolean,
 @Composable
 private fun SubFace(description: String, selected: Boolean, onClick: () -> Unit, width: Dp, enabled: Boolean = true, shaded: Boolean = false, glyph: @Composable (Color) -> Unit) {
     val c = clear
+    val ink = com.chethan616.clearpdf.ui.glass.LocalGlassInk.current.takeIf { it != Color.Unspecified } ?: c.ink
     val vivid = selected && !shaded
     val disc by animateColorAsState(
         when {
@@ -572,13 +582,23 @@ private fun SubFace(description: String, selected: Boolean, onClick: () -> Unit,
         },
         GlassMotion.settle(), label = "sub",
     )
-    Box(
+    val named = LocalToolbarLabels.current
+    Column(
         Modifier.width(width).fillMaxHeight().slideToWhenChosen(vivid).pressable(onClick, enabled = enabled, pressedScale = 0.86f).semantics { contentDescription = description },
-        contentAlignment = Alignment.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        Box(Modifier.size(42.dp).clip(CircleShape).background(disc))
-        val ink = com.chethan616.clearpdf.ui.glass.LocalGlassInk.current.takeIf { it != Color.Unspecified } ?: c.ink
-        glyph(if (!enabled) ink.copy(alpha = 0.38f) else if (vivid) Color.White else ink)
+        Box(contentAlignment = Alignment.Center) {
+            Box(Modifier.size(42.dp).clip(CircleShape).background(disc))
+            glyph(if (!enabled) ink.copy(alpha = 0.38f) else if (vivid) Color.White else ink)
+        }
+        // the tool's name under its glyph: five look-alike glyphs are told apart without trying each
+        if (named) Text(
+            description,
+            style = ClearType.Caption.copy(fontSize = 10.sp, lineHeight = 12.sp),
+            color = if (!enabled) ink.copy(alpha = 0.38f) else ink,
+            maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

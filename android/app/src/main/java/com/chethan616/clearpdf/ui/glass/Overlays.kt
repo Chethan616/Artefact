@@ -403,28 +403,38 @@ internal fun MenuSectionLabel(text: String) {
 /**
  * A menu row's face, the same in every menu: the glyph first, its words beside it, then whatever the
  * row's right edge shows ([GlassMenuItem.trail]) — a chevron for a row that opens its own sheet, the
- * glass switch for an on/off, nothing for a row that simply acts. A switch takes its own taps and
- * runs the row's action; the row's own press belongs to the caller.
+ * glass switch for an on/off, nothing for a row that simply acts.
+ *
+ * The row's own press belongs to the caller — or, when its right edge is the control ([onPress]),
+ * to the glyph and the words alone: a switch never consumes a tap, so a pressable row around one
+ * would run the row's action too and flip the setting twice (which is no flip at all).
  */
 @Composable
-internal fun RowScope.MenuRowFace(item: GlassMenuItem) {
+internal fun RowScope.MenuRowFace(item: GlassMenuItem, onPress: (() -> Unit)? = null) {
     val ink = LocalGlassInk.current
-    if (item.icon != null) {
-        Icon(
-            item.icon, null,
-            tint = if (item.destructive) Candy.Tomato else ink.copy(alpha = 0.85f),
-            modifier = Modifier.size(20.dp),
+    val face: @Composable RowScope.() -> Unit = {
+        if (item.icon != null) {
+            Icon(
+                item.icon, null,
+                tint = if (item.destructive) Candy.Tomato else ink.copy(alpha = 0.85f),
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+        }
+        Text(
+            item.label,
+            style = ClearType.Body,
+            color = if (item.destructive) Candy.Tomato else ink,
+            modifier = Modifier.weight(1f),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
-        Spacer(Modifier.width(12.dp))
     }
-    Text(
-        item.label,
-        style = ClearType.Body,
-        color = if (item.destructive) Candy.Tomato else ink,
-        modifier = Modifier.weight(1f),
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-    )
+    if (onPress != null) {
+        Row(Modifier.weight(1f).pressable(onPress), verticalAlignment = Alignment.CenterVertically, content = face)
+    } else {
+        face()
+    }
     when (val trail = item.trail) {
         MenuTrail.None -> Unit
         MenuTrail.Chevron -> {
@@ -445,14 +455,16 @@ internal fun MenuRows(items: List<GlassMenuItem>, onChoose: (GlassMenuItem) -> U
     items.forEach { item ->
         item.section?.let { if (it != section) MenuSectionLabel(it) }
         section = item.section
+        // a row whose switch is its right edge is pressed on its words alone (see [MenuRowFace])
+        val switching = item.trail is MenuTrail.Switch
         Row(
             Modifier.fillMaxWidth()
-                .pressable({ onChoose(item) })
+                .then(if (switching) Modifier else Modifier.pressable({ onChoose(item) }))
                 .heightIn(min = 48.dp)
                 .padding(horizontal = 16.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            MenuRowFace(item)
+            MenuRowFace(item, onPress = if (switching) ({ item.onClick() }) else null)
         }
     }
 }
@@ -462,18 +474,15 @@ fun GlassMenu(
     anchor: Rect,
     onDismiss: () -> Unit,
     items: List<GlassMenuItem>,
-    /** A heading over the rows: the document's name, say. */
-    header: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     // opened from a round glass button: that button's glass becomes the menu (MorphButtonSurface)
     if (isMorphAnchor(anchor, LocalDensity.current)) {
-        MorphButtonSurface(anchor, open = true, onDismiss = onDismiss, onGone = {}, items = items, header = header)
+        MorphButtonSurface(anchor, open = true, onDismiss = onDismiss, onGone = {}, items = items)
         return
     }
     var closing by remember { mutableStateOf(false) }
     GlassMenuLayout(anchor, onDismiss) {
         Spacer(Modifier.height(6.dp))
-        header?.invoke(this)
         MenuRows(items) { item ->
             if (!closing) {
                 closing = true
