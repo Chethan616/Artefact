@@ -402,7 +402,10 @@ internal fun LiquidMorphSurface(
                     shadow = null,
                     onDrawBackdrop = { drawIt ->
                         val rec = luminance?.recorder
-                        if (rec != null && frame[0]++ % 6 == 0) rec(drawIt) else drawIt()
+                        // every 6th frame while the glass moves (cheap), every frame once it rests: a page
+                        // turning dark or light under an open menu (night mode) is read the frame it changes
+                        val moving = p.isRunning
+                        if (rec != null && (!moving || frame[0]++ % 6 == 0)) rec(drawIt) else drawIt()
                     },
                     onDrawSurface = {
                         val g = geo()

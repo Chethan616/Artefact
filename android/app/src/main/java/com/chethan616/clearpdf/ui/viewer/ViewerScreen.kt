@@ -218,6 +218,8 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
     val zoomButtons = remember(doc) { ZoomButtonsState(scope) }
     LaunchedEffect(ctl.barsVisible) { if (!ctl.barsVisible) zoomButtons.hide() }
     val canvasLook = CanvasLook(background = c.desk, pageShadow = c.pageEdge, invert = ctl.nightMode)
+    // the page turns over: an open menu reads it now and glides to it
+    LaunchedEffect(ctl.nightMode) { com.chethan616.clearpdf.ui.glass.BackdropTurns.bump(ctl.nightMode) }
 
     BackHandler(enabled = ctl.searching || ctl.tool != ViewerTool.None || selection.selection != null) {
         when {

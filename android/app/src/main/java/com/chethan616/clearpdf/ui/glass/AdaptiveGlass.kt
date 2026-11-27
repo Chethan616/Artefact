@@ -29,6 +29,7 @@ import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.lens
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.sign
@@ -45,6 +46,19 @@ import kotlin.math.sign
  * The glass's effects read [value] while drawing, so nothing recomposes as it moves; only [onLight]
  * (which ink) is composition state, and it flips with hysteresis so mid-grey never flickers.
  */
+/**
+ * Told when the page behind the glass turns over at once (night mode), so an open menu reads it then
+ * and glides to it, rather than polling for it: the page repaints without the menu redrawing.
+ */
+object BackdropTurns {
+    var count by androidx.compose.runtime.mutableIntStateOf(0)
+        private set
+    /** Which way it turned, when the caller knows (night mode: true = dark): the menu starts with the page. */
+    @Volatile var toDark: Boolean? = null
+        private set
+    fun bump(toDark: Boolean? = null) { this.toDark = toDark; count++ }
+}
+
 @Stable
 class GlassLuminance internal constructor(initial: Float, internal val layer: GraphicsLayer, private val once: Boolean = false) {
     private val anim = Animatable(initial)
@@ -89,10 +103,35 @@ class GlassLuminance internal constructor(initial: Float, internal val layer: Gr
         val px = IntArray(SAMPLES * SAMPLES)
         var waited = 0
         var read = -1
+        var burst = 0
         while (true) {
+            // a menu that is up reads only when told the page turned over (BackdropTurns), then a few
+            // times as the page repaints over the next frames; otherwise it sleeps, costing nothing
+            if (once && measured) {
+                if (burst == 0) {
+                    val seen = BackdropTurns.count
+                    androidx.compose.runtime.snapshotFlow { BackdropTurns.count }.first { it != seen }
+                    // told which way: turn with the page in the same frame (the reading that follows
+                    // came ~10 frames late, dark words on a dark menu meanwhile), then the reading fine-tunes it
+                    BackdropTurns.toDark?.let { dark ->
+                        val guess = if (dark) TURN_DARK else TURN_LIGHT
+                        if ((anim.targetValue > 0.5f) == dark) {
+                            onLight = !dark
+                            launch { anim.animateTo(guess, tween(TURN_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing)) }
+                        }
+                    }
+                    burst = 8
+                    delay(16)
+                } else {
+                    burst--
+                    delay(40)
+                }
+            }
             // nothing new drawn behind it since the last reading (a still page, the app in the
             // background): nothing to read again, so no bitmap copy every 220 ms for nothing (#158)
-            if (measured && records == read) {
+            // (a menu is read on a steady beat instead: what is behind it repaints without the menu
+            // redrawing, as when night mode turns the page over, so "nothing new recorded" says nothing)
+            if (!once && measured && records == read) {
                 delay(SAMPLE_INTERVAL_MS)
                 continue
             }
@@ -113,14 +152,18 @@ class GlassLuminance internal constructor(initial: Float, internal val layer: Gr
                 }.getOrNull()
             }
             val lum = stats?.luminance
-            if (stats != null && kotlin.math.abs(stats.busy - busyAnim.targetValue) > 0.15f) {
+            // (a menu that is up keeps its frost: only its opening reading sets it, or the page under it
+            // turning over)
+            val turned = once && measured && lum != null && kotlin.math.abs(lum - anim.targetValue) > 0.3f
+            if (stats != null && (!once || !measured || turned) && kotlin.math.abs(stats.busy - busyAnim.targetValue) > 0.15f) {
                 // eased beside the luminance, not before it: neither waits for the other
-                if (!measured) busyAnim.snapTo(stats.busy) else launch { busyAnim.animateTo(stats.busy, tween(420)) }
+                if (!measured) busyAnim.snapTo(stats.busy) else launch { busyAnim.animateTo(stats.busy, tween(if (turned) TURN_MS else 420)) }
             }
             if (lum == null && !measured && ++waited > 12) measured = true
             if (lum != null) {
                 onLight = when {
-                    !measured -> lum > 0.5f
+                    !measured || turned -> lum > 0.5f
+                    once -> onLight
                     lum > 0.56f -> true
                     lum < 0.44f -> false
                     else -> onLight
@@ -135,13 +178,17 @@ class GlassLuminance internal constructor(initial: Float, internal val layer: Gr
                     // a menu reads what is behind it once, as it opens, and keeps it while it is up:
                     // read again and again, the page under it (the viewer's header stepping aside,
                     // its tiles sharpening) moved its glass and ink, and it seemed to breathe (#158)
-                    if (once) return@coroutineScope
-                } else if (kotlin.math.abs(lum - anim.targetValue) > 0.07f) {
+                } else if (turned) {
+                    // a menu keeps its first reading while it is up (read again and again, the header
+                    // stepping aside under it made it breathe), but a page that turns over, light to dark
+                    // or back (night mode switched from the menu itself), it glides to, every time
+                    launch { anim.animateTo(lum, tween(TURN_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing)) }
+                } else if (!once && kotlin.math.abs(lum - anim.targetValue) > 0.07f) {
                     // only a real change behind it moves it (a small one, read again and again, made it breathe)
                     anim.animateTo(lum, tween(420))
                 }
             }
-            delay(SAMPLE_INTERVAL_MS)
+            if (!once) delay(SAMPLE_INTERVAL_MS) else if (!measured) delay(16)
         }
     }
 
@@ -150,6 +197,11 @@ class GlassLuminance internal constructor(initial: Float, internal val layer: Gr
         // enough cells to tell lines of text from an even wash; the mean is the same as at 6 x 6
         const val SAMPLES = 12
         const val SAMPLE_INTERVAL_MS = 220L
+        // a menu gliding to a page that turned over (night mode): as quick as the switch itself
+        const val TURN_MS = 200
+        // where a page that turned dark or light usually reads, until the real reading comes in
+        const val TURN_DARK = 0.12f
+        const val TURN_LIGHT = 0.88f
     }
 }
 
