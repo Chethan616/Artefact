@@ -745,10 +745,13 @@ fun SheetViewer(vm: AppViewModel, doc: OpenDocument) {
     // a tap brings them back. They stay while a cell is chosen, typed in or searched for.
     var barsShown by remember { mutableStateOf(true) }
     val busy = searching || editing || grid.selected != null
+    // read live inside the collector below: captured once, it stayed "not busy", so opening search (which
+    // moves the grid down under the search field) hid every bar above it
+    val busyNow by androidx.compose.runtime.rememberUpdatedState(busy)
     LaunchedEffect(grid) {
         var last = grid.pan
         androidx.compose.runtime.snapshotFlow { grid.pan }.collect { p ->
-            if ((p - last).getDistance() > 6f && !busy) barsShown = false
+            if ((p - last).getDistance() > 6f && !busyNow) barsShown = false
             last = p
         }
     }

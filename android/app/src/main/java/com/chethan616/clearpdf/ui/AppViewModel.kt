@@ -960,6 +960,8 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         appPrefs.edit().putBoolean("nightMode", on).apply()
         prefsChanged++
         document?.controller?.nightMode = on
+        // any open menu reads the page that just turned over (office and Markdown readers too)
+        com.chethan616.clearpdf.ui.glass.BackdropTurns.bump(on)
     }
 
     fun openReadingMode(doc: OpenDocument) {
