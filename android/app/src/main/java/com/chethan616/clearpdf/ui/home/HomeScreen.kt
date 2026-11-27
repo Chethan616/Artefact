@@ -236,7 +236,7 @@ fun HomeScreen(vm: AppViewModel, desk: DeskState) {
     val clean = clear.clean
     val deskGrid: @Composable () -> Unit = {
         LazyVerticalStaggeredGrid(
-            columns = StaggeredGridCells.Fixed(2),
+            columns = com.chethan616.clearpdf.ui.deskColumns(),
             state = grid,
             // glass in the scrolling desk samples the soft wallpaper: while it scrolls, ten times a second is plenty
             modifier = Modifier.fillMaxSize().throttleBackdrops { grid.isScrollInProgress }
@@ -462,7 +462,11 @@ private fun FilterChips(selected: DeskFilter, onSelect: (DeskFilter) -> Unit) {
                 layout(c.maxWidth, p.height) { p.place(-extra, 0) }
             }
             .padding(top = 16.dp, bottom = 10.dp)
-            .chipRowFade(),
+            .chipRowFade()
+            // The chips are the desk's most visible glass: the desk's throttle (ten fresh backdrops a
+            // second while it scrolls) made their refraction lag and jump as they scrolled with it.
+            // The nearest throttle governs, so this row's says never: its glass follows every frame.
+            .throttleBackdrops { false },
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {

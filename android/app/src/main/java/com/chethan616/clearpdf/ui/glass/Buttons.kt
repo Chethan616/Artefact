@@ -87,7 +87,7 @@ private fun Modifier.glassControl(
     lift: () -> Float = { 0f },
 ): Modifier {
     val backdrop = LocalBackdrop.current
-    if (clear.clean) {
+    if (solidGlass) {
         val panel = clear.solidPanel
         return clip(shape).drawBehind {
             val accent = tintAt?.invoke() ?: tint
@@ -208,7 +208,7 @@ fun rememberBeat(action: () -> Unit, millis: Long = BackBeatMillis): () -> Unit 
  */
 @Composable
 fun Modifier.glassBar(shape: Shape = ChromeCapsule, surface: Color = Color.Unspecified, blur: Dp = 2.dp, edge: Color = Color.Unspecified, lift: Float = 0f): Modifier {
-    if (clear.clean) {
+    if (solidGlass) {
         val panel = clear.solidPanel
         return clip(shape).background(if (surface.isSpecified) surface.compositeOver(panel) else panel)
     }

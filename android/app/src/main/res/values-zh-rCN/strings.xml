@@ -1123,6 +1123,9 @@
     <string name="photo_shape_original">原始比例</string>
     <string name="photo_mirror">镜像</string>
     <string name="photo_font_sample">Aa</string>
+    <string name="photo_font_choose">字体</string>
+    <string name="photo_font_add">添加字体…</string>
+    <string name="photo_font_unusable">该文件不是 Artefact 可用的字体</string>
     <string name="photo_not_saved">无法保存图片。</string>
     <!-- Draw tool: lines drawn are turned into neat shapes. -->
     <string name="msg_snap_to_shape_on">已开启手绘转图形</string>
@@ -1686,5 +1689,5 @@
     <string name="settings_your_name_hint">显示在“今日”页的问候语上方</string>
     <string name="thoughts_audios">音频</string>
     <string name="settings_reduce_transparency">降低透明度</string>
-    <string name="settings_reduce_transparency_detail">页面和列表上方的工具栏保持不透明，背后不做模糊</string>
+    <string name="settings_reduce_transparency_detail">玻璃与浮动栏变为不透明，不透出任何内容</string>
 </resources>

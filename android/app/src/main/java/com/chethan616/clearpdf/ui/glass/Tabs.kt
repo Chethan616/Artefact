@@ -102,7 +102,7 @@ fun GlassTabs(
     val fontScale = LocalDensity.current.fontScale
     val height = height + (24f * (fontScale - 1f).coerceIn(0f, 1f)).dp
     val labelLines = if (fontScale > 1.15f) 2 else 1
-    if (c.clean) {
+    if (solidGlass) {
         Row(modifier.clip(Capsule).background(c.solidPanel).selectableGroup().padding(2.dp),
             verticalAlignment = Alignment.CenterVertically) {
             tabs.forEachIndexed { index, tab ->

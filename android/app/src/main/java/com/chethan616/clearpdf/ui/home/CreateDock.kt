@@ -412,6 +412,9 @@ private fun PlusButton(open: Boolean, onClick: () -> Unit) {
 /** A way to make something, in the fan. */
 private class FanItem(val icon: ImageVector, val label: String, val accent: Color, val go: () -> Unit)
 
+/** How far past rest the fan's springiest chip may swing (Settings ▸ Motion at its bounciest), kept clear above it. */
+private val FanSwingRoom = 32.dp
+
 /** The fan: the ways to make something, rising from the + one after another. */
 @Composable
 private fun BoxScope.Fan(vm: AppViewModel, desk: DeskState, open: Boolean, onBrowse: () -> Unit, onScanQr: () -> Unit) {
@@ -439,6 +442,9 @@ private fun BoxScope.Fan(vm: AppViewModel, desk: DeskState, open: Boolean, onBro
         verticalArrangement = Arrangement.spacedBy(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        // room above the top chip for its spring to swing past rest: the column scrolls, so it clips
+        // to its own bounds, and the top chip ("New note") was cut at the top of its bounce
+        Spacer(Modifier.height(FanSwingRoom))
         items.forEachIndexed { i, item -> FanChip(item, i, items.size, open, body) }
     }
 }

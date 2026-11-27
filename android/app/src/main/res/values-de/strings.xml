@@ -1481,6 +1481,9 @@
     <string name="photo_shape_original">Original</string>
     <string name="photo_mirror">Spiegeln</string>
     <string name="photo_font_sample">Aa</string>
+    <string name="photo_font_choose">Schrift</string>
+    <string name="photo_font_add">Schrift hinzufügen…</string>
+    <string name="photo_font_unusable">Diese Datei ist keine Schrift, die Artefact verwenden kann</string>
     <string name="photo_not_saved">Das Bild konnte nicht gespeichert werden.</string>
     <string name="msg_busy_removing_password">Passwort wird entfernt…</string>
     <string name="msg_unlock_failed">Der Schutz dieser Datei kann nicht entfernt werden</string>
@@ -1642,7 +1645,7 @@
     <string name="app_style_glass_detail">Standard · Durchscheinende Flächen</string>
     <string name="app_style_clean_detail">Deckende Flächen</string>
     <string name="settings_reduce_transparency">Transparenz reduzieren</string>
-    <string name="settings_reduce_transparency_detail">Symbolleisten über Seiten und Listen bleiben deckend, ohne Unschärfe dahinter</string>
+    <string name="settings_reduce_transparency_detail">Glas und schwebende Leisten werden deckend, nichts scheint durch</string>
     <string name="qr_scanner">QR-Scanner</string>
     <string name="qr_scan_prompt">Richte die Kamera auf einen QR-Code</string>
 </resources>

@@ -108,6 +108,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -220,12 +224,13 @@ private fun fit(area: IntSize, w: Float, h: Float, margin: Float = 0f): RectF? {
     return RectF(left, top, left + w * k, top + h * k)
 }
 
-private fun fontFamily(i: Int) = when (i) {
-    1 -> FontFamily.Serif
-    2 -> FontFamily.Monospace
-    3 -> FontFamily.Cursive
-    else -> FontFamily.SansSerif
-}
+private fun fontFamily(i: Int): FontFamily = LabelFonts.family(i)
+
+/** What the system's file picker offers for a font of the user's own. */
+private val FontMimeTypes = arrayOf(
+    "font/ttf", "font/otf", "font/sfnt", "font/collection", "application/x-font-ttf", "application/x-font-otf",
+    "application/font-sfnt", "application/vnd.ms-opentype", "application/x-font-truetype", "application/octet-stream",
+)
 
 private fun decodeMutable(file: File): Bitmap {
     val opts = BitmapFactory.Options().apply { inMutable = true }
@@ -311,6 +316,28 @@ private fun PhotoEditScreen(
     var lastInk by remember { mutableIntStateOf(Color.White.toArgb()) }
     var lastStyle by remember { mutableIntStateOf(0) }
     var lastFont by remember { mutableIntStateOf(0) }
+    // the font list, open for a label from the font button at a place on screen (#174)
+    var fontMenu by remember { mutableStateOf<Pair<Label, androidx.compose.ui.geometry.Rect>?>(null) }
+    var fontButton by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+    val fontChoose = stringResource(R.string.photo_font_choose)
+    val fontContext = androidx.compose.ui.platform.LocalContext.current
+    remember { LabelFonts.init(fontContext) }
+    // a font of the user's own: copied into the app, then on the label that asked for it
+    var fontFor by remember { mutableStateOf<Label?>(null) }
+    val fontNotUsable = stringResource(R.string.photo_font_unusable)
+    val pickFont = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        val target = fontFor
+        fontFor = null
+        if (uri != null) scope.launch {
+            val i = LabelFonts.add(fontContext, uri)
+            if (i == null) vm.tell(fontNotUsable)
+            else if (target != null) {
+                target.font = i
+                lastFont = i
+                marksVersion++
+            }
+        }
+    }
     var cropping by remember { mutableStateOf(false) }
 
     var preview by remember(name) { mutableStateOf<Bitmap?>(null) }
@@ -1008,17 +1035,54 @@ private fun PhotoEditScreen(
                                     }
                                     if (l != null) {
                                         Spacer(Modifier.weight(1f))
-                                        // the font, shown in itself
+                                        // the font, shown in itself: opens the list of fonts (#174)
                                         Box(
-                                            Modifier.size(42.dp).clip(CircleShape).pressable({
-                                                l.font = (l.font + 1) % LABEL_FONTS
-                                                lastFont = l.font
-                                                marksVersion++
-                                                feel(Feel.Tick)
-                                            }, pressedScale = 0.88f),
+                                            Modifier.size(42.dp).onGloballyPositioned { fontButton = it.boundsInWindow() }
+                                                .clip(CircleShape).pressable({
+                                                    fontMenu = l to fontButton
+                                                    feel(Feel.Tick)
+                                                }, pressedScale = 0.88f)
+                                                .semantics { contentDescription = fontChoose },
                                             contentAlignment = Alignment.Center,
                                         ) {
                                             Text(stringResource(R.string.photo_font_sample), style = TextStyle(fontFamily = fontFamily(if (marksVersion >= 0) l.font else 0), fontWeight = FontWeight.Bold, fontSize = 17.sp), color = ink.color)
+                                        }
+                                        fontMenu?.let { (forLabel, at) ->
+                                            com.chethan616.clearpdf.ui.glass.GlassMenuLayout(at, { fontMenu = null }) {
+                                                Spacer(Modifier.height(6.dp))
+                                                val menuInk = com.chethan616.clearpdf.ui.glass.LocalGlassInk.current
+                                                // each font's name in the font itself; the label's own one ticked
+                                                for (i in 0 until LabelFonts.count) {
+                                                    Row(
+                                                        Modifier.fillMaxWidth().pressable({
+                                                            forLabel.font = i
+                                                            lastFont = i
+                                                            marksVersion++
+                                                            fontMenu = null
+                                                        }).padding(horizontal = 16.dp, vertical = 10.dp),
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                    ) {
+                                                        Text(
+                                                            LabelFonts.name(i), style = TextStyle(fontFamily = LabelFonts.family(i), fontWeight = FontWeight.Bold, fontSize = 18.sp),
+                                                            color = menuInk, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                                                        )
+                                                        if (forLabel.font == i) Icon(LucideIcons.Check, null, tint = menuInk.copy(alpha = 0.8f), modifier = Modifier.size(19.dp))
+                                                    }
+                                                }
+                                                // one of the user's own (.ttf, .otf)
+                                                Row(
+                                                    Modifier.fillMaxWidth().pressable({
+                                                        fontFor = forLabel
+                                                        fontMenu = null
+                                                        pickFont.launch(FontMimeTypes)
+                                                    }).padding(horizontal = 16.dp, vertical = 11.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                ) {
+                                                    Text(stringResource(R.string.photo_font_add), style = ClearType.BodyStrong, color = menuInk, modifier = Modifier.weight(1f))
+                                                    Icon(LucideIcons.Plus, null, tint = menuInk.copy(alpha = 0.65f), modifier = Modifier.size(19.dp))
+                                                }
+                                                Spacer(Modifier.height(6.dp))
+                                            }
                                         }
                                         // plain, on a tag, outlined
                                         Box(

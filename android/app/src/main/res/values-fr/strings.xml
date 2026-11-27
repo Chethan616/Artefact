@@ -1361,6 +1361,9 @@
     <string name="photo_shape_original">Original</string>
     <string name="photo_mirror">Miroir</string>
     <string name="photo_font_sample">Aa</string>
+    <string name="photo_font_choose">Police</string>
+    <string name="photo_font_add">Ajouter une police…</string>
+    <string name="photo_font_unusable">Ce fichier n\'est pas une police qu\'Artefact peut utiliser</string>
     <string name="photo_not_saved">L\'image n\'a pas pu être enregistrée.</string>
     <string name="msg_busy_removing_password">Retrait du mot de passe…</string>
     <string name="msg_unlock_failed">La protection de ce fichier ne peut pas être retirée</string>
@@ -1523,7 +1526,7 @@
     <string name="app_style_glass_detail">Par défaut · Surfaces translucides</string>
     <string name="app_style_clean_detail">Surfaces opaques</string>
     <string name="settings_reduce_transparency">Réduire la transparence</string>
-    <string name="settings_reduce_transparency_detail">Les barres au-dessus des pages et des listes restent opaques, sans flou derrière</string>
+    <string name="settings_reduce_transparency_detail">Le verre et les barres flottantes deviennent opaques, rien ne transparaît</string>
     <string name="qr_scanner">Scanner QR</string>
     <string name="qr_scan_prompt">Pointez la caméra vers un code QR</string>
 </resources>

@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import com.chethan616.clearpdf.R
 import com.chethan616.clearpdf.ui.AppViewModel
 import com.chethan616.clearpdf.ui.LucideIcons
+import com.chethan616.clearpdf.ui.screenColumn
 import com.chethan616.clearpdf.ui.glass.GlassCircle
 import com.chethan616.clearpdf.ui.glass.GlassDialog
 import com.chethan616.clearpdf.ui.glass.GlassIcon
@@ -140,7 +141,7 @@ fun FilesScreen(vm: AppViewModel, onBrowse: () -> Unit) {
     )
     val internal = stringResource(R.string.home_internal_storage)
     LazyColumn(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
+        modifier = Modifier.fillMaxSize().screenColumn().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
         contentPadding = PaddingValues(bottom = DockClearance),
     ) {
         item(key = "header") {

@@ -39,11 +39,19 @@ import com.chethan616.clearpdf.ui.theme.clear
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.drawBackdrop
 
+/**
+ * Whether glass is drawn solid, nothing showing through: the Clean appearance, or Reduce transparency
+ * in either appearance (#158). Every glass surface asks this where it used to ask for Clean alone.
+ */
+val solidGlass: Boolean
+    @Composable get() = clear.clean || GlassSettings.reduceTransparency
+
 /** A quiet, theme-tinted backdrop for controls that float over Clean mode content. */
 @Composable
 internal fun Modifier.cleanFloatingSurface(shape: Shape, strongestAtTop: Boolean = false): Modifier {
     val panel = clear.solidPanel
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || GlassSettings.reduceTransparency) {
+    // (Reduce transparency is a Liquid Glass setting: Clean's floating bars keep their own frost)
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
         return clip(shape).background(panel)
     }
     val mask = remember(strongestAtTop) {
@@ -89,7 +97,7 @@ fun Modifier.glass(
      */
     assist: GlassLuminance? = null,
 ): Modifier {
-    if (clear.clean) return clip(shape).background(clear.solidPanel)
+    if (solidGlass) return clip(shape).background(clear.solidPanel)
     val clearDark = clear.dark
     val backdrop = LocalBackdrop.current
     val style = styleOverride ?: GlassSettings.style
@@ -168,7 +176,7 @@ fun glassDim(heavy: Boolean = false): Color {
  */
 @Composable
 fun GlassListPanel(modifier: Modifier = Modifier, shape: Shape = RoundedRectangle(28.dp), content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.glass(shape, blur = 20.dp, lensHeight = 14.dp, lensAmount = 20.dp, dim = glassDim(heavy = true)), content = content)
+    Column(modifier.wash(shape), content = content)
 }
 
 /**
@@ -219,13 +227,25 @@ fun GlassHost(
 }
 
 /**
- * The wash panel scrolling lists use: the glass's tint and its lit rim without the backdrop pass.
- * Over the aurora's soft gradients a blur changes almost nothing, but re-sampling every panel on
- * every scrolled frame costs a lot; floating chrome keeps the real glass.
+ * A container of rows (a Settings group, a tool's panel): the same liquid glass as the Files list
+ * and its search bar, app-wide. The wallpaper refracts and frosts through it at the user's preset
+ * (Settings ▸ Liquid glass), under a dimming layer that is strong only over a picture of their own
+ * ([glassDim]), so its words read on any wallpaper. It used to be a flat wash (tint and rim, no
+ * backdrop) while Files was glass; now every container is one kind of glass. Solid while glass is
+ * ([solidGlass]: Clean, or Reduce transparency).
  */
 @Composable
-fun Modifier.wash(shape: Shape = RoundedRectangle(28.dp), tint: Color = clear.glass): Modifier {
-    if (clear.clean) return clip(shape).background(clear.solidPanel)
+fun Modifier.wash(shape: Shape = RoundedRectangle(28.dp), tint: Color = clear.glass): Modifier =
+    glass(shape, wash = tint, blur = 20.dp, lensHeight = 14.dp, lensAmount = 20.dp, dim = glassDim(heavy = true)).clip(shape)
+
+/**
+ * The old flat wash: the glass's tint and its lit rim, without the backdrop pass. Only for a grid of
+ * many small cards that scroll (the Pages screen's page cards), where a backdrop pass per card on
+ * every scrolled frame would cost too much for what a blur adds there.
+ */
+@Composable
+fun Modifier.flatWash(shape: Shape = RoundedRectangle(20.dp), tint: Color = clear.glass): Modifier {
+    if (solidGlass) return clip(shape).background(clear.solidPanel)
     val dark = clear.dark
     val rimTop = Color.White.copy(alpha = if (dark) 0.16f else 0.70f)
     val rimBottom = Color.White.copy(alpha = if (dark) 0.03f else 0.18f)

@@ -85,12 +85,12 @@ import com.chethan616.clearpdf.notes.NoteKind
 import com.chethan616.clearpdf.notes.checkItem
 import com.chethan616.clearpdf.ui.AppViewModel
 import com.chethan616.clearpdf.ui.LucideIcons
+import com.chethan616.clearpdf.ui.screenColumn
 import com.chethan616.clearpdf.ui.glass.GlassCircle
 import com.chethan616.clearpdf.ui.glass.GlassIcon
 import com.chethan616.clearpdf.ui.glass.GlassMenu
 import com.chethan616.clearpdf.ui.glass.GlassMenuItem
 import com.chethan616.clearpdf.ui.glass.GlassMotion
-import com.chethan616.clearpdf.ui.glass.LocalScreenInk
 import com.chethan616.clearpdf.ui.glass.glass
 import com.chethan616.clearpdf.ui.glass.pressable
 import com.chethan616.clearpdf.ui.home.NoteImage
@@ -145,7 +145,7 @@ fun NoteEditor(vm: AppViewModel, id: String) {
     Box(Modifier.fillMaxSize()) {
         ReadingVeil()
         LazyColumn(
-            Modifier.fillMaxSize().imePadding(),
+            Modifier.fillMaxSize().screenColumn().imePadding(),
             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 140.dp),
         ) {
             item(key = "top") {
@@ -164,7 +164,7 @@ fun NoteEditor(vm: AppViewModel, id: String) {
             item(key = "title") {
                 BasicTextField(
                     title, { title = it },
-                    textStyle = ClearType.Headline.copy(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold, color = c.ink, shadow = LegibleShadow),
+                    textStyle = ClearType.Headline.copy(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold, color = c.ink, shadow = legibleShadow(c)),
                     cursorBrush = SolidColor(Candy.Sky),
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
                     keyboardActions = KeyboardActions(onNext = {
@@ -179,7 +179,7 @@ fun NoteEditor(vm: AppViewModel, id: String) {
                     decorationBox = { inner ->
                         Box {
                             // told from typed text by its weight, not only by faintness
-                            if (title.text.isEmpty()) Text(stringResource(if (isList) R.string.notes_list_title_hint else R.string.notes_title_hint), style = ClearType.Headline.copy(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.SemiBold, shadow = LegibleShadow), color = c.ink.copy(alpha = 0.62f))
+                            if (title.text.isEmpty()) Text(stringResource(if (isList) R.string.notes_list_title_hint else R.string.notes_title_hint), style = ClearType.Headline.copy(fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.SemiBold, shadow = legibleShadow(c)), color = c.ink.copy(alpha = 0.62f))
                             inner()
                         }
                     },
@@ -188,7 +188,7 @@ fun NoteEditor(vm: AppViewModel, id: String) {
             item(key = "date") {
                 Text(
                     DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(note.updated)),
-                    style = ClearType.Caption.copy(fontSize = 13.sp, shadow = LegibleShadow), color = c.ink.copy(alpha = 0.75f), modifier = Modifier.padding(top = 10.dp, bottom = 18.dp),
+                    style = ClearType.Caption.copy(fontSize = 13.sp, shadow = legibleShadow(c)), color = c.ink.copy(alpha = 0.75f), modifier = Modifier.padding(top = 10.dp, bottom = 18.dp),
                 )
             }
             if (isList) {
@@ -218,14 +218,14 @@ fun NoteEditor(vm: AppViewModel, id: String) {
                     ) {
                         Icon(LucideIcons.Plus, null, tint = c.ink.copy(alpha = 0.75f), modifier = Modifier.size(24.dp))
                         Spacer(Modifier.width(12.dp))
-                        Text(stringResource(R.string.notes_add_item), style = ClearType.Body.copy(fontSize = 17.sp), color = c.ink.copy(alpha = 0.75f))
+                        Text(stringResource(R.string.notes_add_item), style = ClearType.Body.copy(fontSize = 17.sp, shadow = legibleShadow(c)), color = c.ink.copy(alpha = 0.75f))
                     }
                 }
             } else {
                 item(key = "body") {
                     BasicTextField(
                         body, { body = it },
-                        textStyle = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 30.sp, color = c.ink.copy(alpha = 0.94f), shadow = LegibleShadow),
+                        textStyle = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 30.sp, color = c.ink.copy(alpha = 0.94f), shadow = legibleShadow(c)),
                         cursorBrush = SolidColor(Candy.Sky),
                         visualTransformation = MarkdownLite(c.ink),
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
@@ -233,12 +233,12 @@ fun NoteEditor(vm: AppViewModel, id: String) {
                         decorationBox = { inner ->
                             Column {
                                 Box {
-                                    if (body.text.isEmpty()) Text(stringResource(R.string.notes_body_hint), style = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 30.sp, shadow = LegibleShadow), color = c.ink.copy(alpha = 0.66f))
+                                    if (body.text.isEmpty()) Text(stringResource(R.string.notes_body_hint), style = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 30.sp, shadow = legibleShadow(c)), color = c.ink.copy(alpha = 0.66f))
                                     inner()
                                 }
                                 if (reading) {
                                     Text(
-                                        stringResource(R.string.notes_body_hint), style = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 30.sp, shadow = LegibleShadow), color = c.ink.copy(alpha = 0.66f),
+                                        stringResource(R.string.notes_body_hint), style = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 30.sp, shadow = legibleShadow(c)), color = c.ink.copy(alpha = 0.66f),
                                         modifier = Modifier.padding(top = 30.dp).pressable({
                                             val text = body.text + "\n\n"
                                             body = TextFieldValue(text, TextRange(text.length))
@@ -314,23 +314,27 @@ fun NoteEditor(vm: AppViewModel, id: String) {
 
 /**
  * A soft shade under the editor's words: over a wallpaper with fine detail (the skeleton's wings and
- * chains) the veil alone can leave a letter broken up, and a shadow binds it back together.
+ * chains) the veil alone can leave a letter broken up, and a shadow binds it back together. Of the
+ * opposite tone to the ink: dark under the dark theme's light words, light under the light theme's
+ * dark ones (a black shade made those look heavier and smudged). None in Clean, whose page is solid.
  */
-private val LegibleShadow = Shadow(Color.Black.copy(alpha = 0.35f), Offset(0f, 1.5f), 6f)
+private fun legibleShadow(c: com.chethan616.clearpdf.ui.theme.ClearColors): Shadow? =
+    if (c.clean) null
+    else if (c.dark) Shadow(Color.Black.copy(alpha = 0.35f), Offset(0f, 1.5f), 6f)
+    else Shadow(Color.White.copy(alpha = 0.6f), Offset(0f, 1.5f), 8f)
 
 /**
  * A reading veil over the wallpaper, behind the editor's words only: the light ink sits on a calmer
- * surface without the wallpaper leaving, and the brighter the wallpaper the stronger the veil (its
- * luminance is the window's own sampler, the one the glass reads). Faded out on a dark wallpaper, in
- * the light theme (whose ink is dark) and in Clean appearance (already a solid page).
+ * surface without the wallpaper leaving. Only over a picture of the user's own (a bright one is what
+ * washed the words out): the app's own wallpapers are calm and keep their look. Steady: read from the
+ * window's sampler, the veil darkened what it read, read darker, eased off, and stepped as it settled.
+ * Not in the light theme (whose ink is dark) or Clean appearance (already a solid page).
  */
 @Composable
 private fun ReadingVeil() {
     val c = clear
-    if (c.clean || !c.dark) return
-    // null while Adaptive luminance is off: then the theme's own dark backdrop is the guess
-    val luminance = LocalScreenInk.current?.frame?.average() ?: 0.14f
-    val top = (0.15f + 0.35f * luminance).coerceIn(0.15f, 0.50f)
+    if (c.clean || !c.dark || com.chethan616.clearpdf.ui.glass.GlassSettings.wallpaper != com.chethan616.clearpdf.ui.glass.Wallpaper.Custom) return
+    val top = 0.42f
     Box(
         Modifier.fillMaxSize().background(
             Brush.verticalGradient(
@@ -369,7 +373,7 @@ private fun ItemRow(item: CheckItem, focus: Boolean, onChange: (String) -> Unit,
                     onChange(v.text)
                 }
             },
-            textStyle = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 26.sp, color = ink, textDecoration = if (item.done) TextDecoration.LineThrough else null),
+            textStyle = ClearType.Body.copy(fontSize = 18.sp, lineHeight = 26.sp, color = ink, textDecoration = if (item.done) TextDecoration.LineThrough else null, shadow = legibleShadow(c)),
             cursorBrush = SolidColor(Candy.Mint),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { onNext() }),

@@ -1,5 +1,6 @@
 package com.chethan616.clearpdf.ui.viewer
 
+import com.chethan616.clearpdf.ui.glass.flatWash
 import com.chethan616.clearpdf.ui.safeTopPadding
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
@@ -223,7 +224,7 @@ fun PagesScreen(vm: AppViewModel, doc: OpenDocument, onClose: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Box(
-                            Modifier.size(cardW, 162.dp).then(com.chethan616.clearpdf.ui.glass.washPanel())
+                            Modifier.size(cardW, 162.dp).flatWash()
                                 .then(if (highlighted) Modifier.border(2.dp, com.chethan616.clearpdf.ui.theme.Candy.Sky, com.chethan616.clearpdf.ui.glass.RoundedRectangle(20.dp)) else Modifier),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -336,3 +337,4 @@ private fun androidx.compose.foundation.layout.RowScope.OrganizeItem(icon: Image
         )
     }
 }
+
