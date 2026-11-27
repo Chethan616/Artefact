@@ -201,6 +201,18 @@ object Widgets {
         return PendingIntent.getBroadcast(ctx, "$action/$id".hashCode(), intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
+    /**
+     * Opens the widget's own picker (Which list? / Which note?) for widget [id]: the corner button,
+     * so the user chooses what it shows. It used to cycle to the next one, and looked like a refresh.
+     */
+    internal fun pickFor(ctx: Context, id: Int): PendingIntent {
+        val intent = Intent(ctx, WidgetPickActivity::class.java)
+            .setData(Uri.parse("artefact://widget/pick/$id"))
+            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        return PendingIntent.getActivity(ctx, "pick/$id".hashCode(), intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
     internal fun mediaFile(ctx: Context, name: String) = File(File(File(ctx.filesDir, "notes"), "media"), name)
 
     internal fun cornerPx(ctx: Context) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 30f, ctx.resources.displayMetrics)
@@ -674,9 +686,9 @@ class TodoWidget : AppWidgetProvider() {
             }
             // more than one list: the round button in the corner turns to the next
             val many = WidgetPicks.count(app, NoteKind.List) > 1
-            Widgets.placeNext(app, views, f, bitmap.width, if (many) Widgets.broadcast(app, TodoWidget::class.java, ACTION_NEXT, id) else null)
+            Widgets.placeNext(app, views, f, bitmap.width, if (many) Widgets.pickFor(app, id) else null)
             if (many) {
-                views.setContentDescription(R.id.card_next, res.getString(R.string.widget_next_list))
+                views.setContentDescription(R.id.card_next, res.getString(R.string.widget_pick_list))
                 views.setInt(R.id.card_next, "setColorFilter", if (WidgetCards.isDark(app)) 0xF0FFFFFF.toInt() else 0xCC12302B.toInt())
             }
             runCatching { mgr.updateAppWidget(id, views) }
@@ -785,9 +797,9 @@ class NoteWidget : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.card_open, Widgets.open(app, noteId, "note/$id"))
             Widgets.placeCardTarget(views, f, bitmap.width, bitmap.height)
             val many = WidgetPicks.count(app, NoteKind.Text) > 1
-            Widgets.placeNext(app, views, f, bitmap.width, if (many) Widgets.broadcast(app, NoteWidget::class.java, ACTION_NEXT, id) else null)
+            Widgets.placeNext(app, views, f, bitmap.width, if (many) Widgets.pickFor(app, id) else null)
             if (many) {
-                views.setContentDescription(R.id.card_next, res.getString(R.string.widget_next_note))
+                views.setContentDescription(R.id.card_next, res.getString(R.string.widget_pick_note))
                 // the paper card's own ink: dark on the light card, white on the dark one
                 views.setInt(R.id.card_next, "setColorFilter", if (WidgetCards.isDark(app)) 0xF0FFFFFF.toInt() else 0xCC3A3420.toInt())
             }

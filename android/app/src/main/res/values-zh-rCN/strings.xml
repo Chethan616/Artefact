@@ -1763,4 +1763,11 @@
     <string name="measure_scale_body">这两点的实际距离是多少？</string>
     <string name="measure_scale_distance">距离</string>
     <string name="measure_scale_set">已为此页设定比例</string>
+    <string name="app_style_clean">简洁</string>
+    <string name="app_style_clean_detail">实色表面</string>
+    <string name="app_style_glass">液态玻璃</string>
+    <string name="app_style_glass_detail">默认 · 半透明表面</string>
+    <string name="qr_scan_prompt">将相机对准二维码</string>
+    <string name="qr_scanner">二维码扫描</string>
+    <string name="settings_app_appearance">应用外观</string>
 </resources>
