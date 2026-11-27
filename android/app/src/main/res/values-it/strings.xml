@@ -474,7 +474,6 @@
     <!-- ================================================================ -->
 
     <string name="pages_title">Pagine</string>
-    <string name="pages_select">Seleziona pagine</string>
     <plurals name="pages_selected_count">
         <item quantity="one">%1$d pagina selezionata</item>
         <item quantity="other">%1$d pagine selezionate</item>

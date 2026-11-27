@@ -307,7 +307,6 @@
     <string name="voice_open_settings">Открыть настройки</string>
     <string name="voice_not_now">Не сейчас</string>
     <string name="pages_title">Страницы</string>
-    <string name="pages_select">Выбрать страницы</string>
     <plurals name="pages_selected_count">
         <item quantity="one">Выбрана %1$d</item>
         <item quantity="few">Выбрано %1$d</item>

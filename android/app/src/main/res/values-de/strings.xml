@@ -461,7 +461,6 @@
 
     <!-- Pages: the grid of pages and organizing -->
     <string name="pages_title">Seiten</string>
-    <string name="pages_select">Seiten auswählen</string>
     <!-- Translator note: the title while organizing; %1$d is how many pages are ticked. -->
     <plurals name="pages_selected_count">
         <item quantity="one">%1$d ausgewählt</item>

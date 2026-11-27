@@ -299,7 +299,6 @@
     <string name="voice_open_settings">Abrir definições</string>
     <string name="voice_not_now">Agora não</string>
     <string name="pages_title">Páginas</string>
-    <string name="pages_select">Selecionar páginas</string>
     <plurals name="pages_selected_count">
         <item quantity="one">%1$d selecionada</item>
         <item quantity="other">%1$d selecionadas</item>

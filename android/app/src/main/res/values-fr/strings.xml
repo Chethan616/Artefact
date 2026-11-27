@@ -445,7 +445,6 @@
 
     <!-- Pages: the grid of pages and organizing -->
     <string name="pages_title">Pages</string>
-    <string name="pages_select">Sélectionner des pages</string>
     <plurals name="pages_selected_count">
         <item quantity="one">%1$d sélectionnée</item>
         <item quantity="other">%1$d sélectionnées</item>

@@ -501,7 +501,6 @@
 
     <!-- Pages: the grid of pages and organizing -->
     <string name="pages_title">页面</string>
-    <string name="pages_select">选择页面</string>
     <!-- Translator note: the title while organizing; %1$d is how many pages are ticked. -->
     <plurals name="pages_selected_count">
         <item quantity="one">已选 %1$d 页</item>

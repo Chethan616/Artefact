@@ -319,7 +319,6 @@
     <string name="voice_open_settings">فتح الإعدادات</string>
     <string name="voice_not_now">ليس الآن</string>
     <string name="pages_title">الصفحات</string>
-    <string name="pages_select">تحديد الصفحات</string>
     <plurals name="pages_selected_count">
         <item quantity="zero">لم تُحدّد أي صفحة</item>
         <item quantity="one">حُدّدت صفحة واحدة</item>

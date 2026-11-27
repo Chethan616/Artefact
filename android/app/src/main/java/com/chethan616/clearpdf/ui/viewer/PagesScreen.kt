@@ -135,7 +135,7 @@ fun PagesScreen(vm: AppViewModel, doc: OpenDocument, onClose: () -> Unit) {
             }
             Spacer(Modifier.width(14.dp))
             Text(
-                if (organizing && picked.isNotEmpty()) pluralStringResource(R.plurals.pages_selected_count, picked.size, picked.size) else if (organizing) stringResource(R.string.pages_select) else stringResource(R.string.pages_title),
+                if (organizing && picked.isNotEmpty()) pluralStringResource(R.plurals.pages_selected_count, picked.size, picked.size) else if (organizing) stringResource(R.string.toolbar_label_organize) else stringResource(R.string.pages_title),
                 style = com.chethan616.clearpdf.ui.theme.ClearType.Title, color = com.chethan616.clearpdf.ui.theme.clear.ink, maxLines = 1, modifier = Modifier.weight(1f),
             )
             if (organizing && exporting == null) {
