@@ -1768,4 +1768,5 @@
         <item quantity="one">%d file saved to Downloads</item>
         <item quantity="other">%d files saved to Downloads</item>
     </plurals>
+    <string name="msg_not_map">This file isn\'t a mind map (OPML or Excalidraw).</string>
 </resources>

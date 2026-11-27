@@ -1294,4 +1294,5 @@
         <item quantity="one">%d arquivo salvo em Downloads</item>
         <item quantity="other">%d arquivos salvos em Downloads</item>
     </plurals>
+    <string name="msg_not_map">Este arquivo não é um mapa mental (OPML ou Excalidraw).</string>
 </resources>

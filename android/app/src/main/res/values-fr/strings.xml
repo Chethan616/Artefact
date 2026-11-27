@@ -1589,4 +1589,5 @@
         <item quantity="one">%d fichier enregistré dans Téléchargements</item>
         <item quantity="other">%d fichiers enregistrés dans Téléchargements</item>
     </plurals>
+    <string name="msg_not_map">Ce fichier n\'est pas une carte mentale (OPML ou Excalidraw).</string>
 </resources>

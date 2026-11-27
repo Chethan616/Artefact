@@ -1331,4 +1331,5 @@
         <item quantity="many">%d файлов сохранено в «Загрузки»</item>
         <item quantity="other">%d файлов сохранено в «Загрузки»</item>
     </plurals>
+    <string name="msg_not_map">Этот файл не является интеллект-картой (OPML или Excalidraw).</string>
 </resources>

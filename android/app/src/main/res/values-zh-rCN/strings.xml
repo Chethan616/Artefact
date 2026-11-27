@@ -1750,4 +1750,5 @@
         <item quantity="one">%d 个文件已保存到下载</item>
         <item quantity="other">%d 个文件已保存到下载</item>
     </plurals>
+    <string name="msg_not_map">此文件不是思维导图（OPML 或 Excalidraw）。</string>
 </resources>

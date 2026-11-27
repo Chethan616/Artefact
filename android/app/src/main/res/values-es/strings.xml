@@ -1717,4 +1717,5 @@
         <item quantity="one">%d archivo guardado en Descargas</item>
         <item quantity="other">%d archivos guardados en Descargas</item>
     </plurals>
+    <string name="msg_not_map">Este archivo no es un mapa mental (OPML o Excalidraw).</string>
 </resources>

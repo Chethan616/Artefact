@@ -2103,3 +2103,64 @@ private fun MindOutline(
         }
     }
 }
+
+/** [text] as a map: an OPML outline, or an Excalidraw drawing (#162). */
+internal fun mindFromFile(text: String): MindDoc? =
+    if (text.trimStart().startsWith("{")) mindFromExcalidraw(text) else mindFromOpml(text)
+
+/**
+ * An Excalidraw drawing as a map (#162): each shape's words (or a lone text) an idea, each arrow
+ * from one to another a branch. The centre is the idea no arrow points to with the most leaving it
+ * (else the first); ideas no arrow reaches hang from the centre; a loop is cut where it closes.
+ * Deleted elements are skipped. Null when the file holds no words at all.
+ */
+internal fun mindFromExcalidraw(json: String): MindDoc? {
+    val o = runCatching { JSONObject(json) }.getOrNull() ?: return null
+    if (o.optString("type") != "excalidraw" && !o.has("elements")) return null
+    val elements = o.optJSONArray("elements") ?: return null
+    val all = (0 until elements.length()).mapNotNull { elements.optJSONObject(it) }.filter { !it.optBoolean("isDeleted") }
+    val byId = all.associateBy { it.optString("id") }
+    fun words(e: JSONObject) = (e.optString("originalText").ifEmpty { e.optString("text") }).replace('\n', ' ').trim()
+    // an idea for each shape holding words, and each text standing on its own
+    val ideas = LinkedHashMap<String, MindNode>()
+    for (e in all) {
+        when (e.optString("type")) {
+            "text" -> {
+                val holder = e.optString("containerId").takeIf { it.isNotEmpty() && it != "null" }
+                val t = words(e)
+                if (t.isEmpty()) continue
+                // words inside a shape name the shape; an arrow's label is left to the arrow
+                val key = holder?.takeIf { byId[it]?.optString("type") !in setOf("arrow", "line") } ?: if (holder == null) e.optString("id") else continue
+                ideas[key] = MindNode(t)
+            }
+        }
+    }
+    if (ideas.isEmpty()) return null
+    if (ideas.size > MAX_NODES) return null
+    // arrows from idea to idea (bound to a shape, or to a text standing alone)
+    val edges = ArrayList<Pair<String, String>>()
+    for (e in all) {
+        if (e.optString("type") != "arrow") continue
+        val from = e.optJSONObject("startBinding")?.optString("elementId")?.let { id -> byId[id]?.optString("containerId")?.takeIf { it.isNotEmpty() && it != "null" } ?: id }
+        val to = e.optJSONObject("endBinding")?.optString("elementId")?.let { id -> byId[id]?.optString("containerId")?.takeIf { it.isNotEmpty() && it != "null" } ?: id }
+        if (from != null && to != null && from != to && from in ideas && to in ideas) edges.add(from to to)
+    }
+    val incoming = edges.groupingBy { it.second }.eachCount()
+    val outgoing = edges.groupingBy { it.first }.eachCount()
+    val rootId = ideas.keys.filter { (incoming[it] ?: 0) == 0 }.maxByOrNull { outgoing[it] ?: 0 } ?: ideas.keys.first()
+    val placed = HashSet<String>().apply { add(rootId) }
+    val queue = ArrayDeque<String>().apply { add(rootId) }
+    while (queue.isNotEmpty()) {
+        val at = queue.removeFirst()
+        for ((from, to) in edges) {
+            if (from != at || to in placed) continue
+            placed.add(to)
+            ideas.getValue(at).children.add(ideas.getValue(to))
+            queue.add(to)
+        }
+    }
+    // what no arrow reached hangs from the centre, in the drawing's order
+    val root = ideas.getValue(rootId)
+    for ((id, n) in ideas) if (id !in placed) root.children.add(n)
+    return MindDoc(root)
+}

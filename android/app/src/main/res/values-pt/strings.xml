@@ -1294,4 +1294,5 @@
         <item quantity="one">%d ficheiro guardado em Transferências</item>
         <item quantity="other">%d ficheiros guardados em Transferências</item>
     </plurals>
+    <string name="msg_not_map">Este ficheiro não é um mapa mental (OPML ou Excalidraw).</string>
 </resources>

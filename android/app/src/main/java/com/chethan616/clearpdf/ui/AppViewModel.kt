@@ -223,8 +223,8 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         // a mind map (OPML) opens as a map to look at, and can be made into a mind-map note
         if (com.chethan616.clearpdf.engine.DocumentTypes.isMindMapName(file.name)) {
             val doc = withContext(Dispatchers.IO) {
-                runCatching { if (file.length() < 8L shl 20) com.chethan616.clearpdf.ui.notes.mindFromOpml(file.readText()) else null }.getOrNull()
-            } ?: return tell(text(R.string.msg_not_opml))
+                runCatching { if (file.length() < 8L shl 20) com.chethan616.clearpdf.ui.notes.mindFromFile(file.readText()) else null }.getOrNull()
+            } ?: return tell(text(R.string.msg_not_map))
             previewingMap = OpenedMap(uri, file.name, doc, otherAppUri == uri)
             withContext(Dispatchers.IO) {
                 recents.touch(RecentFile(uri.toString(), file.name, System.currentTimeMillis(), 1, file.length(), 0))

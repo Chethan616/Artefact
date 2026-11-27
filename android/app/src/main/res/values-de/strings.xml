@@ -1708,4 +1708,5 @@
         <item quantity="one">%d Datei in Downloads gespeichert</item>
         <item quantity="other">%d Dateien in Downloads gespeichert</item>
     </plurals>
+    <string name="msg_not_map">Diese Datei ist keine Mindmap (OPML oder Excalidraw).</string>
 </resources>
