@@ -66,6 +66,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
@@ -113,6 +114,9 @@ import com.chethan616.clearpdf.ui.glass.LocalBackdrop
 import com.chethan616.clearpdf.ui.glass.LocalGlassInk
 import com.chethan616.clearpdf.ui.glass.glassBar
 import com.chethan616.clearpdf.ui.glass.pressable
+import com.chethan616.clearpdf.ui.glass.BarGlyphButton
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import com.chethan616.clearpdf.ui.glass.rememberFeel
 import com.chethan616.clearpdf.ui.glass.rememberGlassInk
 import com.chethan616.clearpdf.ui.theme.Candy
@@ -156,6 +160,24 @@ internal class MindNode(var text: String, val id: String = UUID.randomUUID().toS
     var dx = 0f
     var dy = 0f
 
+    // how its words are set (#156); each default is the map's own way for the idea's depth
+    /** Bold or not; null: the depth's own weight. */
+    var bold: Boolean? = null
+    var italic = false
+    var underline = false
+    var strike = false
+    /** A step on the depth's size (1: as the map sets it). */
+    var size = 1f
+    /** The words' colour (ARGB), 0: the map's own. */
+    var ink = 0
+    /** A highlight behind the words (ARGB), 0: none. */
+    var mark = 0
+    /** -1 start, 0 centre (the map's own), 1 end. */
+    var align = 0
+
+    /** Whether the words are set some way of their own. */
+    val styled: Boolean get() = bold != null || italic || underline || strike || size != 1f || ink != 0 || mark != 0 || align != 0
+
     // set out by layoutMind, in pixels
     var parent: MindNode? = null
     var depth = 0
@@ -187,8 +209,52 @@ internal class MindNode(var text: String, val id: String = UUID.randomUUID().toS
     fun holds(n: MindNode): Boolean = this === n || children.any { it.holds(n) }
 }
 
-/** A mind map: its centre idea and whether its branches all go to the right. */
-internal class MindDoc(val root: MindNode, var oneSided: Boolean = false) {
+/** How a map is set out (#156). [key] is how it is kept in the note. */
+internal enum class MapLayout(val key: String) {
+    /** The centre in the middle, ideas to both sides in turn. */
+    Balanced("both"),
+    /** Every idea to one side: a left-to-right logic chart. */
+    Logic("right"),
+    /** Top down: each idea's own ideas in a row under it. */
+    Org("org"),
+    /** An indented tree, each idea on a line of its own under the one before. */
+    Tree("tree"),
+    /** The first ideas along a line, their own ideas above and below it in turn. */
+    Timeline("timeline"),
+    /** The centre in the middle, the ideas around it on rings. */
+    Radial("radial"),
+}
+
+/** Which way a map reads (#156): from its words (Auto), or left to right, or right to left. */
+internal enum class MapDirection(val key: String) { Auto("auto"), Ltr("ltr"), Rtl("rtl") }
+
+/** A mind map: its centre idea, how it is set out, and which way it reads. */
+internal class MindDoc(val root: MindNode, var layout: MapLayout = MapLayout.Balanced, var direction: MapDirection = MapDirection.Auto) {
+    /** Every idea to one side (the logic chart); kept for the older maps' "right". */
+    var oneSided: Boolean
+        get() = layout == MapLayout.Logic
+        set(v) { layout = if (v) MapLayout.Logic else MapLayout.Balanced }
+
+    /**
+     * Whether the map reads right to left: as set, or (Auto) as its centre's words do, else its
+     * ideas' first words that have a direction.
+     */
+    val rtl: Boolean
+        get() = when (direction) {
+            MapDirection.Ltr -> false
+            MapDirection.Rtl -> true
+            MapDirection.Auto -> firstStrongRtl(root.text) ?: run {
+                fun walk(n: MindNode): Boolean? {
+                    for (c in n.children) {
+                        firstStrongRtl(c.text)?.let { return it }
+                        walk(c)?.let { return it }
+                    }
+                    return null
+                }
+                walk(root)
+            } ?: false
+        }
+
     /** A new mind-map note holding this map. */
     fun asNote() = com.chethan616.clearpdf.notes.Note(
         UUID.randomUUID().toString(), com.chethan616.clearpdf.notes.NoteKind.Map,
@@ -196,11 +262,30 @@ internal class MindDoc(val root: MindNode, var oneSided: Boolean = false) {
     )
 }
 
+/** Whether [s]'s first letter with a direction is right-to-left (Arabic, Hebrew…), null when none has one. */
+internal fun firstStrongRtl(s: String): Boolean? {
+    for (ch in s) {
+        when (Character.getDirectionality(ch)) {
+            Character.DIRECTIONALITY_RIGHT_TO_LEFT, Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC -> return true
+            Character.DIRECTIONALITY_LEFT_TO_RIGHT -> return false
+        }
+    }
+    return null
+}
+
 private fun MindNode.json(): JSONObject = JSONObject().apply {
     put("id", id)
     put("t", text)
     if (color >= 0) put("c", color)
     if (collapsed) put("f", true)
+    bold?.let { put("b", it) }
+    if (italic) put("i", true)
+    if (underline) put("u", true)
+    if (strike) put("s", true)
+    if (size != 1f) put("z", size.toDouble())
+    if (ink != 0) put("tc", ink)
+    if (mark != 0) put("hc", mark)
+    if (align != 0) put("al", align)
     if (dx != 0f) put("dx", dx.toDouble())
     if (dy != 0f) put("dy", dy.toDouble())
     if (children.isNotEmpty()) put("k", JSONArray().apply { children.forEach { put(it.json()) } })
@@ -209,6 +294,14 @@ private fun MindNode.json(): JSONObject = JSONObject().apply {
 private fun JSONObject.node(budget: IntArray): MindNode = MindNode(optString("t"), optString("id").ifEmpty { UUID.randomUUID().toString().take(12) }).also { n ->
     n.color = optInt("c", -1)
     n.collapsed = optBoolean("f")
+    if (has("b")) n.bold = optBoolean("b")
+    n.italic = optBoolean("i")
+    n.underline = optBoolean("u")
+    n.strike = optBoolean("s")
+    n.size = optDouble("z", 1.0).toFloat().coerceIn(0.5f, 2.5f)
+    n.ink = optInt("tc", 0)
+    n.mark = optInt("hc", 0)
+    n.align = optInt("al", 0).coerceIn(-1, 1)
     n.dx = optDouble("dx", 0.0).toFloat()
     n.dy = optDouble("dy", 0.0).toFloat()
     optJSONArray("k")?.let { a ->
@@ -221,13 +314,18 @@ private fun JSONObject.node(budget: IntArray): MindNode = MindNode(optString("t"
 
 /** The map as it is kept in its note. */
 internal fun MindDoc.toJson(): String =
-    JSONObject().put("v", 1).put("layout", if (oneSided) "right" else "both").put("root", root.json()).toString()
+    JSONObject().put("v", 1).put("layout", layout.key).apply { if (direction != MapDirection.Auto) put("dir", direction.key) }
+        .put("root", root.json()).toString()
 
 internal fun mindFromJson(s: String): MindDoc? {
     if (s.isBlank()) return null
     return runCatching {
         val o = JSONObject(s)
-        MindDoc(o.getJSONObject("root").node(intArrayOf(MAX_NODES)), o.optString("layout") == "right")
+        MindDoc(
+            o.getJSONObject("root").node(intArrayOf(MAX_NODES)),
+            MapLayout.entries.firstOrNull { it.key == o.optString("layout") } ?: MapLayout.Balanced,
+            MapDirection.entries.firstOrNull { it.key == o.optString("dir") } ?: MapDirection.Auto,
+        )
     }.getOrNull()
 }
 
@@ -350,7 +448,7 @@ internal fun parseOutline(title: String, body: String): MindNode {
 // ---- laid out --------------------------------------------------------------------------------------
 
 /** A map set out: every idea shown (in drawing order) with its box placed, and the room they take. */
-internal class MindLayout(val doc: MindDoc, val density: Float, val nodes: List<MindNode>, val bounds: RectF) {
+internal class MindLayout(val doc: MindDoc, val density: Float, val nodes: List<MindNode>, val bounds: RectF, val rtl: Boolean = false) {
     /** The idea at ([x], [y]), the one drawn on top; [skip]'s branch is looked through (an idea being dragged). */
     fun hit(x: Float, y: Float, slop: Float, skip: MindNode? = null): MindNode? =
         nodes.lastOrNull { (skip == null || !skip.holds(it)) && x >= it.left - slop && x <= it.right + slop && y >= it.top - slop && y <= it.bottom + slop }
@@ -394,6 +492,14 @@ private fun wordsPaint(d: Float, depth: Int) = TextPaint(Paint.ANTI_ALIAS_FLAG).
 internal fun layoutMind(doc: MindDoc, d: Float, rootHint: String, hint: String): MindLayout {
     val paints = Array(3) { wordsPaint(d, it) }
     val shown = ArrayList<MindNode>()
+    val rtl = doc.rtl
+    // each idea's words read their own way (mixed Arabic and English in one idea come out right);
+    // a right-to-left map's ideas start at the right
+    val direction = when (doc.direction) {
+        MapDirection.Ltr -> android.text.TextDirectionHeuristics.FIRSTSTRONG_LTR
+        MapDirection.Rtl -> android.text.TextDirectionHeuristics.FIRSTSTRONG_RTL
+        MapDirection.Auto -> if (rtl) android.text.TextDirectionHeuristics.FIRSTSTRONG_RTL else android.text.TextDirectionHeuristics.FIRSTSTRONG_LTR
+    }
     fun measure(n: MindNode, parent: MindNode?, depth: Int, branch: Int) {
         n.parent = parent
         n.depth = depth
@@ -403,14 +509,32 @@ internal fun layoutMind(doc: MindDoc, d: Float, rootHint: String, hint: String):
             depth == 1 -> branch
             else -> parent!!.tint
         }
-        val words = n.text.ifBlank { if (depth == 0) rootHint else hint }
-        val key = "$d|$depth|${MapType.loaded}|${n.text.isBlank()}|$words"
+        val plain = n.text.ifBlank { if (depth == 0) rootHint else hint }
+        val key = "$d|$depth|${MapType.loaded}|${n.text.isBlank()}|$plain|${n.bold}|${n.italic}|${n.underline}|${n.strike}|${n.size}|${n.mark}|${n.align}|$rtl|${doc.direction}"
         if (n.words == null || n.wordsKey != key) {
-            val p = paints[depth.coerceAtMost(2)]
-            val max = (if (depth == 0) 240f else 210f) * d
+            val base = paints[depth.coerceAtMost(2)]
+            // the idea's own style on the depth's (#156)
+            val p = if (n.bold == null && !n.italic && !n.underline && !n.strike && n.size == 1f) base else TextPaint(base).apply {
+                n.bold?.let { typeface = MapType.face(if (it) 800 else 400) }
+                if (n.italic) textSkewX = -0.22f
+                isUnderlineText = n.underline
+                isStrikeThruText = n.strike
+                textSize = base.textSize * n.size
+            }
+            val words: CharSequence = if (n.mark == 0 || n.text.isBlank()) plain else android.text.SpannableString(plain).apply {
+                setSpan(android.text.style.BackgroundColorSpan(n.mark), 0, plain.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            val max = (if (depth == 0) 240f else 210f) * d * n.size.coerceAtLeast(1f)
             val w = ceil(min(Layout.getDesiredWidth(words, p), max)).toInt().coerceAtLeast(1)
             n.words = StaticLayout.Builder.obtain(words, 0, words.length, p, w)
-                .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                .setAlignment(
+                    when (n.align) {
+                        -1 -> Layout.Alignment.ALIGN_NORMAL
+                        1 -> Layout.Alignment.ALIGN_OPPOSITE
+                        else -> Layout.Alignment.ALIGN_CENTER
+                    },
+                )
+                .setTextDirection(direction)
                 .setIncludePad(false)
                 .setMaxLines(6)
                 .setEllipsize(TextUtils.TruncateAt.END)
@@ -463,17 +587,29 @@ internal fun layoutMind(doc: MindDoc, d: Float, rootHint: String, hint: String):
     root.side = 0
     root.left = -root.width / 2f
     root.top = -root.height / 2f
-    if (!root.collapsed) {
-        for (side in intArrayOf(1, -1)) {
-            val kids = root.children.filterIndexed { i, _ -> if (side > 0) doc.oneSided || i % 2 == 0 else !doc.oneSided && i % 2 == 1 }
-            if (kids.isEmpty()) continue
-            val total = kids.sumOf { it.span.toDouble() }.toFloat() + gapRoot * (kids.size - 1)
-            var y = -total / 2f
-            for (c in kids) {
-                place(c, side, if (side > 0) root.right else root.left, y + c.span / 2f)
-                y += c.span + gapRoot
+    when (doc.layout) {
+        MapLayout.Balanced, MapLayout.Logic -> if (!root.collapsed) {
+            for (side in intArrayOf(1, -1)) {
+                val kids = root.children.filterIndexed { i, _ -> if (side > 0) doc.oneSided || i % 2 == 0 else !doc.oneSided && i % 2 == 1 }
+                if (kids.isEmpty()) continue
+                val total = kids.sumOf { it.span.toDouble() }.toFloat() + gapRoot * (kids.size - 1)
+                var y = -total / 2f
+                for (c in kids) {
+                    place(c, side, if (side > 0) root.right else root.left, y + c.span / 2f)
+                    y += c.span + gapRoot
+                }
             }
         }
+        MapLayout.Org -> layoutOrg(root, d)
+        MapLayout.Tree -> layoutTree(root, d)
+        MapLayout.Timeline -> layoutTimeline(root, d)
+        MapLayout.Radial -> layoutRadial(root, d)
+    }
+    // right to left: the whole map mirrored, so its branches grow to the left (dragged offsets are
+    // the screen's, so they are added after)
+    if (rtl) for (n in shown) {
+        n.left = -(n.left + n.width)
+        n.side = -n.side
     }
     // dragged ideas, with their branches
     fun shift(n: MindNode, ox: Float, oy: Float) {
@@ -490,23 +626,163 @@ internal fun layoutMind(doc: MindDoc, d: Float, rootHint: String, hint: String):
         bounds.union(n.left, n.top, n.right, n.bottom)
         if (n.hidden > 0) bounds.union(badgeX(n) - 12f * d, n.cy - 12f * d, badgeX(n) + 12f * d, n.cy + 12f * d)
     }
-    return MindLayout(doc, d, shown, bounds)
+    return MindLayout(doc, d, shown, bounds, rtl)
+}
+
+/** The shown ideas under [n] (its own, unless it is folded). */
+private fun MindNode.shownKids(): List<MindNode> = if (collapsed) emptyList() else children
+
+/** Top down (#156): each idea centred over the row of its own ideas. */
+private fun layoutOrg(root: MindNode, d: Float) {
+    val gap = 14f * d
+    fun width(n: MindNode): Float {
+        val kids = n.shownKids()
+        val inner = kids.sumOf { width(it).toDouble() }.toFloat() + gap * (kids.size - 1).coerceAtLeast(0)
+        n.span = max(n.width, inner)
+        return n.span
+    }
+    width(root)
+    fun place(n: MindNode, cx: Float, top: Float) {
+        n.side = 1
+        n.left = cx - n.width / 2f
+        n.top = top
+        val kids = n.shownKids()
+        if (kids.isEmpty()) return
+        val total = kids.sumOf { it.span.toDouble() }.toFloat() + gap * (kids.size - 1)
+        var x = cx - total / 2f
+        val below = n.bottom + (if (n.depth == 0) 56f else 40f) * d
+        for (c in kids) {
+            place(c, x + c.span / 2f, below)
+            x += c.span + gap
+        }
+    }
+    place(root, 0f, -root.height / 2f)
+}
+
+/** An indented tree (#156): the centre at the top, each idea on its own line, a step in from its parent. */
+private fun layoutTree(root: MindNode, d: Float) {
+    val step = 30f * d
+    val gap = 10f * d
+    var y = root.bottom + 18f * d
+    fun place(n: MindNode) {
+        for (c in n.shownKids()) {
+            c.side = 1
+            c.left = n.left + step
+            c.top = y
+            y = c.bottom + gap
+            place(c)
+        }
+    }
+    root.left = 0f
+    place(root)
+}
+
+/**
+ * A timeline (#156): the centre at the start, its ideas along a line after it, and their own ideas
+ * stacked under and over the line in turn, each a step in from the one it belongs to.
+ */
+private fun layoutTimeline(root: MindNode, d: Float) {
+    val reach = 56f * d
+    val apart = 28f * d
+    val off = 26f * d
+    val step = 22f * d
+    val gap = 10f * d
+    root.left = -root.width
+    var x = root.right + reach
+    root.shownKids().forEachIndexed { i, stop ->
+        stop.side = 1
+        stop.left = x
+        stop.top = -stop.height / 2f
+        val down = i % 2 == 0
+        var y = if (down) stop.bottom + off else stop.top - off
+        var right = stop.right
+        fun place(n: MindNode, indent: Float) {
+            for (c in n.shownKids()) {
+                c.side = 1
+                c.left = stop.left + indent
+                if (down) {
+                    c.top = y
+                    y = c.bottom + gap
+                } else {
+                    c.top = y - c.height
+                    y = c.top - gap
+                }
+                right = max(right, c.right)
+                place(c, indent + step)
+            }
+        }
+        place(stop, step)
+        x = right + apart
+    }
+}
+
+/**
+ * A radial map (#156): the centre in the middle, each ring of ideas round it, every idea given a
+ * share of its parent's arc by how many ideas end under it, so a big branch has the room it needs.
+ */
+private fun layoutRadial(root: MindNode, d: Float) {
+    fun leaves(n: MindNode): Int {
+        val kids = n.shownKids()
+        n.span = if (kids.isEmpty()) 1f else kids.sumOf { leaves(it) }.toFloat()
+        return n.span.toInt()
+    }
+    leaves(root)
+    // each ring far enough out for the ideas on it to sit side by side
+    val ringWidth = HashMap<Int, Float>()
+    fun widths(n: MindNode) {
+        for (c in n.shownKids()) {
+            ringWidth[c.depth] = (ringWidth[c.depth] ?: 0f) + max(c.width, c.height) + 18f * d
+            widths(c)
+        }
+    }
+    widths(root)
+    val radius = HashMap<Int, Float>()
+    var r = max(root.width, root.height) / 2f
+    for (depth in 1..(ringWidth.keys.maxOrNull() ?: 0)) {
+        r = max(r + 120f * d, (ringWidth[depth] ?: 0f) / (2f * Math.PI.toFloat()))
+        radius[depth] = r
+    }
+    fun place(n: MindNode, from: Float, to: Float) {
+        val kids = n.shownKids()
+        if (kids.isEmpty()) return
+        var a = from
+        val each = (to - from) / n.span
+        for (c in kids) {
+            val share = each * c.span
+            val mid = a + share / 2f
+            val rr = radius[c.depth] ?: 0f
+            val cx = rr * kotlin.math.cos(mid)
+            val cy = rr * kotlin.math.sin(mid)
+            c.side = if (cx >= 0f) 1 else -1
+            c.left = cx - c.width / 2f
+            c.top = cy - c.height / 2f
+            place(c, a, a + share)
+            a += share
+        }
+    }
+    // the first idea at the top, the rest round clockwise
+    place(root, -Math.PI.toFloat() / 2f, 3f * Math.PI.toFloat() / 2f)
 }
 
 // ---- drawn -----------------------------------------------------------------------------------------
 
 /** A branch from ([x0], [y0]) to ([x1], [y1]): a soft S-curve that thins from [w0] to [w1]. */
 private fun taper(path: Path, x0: Float, y0: Float, x1: Float, y1: Float, w0: Float, w1: Float) {
+    val mx = (x0 + x1) / 2f
+    taper(path, x0, y0, mx, y0, mx, y1, x1, y1, w0, w1)
+}
+
+/** A branch along the curve from ([x0], [y0]) to ([x1], [y1]) through two handles, thinning from [w0] to [w1]. */
+private fun taper(path: Path, x0: Float, y0: Float, ax: Float, ay: Float, bx: Float, by: Float, x1: Float, y1: Float, w0: Float, w1: Float) {
     path.reset()
     val steps = 22
-    val mx = (x0 + x1) / 2f
     val xs = FloatArray(steps + 1)
     val ys = FloatArray(steps + 1)
     for (i in 0..steps) {
         val t = i / steps.toFloat()
         val u = 1f - t
-        xs[i] = u * u * u * x0 + 3f * u * u * t * mx + 3f * u * t * t * mx + t * t * t * x1
-        ys[i] = u * u * u * y0 + 3f * u * u * t * y0 + 3f * u * t * t * y1 + t * t * t * y1
+        xs[i] = u * u * u * x0 + 3f * u * u * t * ax + 3f * u * t * t * bx + t * t * t * x1
+        ys[i] = u * u * u * y0 + 3f * u * u * t * ay + 3f * u * t * t * by + t * t * t * y1
     }
     val lx = FloatArray(steps + 1)
     val ly = FloatArray(steps + 1)
@@ -539,7 +815,7 @@ private fun taper(path: Path, x0: Float, y0: Float, x1: Float, y1: Float, w0: Fl
  * their colour, the rest as cards edged with it. A folded idea carries the count of what it hides;
  * [selected] wears a ring, and [target] (where a dragged idea would go) a green one.
  */
-internal fun drawMind(canvas: android.graphics.Canvas, layout: MindLayout, dark: Boolean, selected: String? = null, target: String? = null) {
+internal fun drawMind(canvas: android.graphics.Canvas, layout: MindLayout, dark: Boolean, selected: String? = null, target: String? = null, found: Set<String> = emptySet()) {
     val d = layout.density
     val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
@@ -551,17 +827,51 @@ internal fun drawMind(canvas: android.graphics.Canvas, layout: MindLayout, dark:
     }
     val path = Path()
     val box = RectF()
+    val shape = layout.doc.layout
+    val rtl = layout.rtl
     for (n in layout.nodes) {
         val p = n.parent ?: continue
         val toRight = n.cx >= p.cx
-        val x0 = if (p.depth == 0) p.cx + (if (toRight) 1f else -1f) * p.width * 0.3f else if (toRight) p.right else p.left
-        val x1 = if (toRight) n.left else n.right
         val (w0, w1) = when (n.depth) {
             1 -> 8f to 3f
             2 -> 3.8f to 2f
             else -> 2.6f to 1.5f
         }
-        taper(path, x0, p.cy, x1, n.cy, w0 * d, w1 * d)
+        // each layout's own branches (#156): sideways S-curves, down from the parent, elbows from
+        // its edge, a line from stop to stop, or straight spokes out of the middle
+        val elbowX = if (rtl) p.right - min(16f * d, p.width / 2f) else p.left + min(16f * d, p.width / 2f)
+        when {
+            shape == MapLayout.Org -> {
+                val my = (p.bottom + n.top) / 2f
+                taper(path, p.cx, p.bottom, p.cx, my, n.cx, my, n.cx, n.top, w0 * d, w1 * d)
+            }
+            shape == MapLayout.Tree || (shape == MapLayout.Timeline && n.depth >= 2) -> {
+                val below = n.cy > p.cy
+                val y0 = if (below) p.bottom else p.top
+                val x1 = if (rtl) n.right else n.left
+                taper(path, elbowX, y0, elbowX, n.cy, elbowX, n.cy, x1, n.cy, w0 * d, w1 * d)
+            }
+            shape == MapLayout.Timeline -> {
+                // the line runs from stop to stop: from the one before, or from the centre
+                val before = p.children.getOrNull(p.children.indexOf(n) - 1)
+                val from = before ?: p
+                val x0 = if (rtl) from.left else from.right
+                val x1 = if (rtl) n.right else n.left
+                taper(path, x0, from.cy, x1, n.cy, if (before == null) w0 * d else w1 * d * 1.6f, w1 * d * 1.6f)
+            }
+            shape == MapLayout.Radial -> {
+                val ax = p.cx + (n.cx - p.cx) / 3f
+                val ay = p.cy + (n.cy - p.cy) / 3f
+                val bx = p.cx + (n.cx - p.cx) * 2f / 3f
+                val by = p.cy + (n.cy - p.cy) * 2f / 3f
+                taper(path, p.cx, p.cy, ax, ay, bx, by, n.cx, n.cy, w0 * d, w1 * d)
+            }
+            else -> {
+                val x0 = if (p.depth == 0) p.cx + (if (toRight) 1f else -1f) * p.width * 0.3f else if (toRight) p.right else p.left
+                val x1 = if (toRight) n.left else n.right
+                taper(path, x0, p.cy, x1, n.cy, w0 * d, w1 * d)
+            }
+        }
         fill.color = branchColor(n.tint).copy(alpha = if (dark) 0.9f else 0.82f).toArgb()
         canvas.drawPath(path, fill)
     }
@@ -596,7 +906,8 @@ internal fun drawMind(canvas: android.graphics.Canvas, layout: MindLayout, dark:
             canvas.drawRoundRect(box, radius, radius, stroke)
         }
         n.words?.let { w ->
-            w.paint.color = (if (n.text.isBlank()) words.copy(alpha = 0.5f) else words).toArgb()
+            val own = if (n.ink != 0 && n.text.isNotBlank()) Color(n.ink) else words
+            w.paint.color = (if (n.text.isBlank()) words.copy(alpha = 0.5f) else own).toArgb()
             canvas.save()
             canvas.translate(n.cx - w.width / 2f, n.cy - w.height / 2f)
             w.draw(canvas)
@@ -612,10 +923,10 @@ internal fun drawMind(canvas: android.graphics.Canvas, layout: MindLayout, dark:
             val label = if (n.hidden > 99) "99+" else n.hidden.toString()
             canvas.drawText(label, bx, n.cy - (badge.descent() + badge.ascent()) / 2f, badge)
         }
-        if (n.id == selected || n.id == target) {
+        if (n.id == selected || n.id == target || n.id in found) {
             val ring = 5f * d
             stroke.strokeWidth = 2.5f * d
-            stroke.color = (if (n.id == target) Candy.Mint else Candy.Sky).toArgb()
+            stroke.color = (if (n.id == target) Candy.Mint else if (n.id == selected) Candy.Sky else Candy.Tangerine).toArgb()
             box.inset(-ring, -ring)
             canvas.drawRoundRect(box, radius + ring, radius + ring, stroke)
         }
@@ -712,8 +1023,18 @@ fun MindMapEditor(vm: AppViewModel, id: String) {
     var editing by remember { mutableStateOf<String?>(null) }
     var fresh by remember { mutableStateOf(false) }
     var field by remember { mutableStateOf(TextFieldValue()) }
+    // the picked idea's Style panel: its words' style and colours, and its branch's colour
     var palette by remember { mutableStateOf(false) }
     var target by remember { mutableStateOf<String?>(null) }
+    // #156: looking for words in the map, the map as an outline, and choosing its layout and direction
+    var searching by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    var foundAt by remember { mutableIntStateOf(0) }
+    var outlining by remember { mutableStateOf(false) }
+    var outlineAt by remember { mutableStateOf<String?>(null) }
+    var outlineFocus by remember { mutableStateOf<String?>(null) }
+    var layoutMenu by remember { mutableStateOf(false) }
+    var directionMenu by remember { mutableStateOf(false) }
     var menuAt by remember { mutableStateOf<Rect?>(null) }
     var moreAnchor by remember { mutableStateOf(Rect.Zero) }
     var scale by remember { mutableFloatStateOf(1f) }
@@ -836,6 +1157,100 @@ fun MindMapEditor(vm: AppViewModel, id: String) {
         changed()
         feel(Feel.Tick)
     }
+    /** The picked idea's words set another way (#156): one step to undo. */
+    fun style(n: MindNode, change: MindNode.() -> Unit) {
+        keep()
+        n.change()
+        changed()
+        feel(Feel.Tick)
+    }
+    /** The ideas holding the words looked for, in the map's order (folded branches too). */
+    fun matches(): List<MindNode> {
+        val q = query.trim()
+        if (q.isEmpty()) return emptyList()
+        val out = ArrayList<MindNode>()
+        fun walk(n: MindNode) {
+            if (n.text.contains(q, ignoreCase = true)) out.add(n)
+            n.children.forEach(::walk)
+        }
+        walk(doc.root)
+        return out
+    }
+    /** [n] picked and in view: the branches folded over it opened, then the map glides to it. */
+    fun reveal(n: MindNode) {
+        val trail = ArrayList<MindNode>()
+        fun path(at: MindNode): Boolean {
+            if (at === n) return true
+            trail.add(at)
+            for (c in at.children) if (path(c)) return true
+            trail.removeAt(trail.lastIndex)
+            return false
+        }
+        path(doc.root)
+        var opened = false
+        trail.forEach { if (it.collapsed) { it.collapsed = false; opened = true } }
+        if (opened) changed()
+        selected = n.id
+        palette = false
+        scope.launch {
+            delay(40)
+            current.doc.root.find(n.id)?.let { show(it) }
+        }
+    }
+    fun pickLayout(l: MapLayout) {
+        if (doc.layout == l) return
+        keep()
+        doc.layout = l
+        changed()
+        scope.launch {
+            delay(30)
+            fit()
+        }
+    }
+    fun pickDirection(dir: MapDirection) {
+        if (doc.direction == dir) return
+        keep()
+        doc.direction = dir
+        changed()
+        scope.launch {
+            delay(30)
+            fit()
+        }
+    }
+    // the outline (#156): a new idea after [n] (the first under the centre), indent and outdent
+    fun outlineNew(n: MindNode, parent: MindNode?) {
+        keep()
+        val fresh = MindNode("")
+        if (parent == null) {
+            n.collapsed = false
+            n.children.add(0, fresh)
+        } else {
+            parent.children.add(parent.children.indexOf(n) + 1, fresh)
+        }
+        changed()
+        outlineFocus = fresh.id
+    }
+    fun indent(n: MindNode, parent: MindNode?) {
+        val p = parent ?: return
+        val i = p.children.indexOf(n)
+        if (i <= 0) return
+        keep()
+        val before = p.children[i - 1]
+        p.children.removeAt(i)
+        before.collapsed = false
+        before.children.add(n)
+        changed()
+        outlineFocus = n.id
+    }
+    fun outdent(n: MindNode, parent: MindNode?, grand: MindNode?) {
+        val p = parent ?: return
+        val g = grand ?: return
+        keep()
+        p.children.remove(n)
+        g.children.add(g.children.indexOf(p) + 1, n)
+        changed()
+        outlineFocus = n.id
+    }
     fun step(from: ArrayList<String>, to: ArrayList<String>) {
         if (editing != null) finishEdit()
         val s = from.removeLastOrNull() ?: return
@@ -865,6 +1280,11 @@ fun MindMapEditor(vm: AppViewModel, id: String) {
 
     BackHandler {
         when {
+            searching -> {
+                searching = false
+                query = ""
+            }
+            outlining -> outlining = false
             editing != null -> finishEdit()
             selected != null -> {
                 selected = null
@@ -905,6 +1325,8 @@ fun MindMapEditor(vm: AppViewModel, id: String) {
     }
 
     val chosen = selected?.let { doc.root.find(it) }?.takeIf { s -> layout.nodes.any { it === s } }
+    // the ideas holding what is looked for, ringed on the map
+    val found = remember(query, version, searching, doc) { if (searching) matches().map { it.id }.toSet() else emptySet() }
     val ground = if (c.dark) Color(0xFF14152B) else Color(0xFFF6F7FB)
     val backdrop = rememberLayerBackdrop()
     Box(Modifier.fillMaxSize().background(ground)) {
@@ -1018,10 +1440,29 @@ fun MindMapEditor(vm: AppViewModel, id: String) {
                     nc.save()
                     nc.translate(pan.x, pan.y)
                     nc.scale(scale, scale)
-                    drawMind(nc, layout, c.dark, selected, target)
+                    drawMind(nc, layout, c.dark, selected, target, found)
                     nc.restore()
                 }
             }
+        }
+
+        if (outlining) {
+            MindOutline(
+                doc = doc, version = version, ground = ground, rootHint = rootHint, hint = hint,
+                focusId = outlineFocus, onFocused = { id ->
+                    if (outlineAt != id) keep()
+                    outlineAt = id
+                    outlineFocus = null
+                },
+                onText = { n, t ->
+                    if (n.text != t) {
+                        n.text = t
+                        version++
+                        save()
+                    }
+                },
+                onNext = { n, parent -> outlineNew(n, parent) },
+            )
         }
 
         CompositionLocalProvider(LocalBackdrop provides backdrop) {
@@ -1062,8 +1503,96 @@ fun MindMapEditor(vm: AppViewModel, id: String) {
                 }
             }
 
+            // ---- looking for words in the map (#156)
+            if (searching) {
+                val hits = remember(query, version, doc) { matches() }
+                val searchFocus = remember { FocusRequester() }
+                LaunchedEffect(Unit) { runCatching { searchFocus.requestFocus() } }
+                Row(
+                    Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 66.dp, start = 14.dp, end = 14.dp).fillMaxWidth().height(48.dp)
+                        .then(ink.modifier).glassBar(edge = ink.edge, lift = ink.lift).padding(start = 16.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(LucideIcons.Search, null, tint = ink.color.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                        if (query.isEmpty()) Text(stringResource(R.string.mindmap_search_hint), style = ClearType.Body, color = ink.color.copy(alpha = 0.62f), maxLines = 1)
+                        androidx.compose.foundation.text.BasicTextField(
+                            value = query,
+                            onValueChange = {
+                                query = it
+                                foundAt = 0
+                                matches().firstOrNull()?.let { n -> reveal(n) }
+                            },
+                            singleLine = true,
+                            textStyle = ClearType.Body.copy(color = ink.color),
+                            cursorBrush = SolidColor(Candy.Sky),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { keyboard?.hide() }),
+                            modifier = Modifier.fillMaxWidth().focusRequester(searchFocus),
+                        )
+                    }
+                    if (query.isNotBlank()) {
+                        Text(
+                            if (hits.isEmpty()) stringResource(R.string.mindmap_no_matches) else stringResource(R.string.mindmap_matches, foundAt.coerceAtMost(hits.size - 1) + 1, hits.size),
+                            style = ClearType.Label, color = ink.color.copy(alpha = 0.68f), maxLines = 1, modifier = Modifier.padding(horizontal = 4.dp),
+                        )
+                    }
+                    val step = { by: Int ->
+                        if (hits.isNotEmpty()) {
+                            foundAt = ((foundAt + by) % hits.size + hits.size) % hits.size
+                            reveal(hits[foundAt])
+                        }
+                    }
+                    BarGlyphButton({ step(-1) }, stringResource(R.string.viewer_find_previous), size = 44.dp, enabled = hits.size > 1) {
+                        Icon(LucideIcons.ChevronUp, null, tint = ink.color, modifier = Modifier.size(19.dp))
+                    }
+                    BarGlyphButton({ step(1) }, stringResource(R.string.viewer_find_next), size = 44.dp, enabled = hits.size > 1) {
+                        Icon(LucideIcons.ChevronDown, null, tint = ink.color, modifier = Modifier.size(19.dp))
+                    }
+                    BarGlyphButton({
+                        searching = false
+                        query = ""
+                        keyboard?.hide()
+                    }, stringResource(R.string.mindmap_search_close), size = 44.dp) {
+                        Icon(LucideIcons.X, null, tint = ink.color, modifier = Modifier.size(19.dp))
+                    }
+                }
+            }
+
+            // ---- the outline's own keys, over the keyboard (#156)
+            if (outlining) {
+                val rows = remember(doc, version) { outlineRows(doc) }
+                val at = rows.firstOrNull { it.node.id == outlineAt }
+                Row(
+                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding().imePadding().padding(horizontal = 12.dp, vertical = 10.dp)
+                        .then(ink.modifier).glassBar(edge = ink.edge, lift = ink.lift).padding(horizontal = 6.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CompositionLocalProvider(LocalGlassInk provides ink.color) {
+                        if (at != null && at.parent != null) {
+                            MapTool(LucideIcons.IndentLess, stringResource(R.string.mindmap_outdent)) { outdent(at.node, at.parent, at.grand) }
+                            MapTool(LucideIcons.IndentMore, stringResource(R.string.mindmap_indent)) { indent(at.node, at.parent) }
+                        }
+                        if (at != null) MapTool(LucideIcons.Plus, stringResource(R.string.mindmap_sibling)) { outlineNew(at.node, at.parent) }
+                        if (at != null && at.parent != null) MapTool(LucideIcons.Trash2, stringResource(R.string.common_delete), tint = Candy.Tomato) {
+                            delete(at.node)
+                            outlineAt = null
+                        }
+                        MapTool(LucideIcons.Network, stringResource(R.string.mindmap_map_view)) {
+                            outlining = false
+                            keyboard?.hide()
+                            scope.launch {
+                                delay(30)
+                                fit()
+                            }
+                        }
+                    }
+                }
+            }
+
             // ---- bottom: what can be done with the picked idea, or typing in it
-            Column(
+            if (!outlining) Column(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().imePadding().padding(horizontal = 12.dp, vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1133,15 +1662,61 @@ fun MindMapEditor(vm: AppViewModel, id: String) {
                         }
                     }
                     chosen != null -> {
-                        AnimatedVisibility(palette && chosen !== doc.root, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-                            Row(
-                                Modifier.then(ink.modifier).glassBar(edge = ink.edge, lift = ink.lift).padding(horizontal = 12.dp, vertical = 10.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Swatch(Brush.sweepGradient(BranchColors + BranchColors.first()), chosen.color < 0, ink.color, stringResource(R.string.mindmap_branch_colour)) { colour(chosen, -1) }
-                                BranchColors.forEachIndexed { i, col ->
-                                    Swatch(SolidColor(col), chosen.color == i, ink.color, null) { colour(chosen, i) }
+                        AnimatedVisibility(palette, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                // the words: weight, slant, lines, size and alignment (#156)
+                                val boldNow = chosen.bold ?: (chosen.depth <= 1)
+                                Row(
+                                    Modifier.then(ink.modifier).glassBar(edge = ink.edge, lift = ink.lift).horizontalScroll(rememberScrollState()).padding(horizontal = 6.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    CompositionLocalProvider(LocalGlassInk provides ink.color) {
+                                        StyleKey(LucideIcons.Bold, stringResource(R.string.mindmap_bold), boldNow) { style(chosen) { bold = !boldNow } }
+                                        StyleKey(LucideIcons.Italic, stringResource(R.string.mindmap_italic), chosen.italic) { style(chosen) { italic = !italic } }
+                                        StyleKey(LucideIcons.Underline, stringResource(R.string.mindmap_underline), chosen.underline) { style(chosen) { underline = !underline } }
+                                        StyleKey(LucideIcons.Strikethrough, stringResource(R.string.mindmap_strike), chosen.strike) { style(chosen) { strike = !strike } }
+                                        StyleKey(LucideIcons.AArrowDown, stringResource(R.string.mindmap_smaller), false, enabled = chosen.size > SizeSteps.first()) {
+                                            style(chosen) { size = SizeSteps.lastOrNull { it < size - 0.01f } ?: size }
+                                        }
+                                        StyleKey(LucideIcons.AArrowUp, stringResource(R.string.mindmap_larger), false, enabled = chosen.size < SizeSteps.last()) {
+                                            style(chosen) { size = SizeSteps.firstOrNull { it > size + 0.01f } ?: size }
+                                        }
+                                        StyleKey(
+                                            when (chosen.align) {
+                                                -1 -> LucideIcons.AlignLeft
+                                                1 -> LucideIcons.AlignRight
+                                                else -> LucideIcons.AlignCenter
+                                            },
+                                            stringResource(R.string.mindmap_align), chosen.align != 0,
+                                        ) { style(chosen) { align = if (align == 0) -1 else if (align == -1) 1 else 0 } }
+                                    }
+                                }
+                                // the words' colour, then a highlight behind them
+                                Row(
+                                    Modifier.then(ink.modifier).glassBar(edge = ink.edge, lift = ink.lift).horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Swatch(SolidColor(ink.color), chosen.ink == 0, ink.color, stringResource(R.string.mindmap_text_colour)) { style(chosen) { this.ink = 0 } }
+                                    TextInks.forEach { col ->
+                                        Swatch(SolidColor(col), chosen.ink == col.toArgb(), ink.color, null) { style(chosen) { this.ink = col.toArgb() } }
+                                    }
+                                    Box(Modifier.width(1.dp).height(26.dp).background(ink.color.copy(alpha = 0.2f)))
+                                    Swatch(SolidColor(Color.Transparent), chosen.mark == 0, ink.color, stringResource(R.string.mindmap_highlight)) { style(chosen) { mark = 0 } }
+                                    Highlights.forEach { col ->
+                                        Swatch(SolidColor(col), chosen.mark == col.toArgb(), ink.color, null) { style(chosen) { mark = col.toArgb() } }
+                                    }
+                                }
+                                // the branch's colour (not the centre's)
+                                if (chosen !== doc.root) Row(
+                                    Modifier.then(ink.modifier).glassBar(edge = ink.edge, lift = ink.lift).padding(horizontal = 12.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Swatch(Brush.sweepGradient(BranchColors + BranchColors.first()), chosen.color < 0, ink.color, stringResource(R.string.mindmap_branch_colour)) { colour(chosen, -1) }
+                                    BranchColors.forEachIndexed { i, col ->
+                                        Swatch(SolidColor(col), chosen.color == i, ink.color, null) { colour(chosen, i) }
+                                    }
                                 }
                             }
                         }
@@ -1153,7 +1728,7 @@ fun MindMapEditor(vm: AppViewModel, id: String) {
                                 MapTool(LucideIcons.Plus, stringResource(R.string.mindmap_child)) { addChild(chosen) }
                                 if (chosen !== doc.root) MapTool(LucideIcons.RowsAdd, stringResource(R.string.mindmap_sibling)) { addSibling(chosen) }
                                 MapTool(LucideIcons.Pencil, stringResource(R.string.mindmap_edit)) { startEdit(chosen, isNew = false) }
-                                if (chosen !== doc.root) MapTool(LucideIcons.Palette, stringResource(R.string.mindmap_colour), lit = palette) { palette = !palette }
+                                MapTool(LucideIcons.Palette, stringResource(R.string.mindmap_style), lit = palette) { palette = !palette }
                                 if (chosen.children.isNotEmpty()) {
                                     MapTool(if (chosen.collapsed) LucideIcons.Eye else LucideIcons.EyeOff, stringResource(if (chosen.collapsed) R.string.mindmap_unfold else R.string.mindmap_fold)) { fold(chosen) }
                                 }
@@ -1187,21 +1762,43 @@ fun MindMapEditor(vm: AppViewModel, id: String) {
                 onDismiss = { menuAt = null },
                 items = listOf(
                     GlassMenuItem(stringResource(R.string.mindmap_fit), LucideIcons.Maximize) { fit() },
-                    GlassMenuItem(stringResource(if (doc.oneSided) R.string.mindmap_both_sides else R.string.mindmap_one_side), LucideIcons.Network) {
-                        keep()
-                        doc.oneSided = !doc.oneSided
-                        changed()
-                        scope.launch {
-                            delay(30)
-                            fit()
-                        }
+                    GlassMenuItem(stringResource(R.string.mindmap_search), LucideIcons.Search) {
+                        if (editing != null) finishEdit()
+                        outlining = false
+                        query = ""
+                        foundAt = 0
+                        searching = true
                     },
+                    GlassMenuItem(stringResource(R.string.mindmap_outline), LucideIcons.OutlineList) {
+                        if (editing != null) finishEdit()
+                        searching = false
+                        selected = null
+                        palette = false
+                        outlining = true
+                    },
+                    GlassMenuItem(stringResource(R.string.mindmap_layout), LucideIcons.MapLayout) { layoutMenu = true },
+                    GlassMenuItem(stringResource(R.string.mindmap_direction), LucideIcons.TextDirection) { directionMenu = true },
                     GlassMenuItem(stringResource(R.string.mindmap_save_image), LucideIcons.ImagePlus) { export("png") },
                     GlassMenuItem(stringResource(R.string.mindmap_save_pdf), LucideIcons.FilePdf) { export("pdf") },
                     GlassMenuItem(stringResource(R.string.mindmap_save_opml), LucideIcons.FileOutput) { export("opml") },
                 ),
             )
         }
+        // the layouts and directions to choose from, the one in use ticked
+        if (layoutMenu) GlassMenu(
+            anchor = moreAnchor,
+            onDismiss = { layoutMenu = false },
+            items = MapLayout.entries.map { l ->
+                GlassMenuItem(stringResource(layoutName(l)), if (doc.layout == l) LucideIcons.Check else null) { pickLayout(l) }
+            },
+        )
+        if (directionMenu) GlassMenu(
+            anchor = moreAnchor,
+            onDismiss = { directionMenu = false },
+            items = MapDirection.entries.map { dir ->
+                GlassMenuItem(stringResource(directionName(dir)), if (doc.direction == dir) LucideIcons.Check else null) { pickDirection(dir) }
+            },
+        )
     }
 }
 
@@ -1377,4 +1974,193 @@ internal fun MindMapPreview(
             }
         }
     }
+}
+
+
+/** The sizes an idea's words step through (#156): a step on its depth's own. */
+private val SizeSteps = listOf(0.8f, 1f, 1.25f, 1.5f, 1.85f)
+
+/** Colours for an idea's words, readable on the cards in either theme. */
+private val TextInks = listOf(Candy.Tomato, Candy.Tangerine, Color(0xFF2E9E57), Candy.Sky, Candy.Grape, Candy.Bubblegum)
+
+/**
+ * Highlights behind an idea's words: solid pastels, as a highlighter's, so they read the same on a
+ * white card and on a first idea's coloured one (see-through, they went muddy over its colour).
+ */
+private val Highlights = listOf(Color(0xFFFFF09A), Color(0xFFB9F2DF), Color(0xFFC6E2FF), Color(0xFFFFD0E4))
+
+@androidx.annotation.StringRes
+private fun layoutName(l: MapLayout): Int = when (l) {
+    MapLayout.Balanced -> R.string.mindmap_layout_balanced
+    MapLayout.Logic -> R.string.mindmap_layout_logic
+    MapLayout.Org -> R.string.mindmap_layout_org
+    MapLayout.Tree -> R.string.mindmap_layout_tree
+    MapLayout.Timeline -> R.string.mindmap_layout_timeline
+    MapLayout.Radial -> R.string.mindmap_layout_radial
+}
+
+@androidx.annotation.StringRes
+private fun directionName(dir: MapDirection): Int = when (dir) {
+    MapDirection.Auto -> R.string.mindmap_dir_auto
+    MapDirection.Ltr -> R.string.mindmap_dir_ltr
+    MapDirection.Rtl -> R.string.mindmap_dir_rtl
+}
+
+/** A style key in the Style panel: its glyph, lit while the style is on. */
+@Composable
+private fun StyleKey(icon: ImageVector, label: String, on: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
+    val tint = LocalGlassInk.current
+    Box(
+        Modifier.size(48.dp).pressable(onClick, enabled = enabled, pressedScale = 0.88f).semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.size(36.dp).clip(CircleShape).background(if (on) Candy.Sky else Color.Transparent))
+        Icon(icon, null, tint = if (on) Color.White else tint.copy(alpha = if (enabled) 1f else 0.35f), modifier = Modifier.size(20.dp))
+    }
+}
+
+/** A row of the outline: an idea, how deep it sits, the idea it is under and that one's own. */
+internal class OutlineRow(val node: MindNode, val depth: Int, val parent: MindNode?, val grand: MindNode?)
+
+/** Every idea of [doc] in the map's order, folded branches too: the outline's rows. */
+internal fun outlineRows(doc: MindDoc): List<OutlineRow> {
+    val out = ArrayList<OutlineRow>()
+    fun walk(n: MindNode, depth: Int, parent: MindNode?, grand: MindNode?) {
+        out.add(OutlineRow(n, depth, parent, grand))
+        n.children.forEach { walk(it, depth + 1, n, parent) }
+    }
+    walk(doc.root, 0, null, null)
+    return out
+}
+
+/**
+ * The map as an outline (#156): every idea a line, stepped in under the one it belongs to, typed into
+ * where it is. Writing here changes the map, and the map's changes are here. A new line comes with the
+ * keyboard's Next; the keys over the keyboard step a line in or out. A right-to-left map's outline
+ * runs from the right.
+ */
+@Composable
+private fun MindOutline(
+    doc: MindDoc,
+    version: Int,
+    ground: Color,
+    rootHint: String,
+    hint: String,
+    focusId: String?,
+    onFocused: (String) -> Unit,
+    onText: (MindNode, String) -> Unit,
+    onNext: (MindNode, MindNode?) -> Unit,
+) {
+    val c = clear
+    val rows = remember(doc, version) { outlineRows(doc) }
+    val focusers = remember(doc) { HashMap<String, FocusRequester>() }
+    val direction = if (doc.rtl) androidx.compose.ui.unit.LayoutDirection.Rtl else androidx.compose.ui.platform.LocalLayoutDirection.current
+    LaunchedEffect(focusId, rows) {
+        val id = focusId ?: return@LaunchedEffect
+        delay(30)
+        runCatching { focusers[id]?.requestFocus() }
+    }
+    CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides direction) {
+        androidx.compose.foundation.lazy.LazyColumn(
+            Modifier.fillMaxSize().background(ground).statusBarsPadding().imePadding(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 74.dp, bottom = 120.dp),
+        ) {
+            items(rows.size, key = { rows[it].node.id }) { i ->
+                val row = rows[i]
+                val n = row.node
+                Row(
+                    Modifier.fillMaxWidth().padding(start = (18 + row.depth * 22).dp, end = 18.dp, top = 5.dp, bottom = 5.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Box(
+                        Modifier.padding(top = if (row.depth == 0) 11.dp else 8.dp).size(if (row.depth == 0) 10.dp else 7.dp).clip(CircleShape)
+                            .background(if (row.depth == 0) c.ink else branchColor(n.tint)),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    androidx.compose.runtime.key(n.id) {
+                        val focuser = focusers.getOrPut(n.id) { FocusRequester() }
+                        val words = remember { androidx.compose.foundation.text.input.TextFieldState(n.text) }
+                        LaunchedEffect(words) {
+                            androidx.compose.runtime.snapshotFlow { words.text.toString() }.collect { t -> onText(n, t.replace('\n', ' ')) }
+                        }
+                        Box(Modifier.weight(1f)) {
+                            val type = if (row.depth == 0) ClearType.Title.copy(fontSize = 20.sp, color = c.ink) else ClearType.Body.copy(fontSize = 16.sp, color = c.ink)
+                            if (words.text.isEmpty()) Text(if (row.depth == 0) rootHint else hint, style = type, color = c.ink.copy(alpha = 0.45f))
+                            BasicTextField(
+                                state = words,
+                                modifier = Modifier.fillMaxWidth().focusRequester(focuser)
+                                    .onFocusChanged { if (it.isFocused) onFocused(n.id) },
+                                textStyle = type,
+                                cursorBrush = SolidColor(Candy.Sky),
+                                lineLimits = androidx.compose.foundation.text.input.TextFieldLineLimits.MultiLine(maxHeightInLines = 4),
+                                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
+                                onKeyboardAction = { onNext(n, row.parent) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** [text] as a map: an OPML outline, or an Excalidraw drawing (#162). */
+internal fun mindFromFile(text: String): MindDoc? =
+    if (text.trimStart().startsWith("{")) mindFromExcalidraw(text) else mindFromOpml(text)
+
+/**
+ * An Excalidraw drawing as a map (#162): each shape's words (or a lone text) an idea, each arrow
+ * from one to another a branch. The centre is the idea no arrow points to with the most leaving it
+ * (else the first); ideas no arrow reaches hang from the centre; a loop is cut where it closes.
+ * Deleted elements are skipped. Null when the file holds no words at all.
+ */
+internal fun mindFromExcalidraw(json: String): MindDoc? {
+    val o = runCatching { JSONObject(json) }.getOrNull() ?: return null
+    if (o.optString("type") != "excalidraw" && !o.has("elements")) return null
+    val elements = o.optJSONArray("elements") ?: return null
+    val all = (0 until elements.length()).mapNotNull { elements.optJSONObject(it) }.filter { !it.optBoolean("isDeleted") }
+    val byId = all.associateBy { it.optString("id") }
+    fun words(e: JSONObject) = (e.optString("originalText").ifEmpty { e.optString("text") }).replace('\n', ' ').trim()
+    // an idea for each shape holding words, and each text standing on its own
+    val ideas = LinkedHashMap<String, MindNode>()
+    for (e in all) {
+        when (e.optString("type")) {
+            "text" -> {
+                val holder = e.optString("containerId").takeIf { it.isNotEmpty() && it != "null" }
+                val t = words(e)
+                if (t.isEmpty()) continue
+                // words inside a shape name the shape; an arrow's label is left to the arrow
+                val key = holder?.takeIf { byId[it]?.optString("type") !in setOf("arrow", "line") } ?: if (holder == null) e.optString("id") else continue
+                ideas[key] = MindNode(t)
+            }
+        }
+    }
+    if (ideas.isEmpty()) return null
+    if (ideas.size > MAX_NODES) return null
+    // arrows from idea to idea (bound to a shape, or to a text standing alone)
+    val edges = ArrayList<Pair<String, String>>()
+    for (e in all) {
+        if (e.optString("type") != "arrow") continue
+        val from = e.optJSONObject("startBinding")?.optString("elementId")?.let { id -> byId[id]?.optString("containerId")?.takeIf { it.isNotEmpty() && it != "null" } ?: id }
+        val to = e.optJSONObject("endBinding")?.optString("elementId")?.let { id -> byId[id]?.optString("containerId")?.takeIf { it.isNotEmpty() && it != "null" } ?: id }
+        if (from != null && to != null && from != to && from in ideas && to in ideas) edges.add(from to to)
+    }
+    val incoming = edges.groupingBy { it.second }.eachCount()
+    val outgoing = edges.groupingBy { it.first }.eachCount()
+    val rootId = ideas.keys.filter { (incoming[it] ?: 0) == 0 }.maxByOrNull { outgoing[it] ?: 0 } ?: ideas.keys.first()
+    val placed = HashSet<String>().apply { add(rootId) }
+    val queue = ArrayDeque<String>().apply { add(rootId) }
+    while (queue.isNotEmpty()) {
+        val at = queue.removeFirst()
+        for ((from, to) in edges) {
+            if (from != at || to in placed) continue
+            placed.add(to)
+            ideas.getValue(at).children.add(ideas.getValue(to))
+            queue.add(to)
+        }
+    }
+    // what no arrow reached hangs from the centre, in the drawing's order
+    val root = ideas.getValue(rootId)
+    for ((id, n) in ideas) if (id !in placed) root.children.add(n)
+    return MindDoc(root)
 }

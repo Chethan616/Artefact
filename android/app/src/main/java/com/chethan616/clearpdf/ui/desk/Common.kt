@@ -93,6 +93,8 @@ object ToolCatalog {
     val Combine = ToolDef("combine", LucideIcons.Combine, R.string.common_tool_combine, R.string.home_about_combine, Candy.Sky, setOf("Create", "Edit")) { it.pickFiles(FilePickKind.Combine) }
     val Organize = ToolDef("organize", LucideIcons.LayoutGrid, R.string.common_tool_organize, R.string.home_about_organize, Candy.Lime, setOf("Edit")) { it.toolForFile(FileTool.Organize) }
     val Crop = ToolDef("crop", LucideIcons.Crop, R.string.common_tool_crop, R.string.home_about_crop, Candy.Mint, setOf("Edit")) { it.toolForFile(FileTool.Crop) }
+    /** One PDF into several (#170): single pages, every few pages, or at its bookmarks. */
+    val Split = ToolDef("split", LucideIcons.Scissors, R.string.tool_split, R.string.home_about_split, Candy.Tangerine, setOf("Edit")) { it.toolForFile(FileTool.Split) }
     val Compress = ToolDef("compress", LucideIcons.FileArchive, R.string.common_tool_compress, R.string.home_about_compress, Candy.Mint, setOf("Convert")) { it.toolForFile(FileTool.Compress) }
     val Export = ToolDef("export", LucideIcons.FileOutput, R.string.common_tool_export, R.string.home_about_export, Candy.Tangerine, setOf("Convert")) { it.toolForFile(FileTool.Export) }
     // one tool for a PDF's password: set one, or take it off for good
@@ -107,7 +109,7 @@ object ToolCatalog {
 
     // Text to PDF is a way of Create PDF, and finding a form's fields a part of Fill & Sign: neither
     // is a tile of its own
-    val All = listOf(Edit, FillSign, Scan, Combine, Comment, ReadAloud, Organize, Compress, Export, Crop, Protect, Create, EditPhoto)
+    val All = listOf(Edit, FillSign, Scan, Combine, Split, Comment, ReadAloud, Organize, Compress, Export, Crop, Protect, Create, EditPhoto)
 }
 
 /**

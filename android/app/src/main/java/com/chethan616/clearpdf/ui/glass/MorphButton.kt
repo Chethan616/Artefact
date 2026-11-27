@@ -189,7 +189,15 @@ object MorphAnchors {
 
     private val tints = HashMap<Long, Color>()
 
-    internal fun setTint(r: Rect, tint: Color) { if (tint.isSpecified) tints[key(r)] = tint else tints.remove(key(r)) }
+    internal fun setTint(r: Rect, tint: Color, solid: Boolean = false) {
+        if (tint.isSpecified) tints[key(r)] = tint else tints.remove(key(r))
+        if (solid && tint.isSpecified) solids.add(key(r)) else solids.remove(key(r))
+    }
+
+    private val solids = HashSet<Long>()
+
+    /** Whether the button at [r] paints its tint solid (the viewer's blue More tools): its morph must too. */
+    internal fun solidAt(r: Rect): Boolean = key(r) in solids
 
     internal fun tintAt(r: Rect): Color? = tints[key(r)]
 

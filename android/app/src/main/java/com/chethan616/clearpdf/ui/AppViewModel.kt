@@ -223,8 +223,8 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         // a mind map (OPML) opens as a map to look at, and can be made into a mind-map note
         if (com.chethan616.clearpdf.engine.DocumentTypes.isMindMapName(file.name)) {
             val doc = withContext(Dispatchers.IO) {
-                runCatching { if (file.length() < 8L shl 20) com.chethan616.clearpdf.ui.notes.mindFromOpml(file.readText()) else null }.getOrNull()
-            } ?: return tell(text(R.string.msg_not_opml))
+                runCatching { if (file.length() < 8L shl 20) com.chethan616.clearpdf.ui.notes.mindFromFile(file.readText()) else null }.getOrNull()
+            } ?: return tell(text(R.string.msg_not_map))
             previewingMap = OpenedMap(uri, file.name, doc, otherAppUri == uri)
             withContext(Dispatchers.IO) {
                 recents.touch(RecentFile(uri.toString(), file.name, System.currentTimeMillis(), 1, file.length(), 0))
@@ -475,7 +475,7 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         }
         val info = doc.info
         val blocked = when (tool) {
-            ViewerTool.Comment, ViewerTool.Markup, ViewerTool.Draw, ViewerTool.Text -> !info.allowsAnnotation
+            ViewerTool.Comment, ViewerTool.Markup, ViewerTool.Draw, ViewerTool.Text, ViewerTool.Measure -> !info.allowsAnnotation
             ViewerTool.FillSign -> !info.allowsFormFilling && !info.allowsAnnotation
             ViewerTool.Edit -> info.readOnlyReason != null || !info.allowsAssembly && info.encrypted
             ViewerTool.None -> false
@@ -2532,6 +2532,35 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         doc.controller.pagesOpen = true
     }
 
+    /**
+     * [doc] split into several PDFs (#170): [every] pages a part (1: single pages), or at its top-level
+     * bookmarks; the parts are saved to Downloads, or handed to the share sheet.
+     */
+    fun splitDocument(doc: OpenDocument, every: Int, bookmarks: Boolean, share: Boolean) = job(text(R.string.msg_busy_splitting)) { eng ->
+        val dir = File(getApplication<android.app.Application>().cacheDir, "split-${System.nanoTime()}").apply { mkdirs() }
+        try {
+            val args = buildMap<String, Any?> {
+                put("doc", doc.id)
+                put("out_dir", dir.absolutePath)
+                if (bookmarks) put("bookmarks", true) else put("every", every.coerceAtLeast(1))
+            }
+            val r = eng.tool("doc_split", args)
+            val parts = r.optJSONArray("files") ?: org.json.JSONArray()
+            val made = (0 until parts.length()).map { i -> File(parts.getJSONObject(i).getString("path")).let { it to it.name } }
+            toolScreen = null
+            if (made.isEmpty()) return@job
+            if (share) {
+                val uris = withContext(Dispatchers.IO) { files.shareableAll(made) }
+                intents.trySend(Intent.createChooser(sendIntent(uris, "application/pdf"), null))
+            } else {
+                withContext(Dispatchers.IO) { for ((f, name) in made) files.saveToDownloads(f, name) }
+                tell(plural(R.plurals.msg_split_saved, made.size, made.size))
+            }
+        } finally {
+            if (!share) dir.deleteRecursively()
+        }
+    }
+
     /** Pictures of [pages] (0-based) at 200 dpi, saved to Pictures/ClearPDF or handed to the share sheet. */
     fun writeImages(doc: OpenDocument, ext: String, pages: List<Int>, share: Boolean) = job(text(R.string.msg_busy_exporting_images)) { eng ->
         val mime = if (ext == "png") "image/png" else "image/jpeg"
@@ -3450,6 +3479,7 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
             FileTool.Organize -> { organizing = true; doc.controller.pagesOpen = true }
             FileTool.Compress -> openCompress(doc)
             FileTool.Export -> openExport(doc)
+            FileTool.Split -> if (doc.isOffice) tell(text(R.string.msg_split_pdf_only)) else toolScreen = ToolScreen.Split(doc)
             FileTool.Protect -> openProtect(doc)
             FileTool.Crop -> openCrop(doc)
             FileTool.Ocr -> recognizeText(doc)

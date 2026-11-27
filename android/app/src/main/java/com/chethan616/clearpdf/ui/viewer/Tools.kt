@@ -105,6 +105,7 @@ fun ToolLayer(vm: AppViewModel, doc: OpenDocument) {
             if (doc.controller.commentMode == CommentMode.Voice) vm.startVoice(doc, p) else vm.notePrompt = NotePrompt(doc, p)
         }
         ViewerTool.Text -> TapLayer(doc) { p -> vm.textPrompt = TextPrompt(doc, p) }
+        ViewerTool.Measure -> MeasureLayer(vm, doc)
         ViewerTool.FillSign -> if (vm.certPlacing === doc) CertPlaceLayer(vm, doc) else FillSignLayer(vm, doc)
         else -> Unit
     }
@@ -388,6 +389,21 @@ fun ToolSubToolbar(vm: AppViewModel, doc: OpenDocument) {
                 prefs.updateSnapToShape(!prefs.snapToShape)
                 vm.tell(if (prefs.snapToShape) snapOn else snapOff)
             })
+        }
+        ViewerTool.Measure -> SubToolbar {
+            val m = ctl.measure
+            SubTool(LucideIcons.Ruler, stringResource(R.string.measure_distance), ctl.measureMode == MeasureMode.Distance, { ctl.measureMode = MeasureMode.Distance })
+            SubTool(LucideIcons.Perimeter, stringResource(R.string.measure_perimeter), ctl.measureMode == MeasureMode.Perimeter, { ctl.measureMode = MeasureMode.Perimeter })
+            SubTool(LucideIcons.AreaShape, stringResource(R.string.measure_area), ctl.measureMode == MeasureMode.Area, { ctl.measureMode = MeasureMode.Area })
+            SubTool(LucideIcons.Calibrate, stringResource(R.string.measure_scale), ctl.measureMode == MeasureMode.Scale, { ctl.measureMode = MeasureMode.Scale })
+            SubDivider()
+            // take back the last point, or add what has been drawn (a perimeter or an area)
+            SubTool(LucideIcons.Undo2, stringResource(R.string.measure_undo_point), false, {
+                if (m.points.isNotEmpty()) m.points.removeAt(m.points.lastIndex)
+                if (m.points.isEmpty()) m.clear()
+            }, enabled = m.points.isNotEmpty())
+            SubTool(LucideIcons.Check, stringResource(R.string.measure_finish), false, { vm.finishMeasure(doc, ctl.measureMode, m) },
+                enabled = (ctl.measureMode == MeasureMode.Perimeter && m.points.size >= 2) || (ctl.measureMode == MeasureMode.Area && m.points.size >= 3))
         }
         ViewerTool.Comment -> SubToolbar {
             SubTool(LucideIcons.MessageSquareText, stringResource(R.string.toolbar_text_comment), ctl.commentMode == CommentMode.Text, { ctl.commentMode = CommentMode.Text })

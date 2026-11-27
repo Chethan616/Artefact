@@ -375,7 +375,8 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
             ) {
                 Text(doc.title.removeSuffix(".pdf"), color = Color(0xFF202020), fontSize = 13.sp, maxLines = 1)
                 Spacer(Modifier.width(4.dp))
-                Text("PDF", color = Color(0xFF202020), fontSize = 11.sp)
+                // the file's own type: a Word document or a deck said "PDF" here too
+                Text(if (doc.isOffice) com.chethan616.clearpdf.ui.desk.kindBadge(doc.name).first else "PDF", color = Color(0xFF202020), fontSize = 11.sp)
             }
         }
 
@@ -576,6 +577,7 @@ private fun toolHint(tool: ViewerTool, markup: TextMarkup, doc: OpenDocument): S
     ViewerTool.Draw -> text(R.string.viewer_hint_draw)
     ViewerTool.Comment -> text(R.string.viewer_hint_comment)
     ViewerTool.Text -> text(R.string.viewer_hint_text)
+    ViewerTool.Measure -> text(R.string.measure_hint)
     ViewerTool.FillSign -> if (doc.info.fields > 0u) null else text(R.string.viewer_hint_fill_sign)
     else -> null
 }

@@ -165,7 +165,7 @@ class Thumbnails(private val context: Context) {
     private fun mapThumbnail(path: String, maxSide: Int): Bitmap {
         val file = File(path)
         require(file.length() < 8L shl 20) { "too large" }
-        val doc = com.chethan616.clearpdf.ui.notes.mindFromOpml(file.readText()) ?: error("not a mind map")
+        val doc = com.chethan616.clearpdf.ui.notes.mindFromFile(file.readText()) ?: error("not a mind map")
         com.chethan616.clearpdf.ui.notes.MapType.load(context)
         val layout = com.chethan616.clearpdf.ui.notes.layoutMind(
             doc, 1.5f, context.getString(com.chethan616.clearpdf.R.string.mindmap_root_hint), context.getString(com.chethan616.clearpdf.R.string.mindmap_node_hint),
