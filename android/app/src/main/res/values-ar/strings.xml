@@ -1375,4 +1375,16 @@
         <item quantity="other">حُفظت %d ملفات في التنزيلات</item>
     </plurals>
     <string name="msg_not_map">هذا الملف ليس خريطة ذهنية (OPML أو Excalidraw).</string>
+    <string name="measure_tool">القياس</string>
+    <string name="measure_distance">المسافة</string>
+    <string name="measure_perimeter">المحيط</string>
+    <string name="measure_area">المساحة</string>
+    <string name="measure_scale">المقياس</string>
+    <string name="measure_undo_point">تراجع عن نقطة</string>
+    <string name="measure_finish">إنهاء</string>
+    <string name="measure_hint">انقر على نقاط في الصفحة للقياس. اضبط المقياس أولًا للحصول على وحدات حقيقية.</string>
+    <string name="measure_scale_title">ضبط المقياس</string>
+    <string name="measure_scale_body">ما المسافة الحقيقية بين النقطتين؟</string>
+    <string name="measure_scale_distance">المسافة</string>
+    <string name="measure_scale_set">تم ضبط المقياس لهذه الصفحة</string>
 </resources>

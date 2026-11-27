@@ -475,7 +475,7 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         }
         val info = doc.info
         val blocked = when (tool) {
-            ViewerTool.Comment, ViewerTool.Markup, ViewerTool.Draw, ViewerTool.Text -> !info.allowsAnnotation
+            ViewerTool.Comment, ViewerTool.Markup, ViewerTool.Draw, ViewerTool.Text, ViewerTool.Measure -> !info.allowsAnnotation
             ViewerTool.FillSign -> !info.allowsFormFilling && !info.allowsAnnotation
             ViewerTool.Edit -> info.readOnlyReason != null || !info.allowsAssembly && info.encrypted
             ViewerTool.None -> false

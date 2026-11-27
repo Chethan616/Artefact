@@ -1700,4 +1700,16 @@
         <item quantity="other">%d file salvati in Download</item>
     </plurals>
     <string name="msg_not_map">Questo file non è una mappa mentale (OPML o Excalidraw).</string>
+    <string name="measure_tool">Misura</string>
+    <string name="measure_distance">Distanza</string>
+    <string name="measure_perimeter">Perimetro</string>
+    <string name="measure_area">Area</string>
+    <string name="measure_scale">Scala</string>
+    <string name="measure_undo_point">Annulla punto</string>
+    <string name="measure_finish">Fine</string>
+    <string name="measure_hint">Tocca i punti sulla pagina per misurare. Imposta prima la scala per unità reali.</string>
+    <string name="measure_scale_title">Imposta la scala</string>
+    <string name="measure_scale_body">Quanto distano i due punti nella realtà?</string>
+    <string name="measure_scale_distance">Distanza</string>
+    <string name="measure_scale_set">Scala impostata per questa pagina</string>
 </resources>

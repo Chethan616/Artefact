@@ -1332,4 +1332,16 @@
         <item quantity="other">%d файлов сохранено в «Загрузки»</item>
     </plurals>
     <string name="msg_not_map">Этот файл не является интеллект-картой (OPML или Excalidraw).</string>
+    <string name="measure_tool">Измерение</string>
+    <string name="measure_distance">Расстояние</string>
+    <string name="measure_perimeter">Периметр</string>
+    <string name="measure_area">Площадь</string>
+    <string name="measure_scale">Масштаб</string>
+    <string name="measure_undo_point">Отменить точку</string>
+    <string name="measure_finish">Готово</string>
+    <string name="measure_hint">Нажимайте точки на странице для измерения. Сначала задайте масштаб для реальных единиц.</string>
+    <string name="measure_scale_title">Задать масштаб</string>
+    <string name="measure_scale_body">Какое реальное расстояние между точками?</string>
+    <string name="measure_scale_distance">Расстояние</string>
+    <string name="measure_scale_set">Масштаб для страницы задан</string>
 </resources>

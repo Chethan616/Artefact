@@ -1769,4 +1769,16 @@
         <item quantity="other">%d files saved to Downloads</item>
     </plurals>
     <string name="msg_not_map">This file isn\'t a mind map (OPML or Excalidraw).</string>
+    <string name="measure_tool">Measure</string>
+    <string name="measure_distance">Distance</string>
+    <string name="measure_perimeter">Perimeter</string>
+    <string name="measure_area">Area</string>
+    <string name="measure_scale">Scale</string>
+    <string name="measure_undo_point">Undo point</string>
+    <string name="measure_finish">Finish</string>
+    <string name="measure_hint">Tap points on the page to measure. Set the scale first for real-world units.</string>
+    <string name="measure_scale_title">Set the scale</string>
+    <string name="measure_scale_body">How far apart are the two points in real life?</string>
+    <string name="measure_scale_distance">Distance</string>
+    <string name="measure_scale_set">Scale set for this page</string>
 </resources>

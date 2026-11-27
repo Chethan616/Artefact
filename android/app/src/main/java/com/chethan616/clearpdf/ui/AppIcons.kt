@@ -55,6 +55,11 @@ object LucideIcons {
     val Copy: ImageVector get() = Icons.Rounded.ContentCopy
     val Crop: ImageVector get() = Icons.Rounded.Crop
     val Scissors: ImageVector get() = Icons.Rounded.ContentCut
+    /** The Measure tool (#159): a ruler, a closed path, a filled shape, and the scale's calibration. */
+    val Ruler: ImageVector get() = Icons.Rounded.Straighten
+    val Perimeter: ImageVector get() = Icons.Rounded.Polyline
+    val AreaShape: ImageVector get() = Icons.Rounded.Pentagon
+    val Calibrate: ImageVector get() = Icons.Rounded.SquareFoot
     val Ellipsis: ImageVector get() = Icons.Rounded.MoreHoriz
     val EllipsisVertical: ImageVector get() = Icons.Rounded.MoreVert
     val ExternalLink: ImageVector get() = Icons.AutoMirrored.Rounded.OpenInNew

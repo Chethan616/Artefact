@@ -1590,4 +1590,16 @@
         <item quantity="other">%d fichiers enregistrés dans Téléchargements</item>
     </plurals>
     <string name="msg_not_map">Ce fichier n\'est pas une carte mentale (OPML ou Excalidraw).</string>
+    <string name="measure_tool">Mesurer</string>
+    <string name="measure_distance">Distance</string>
+    <string name="measure_perimeter">Périmètre</string>
+    <string name="measure_area">Surface</string>
+    <string name="measure_scale">Échelle</string>
+    <string name="measure_undo_point">Annuler le point</string>
+    <string name="measure_finish">Terminer</string>
+    <string name="measure_hint">Touchez des points sur la page pour mesurer. Définissez d\'abord l\'échelle pour des unités réelles.</string>
+    <string name="measure_scale_title">Définir l\'échelle</string>
+    <string name="measure_scale_body">Quelle distance réelle sépare les deux points ?</string>
+    <string name="measure_scale_distance">Distance</string>
+    <string name="measure_scale_set">Échelle définie pour cette page</string>
 </resources>

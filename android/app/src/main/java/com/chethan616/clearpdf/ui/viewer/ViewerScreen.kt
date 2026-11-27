@@ -576,6 +576,7 @@ private fun toolHint(tool: ViewerTool, markup: TextMarkup, doc: OpenDocument): S
     ViewerTool.Draw -> text(R.string.viewer_hint_draw)
     ViewerTool.Comment -> text(R.string.viewer_hint_comment)
     ViewerTool.Text -> text(R.string.viewer_hint_text)
+    ViewerTool.Measure -> text(R.string.measure_hint)
     ViewerTool.FillSign -> if (doc.info.fields > 0u) null else text(R.string.viewer_hint_fill_sign)
     else -> null
 }

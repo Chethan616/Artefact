@@ -1295,4 +1295,16 @@
         <item quantity="other">%d ficheiros guardados em Transferências</item>
     </plurals>
     <string name="msg_not_map">Este ficheiro não é um mapa mental (OPML ou Excalidraw).</string>
+    <string name="measure_tool">Medir</string>
+    <string name="measure_distance">Distância</string>
+    <string name="measure_perimeter">Perímetro</string>
+    <string name="measure_area">Área</string>
+    <string name="measure_scale">Escala</string>
+    <string name="measure_undo_point">Desfazer ponto</string>
+    <string name="measure_finish">Terminar</string>
+    <string name="measure_hint">Toque em pontos na página para medir. Defina primeiro a escala para unidades reais.</string>
+    <string name="measure_scale_title">Definir a escala</string>
+    <string name="measure_scale_body">Qual é a distância real entre os dois pontos?</string>
+    <string name="measure_scale_distance">Distância</string>
+    <string name="measure_scale_set">Escala definida para esta página</string>
 </resources>

@@ -1718,4 +1718,16 @@
         <item quantity="other">%d archivos guardados en Descargas</item>
     </plurals>
     <string name="msg_not_map">Este archivo no es un mapa mental (OPML o Excalidraw).</string>
+    <string name="measure_tool">Medir</string>
+    <string name="measure_distance">Distancia</string>
+    <string name="measure_perimeter">Perímetro</string>
+    <string name="measure_area">Área</string>
+    <string name="measure_scale">Escala</string>
+    <string name="measure_undo_point">Deshacer punto</string>
+    <string name="measure_finish">Terminar</string>
+    <string name="measure_hint">Toca puntos en la página para medir. Fija antes la escala para unidades reales.</string>
+    <string name="measure_scale_title">Fijar la escala</string>
+    <string name="measure_scale_body">¿Qué distancia real hay entre los dos puntos?</string>
+    <string name="measure_scale_distance">Distancia</string>
+    <string name="measure_scale_set">Escala fijada para esta página</string>
 </resources>

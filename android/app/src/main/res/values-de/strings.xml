@@ -1709,4 +1709,16 @@
         <item quantity="other">%d Dateien in Downloads gespeichert</item>
     </plurals>
     <string name="msg_not_map">Diese Datei ist keine Mindmap (OPML oder Excalidraw).</string>
+    <string name="measure_tool">Messen</string>
+    <string name="measure_distance">Abstand</string>
+    <string name="measure_perimeter">Umfang</string>
+    <string name="measure_area">Fläche</string>
+    <string name="measure_scale">Maßstab</string>
+    <string name="measure_undo_point">Punkt zurück</string>
+    <string name="measure_finish">Fertig</string>
+    <string name="measure_hint">Tippe Punkte auf der Seite an, um zu messen. Lege zuerst den Maßstab fest, um echte Einheiten zu erhalten.</string>
+    <string name="measure_scale_title">Maßstab festlegen</string>
+    <string name="measure_scale_body">Wie weit liegen die beiden Punkte in Wirklichkeit auseinander?</string>
+    <string name="measure_scale_distance">Abstand</string>
+    <string name="measure_scale_set">Maßstab für diese Seite festgelegt</string>
 </resources>

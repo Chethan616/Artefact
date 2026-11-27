@@ -1751,4 +1751,16 @@
         <item quantity="other">%d 个文件已保存到下载</item>
     </plurals>
     <string name="msg_not_map">此文件不是思维导图（OPML 或 Excalidraw）。</string>
+    <string name="measure_tool">测量</string>
+    <string name="measure_distance">距离</string>
+    <string name="measure_perimeter">周长</string>
+    <string name="measure_area">面积</string>
+    <string name="measure_scale">比例</string>
+    <string name="measure_undo_point">撤销点</string>
+    <string name="measure_finish">完成</string>
+    <string name="measure_hint">点按页面上的点进行测量。先设定比例以得到实际单位。</string>
+    <string name="measure_scale_title">设定比例</string>
+    <string name="measure_scale_body">这两点的实际距离是多少？</string>
+    <string name="measure_scale_distance">距离</string>
+    <string name="measure_scale_set">已为此页设定比例</string>
 </resources>
