@@ -334,6 +334,8 @@
     <string name="pages_extract">استخراج</string>
     <string name="pages_rotate_left">يسار</string>
     <string name="pages_rotate_right">يمين</string>
+    <!-- Translator note: Edit PDF, as the pages bar names it. Keep it short. -->
+    <string name="pages_edit">تحرير</string>
     <string name="pages_insert">إدراج</string>
     <string name="pages_at_start">في البداية</string>
     <string name="pages_at_end">في النهاية</string>

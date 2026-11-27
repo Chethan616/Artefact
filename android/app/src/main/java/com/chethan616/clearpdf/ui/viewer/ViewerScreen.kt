@@ -557,7 +557,10 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
         vm.replyPrompt?.takeIf { it.doc === doc }?.let { ReplySheet(vm, it) }
         vm.readAloud?.let { ReadAloudBar(doc, it) }
         if (ctl.goToPage) GoToPageDialog(doc, onDismiss = { ctl.goToPage = false })
-        if (ctl.pagesOpen) PagesScreen(vm, doc, onClose = { ctl.pagesOpen = false })
+        // the pages bar is one of the bottom bars: it names its actions only while they are named
+        if (ctl.pagesOpen) CompositionLocalProvider(LocalToolbarLabels provides vm.toolbarLabels) {
+            PagesScreen(vm, doc, onClose = { ctl.pagesOpen = false })
+        }
         }
     }
 }

@@ -309,6 +309,8 @@
     <string name="pages_extract">Extrair</string>
     <string name="pages_rotate_left">Esquerda</string>
     <string name="pages_rotate_right">Direita</string>
+    <!-- Translator note: Edit PDF, as the pages bar names it. Keep it short. -->
+    <string name="pages_edit">Editar</string>
     <string name="pages_insert">Inserir</string>
     <string name="pages_at_start">No início</string>
     <string name="pages_at_end">No final</string>
