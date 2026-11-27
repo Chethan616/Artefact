@@ -201,6 +201,9 @@ internal fun LiquidMorphSurface(
         androidx.compose.runtime.DisposableEffect(Unit) { onDispose { gone() } }
         // the button's own tint (a blue Done, a candy button): the glass keeps it at both ends
         val tint = MorphAnchors.tintAt(anchor) ?: Color.Unspecified
+        // a solid button (the viewer's blue More tools) is solid blue at the morph's circle end too: at
+        // 75% over the glass it came back lighter than the real button and blinked as it took over
+        val solidTint = MorphAnchors.solidAt(anchor)
         BackHandler(enabled = !shut, onBack = onDismiss)
         val host = LocalGlassOverlayHost.current ?: return@GlassOverlay
         val bars = WindowInsets.systemBars
@@ -410,7 +413,7 @@ internal fun LiquidMorphSurface(
                         val menuWash = adaptiveWash(lum).glassTint(style).let { it.copy(alpha = (it.alpha + busyAlpha).coerceAtMost(0.75f)) }
                         val plain = menuWash.let { it.copy(alpha = it.alpha * w) }
                         val wash = when {
-                            tint.isSpecified -> androidx.compose.ui.graphics.lerp(tint.copy(alpha = 0.75f), plain, w)
+                            tint.isSpecified -> androidx.compose.ui.graphics.lerp(tint.copy(alpha = if (solidTint) 1f else 0.75f), plain, w)
                             // the adaptive button's own wash at its end, the menu's as it opens
                             adaptiveOn -> androidx.compose.ui.graphics.lerp(adaptiveWash(aroundLum()).let { it.copy(alpha = it.alpha * 0.7f) }, menuWash, w)
                             else -> plain
@@ -457,6 +460,7 @@ internal fun LiquidMorphSurface(
                         if (tint.isSpecified) {
                             drawRect(tint, blendMode = androidx.compose.ui.graphics.BlendMode.Hue)
                             drawRect(tint.copy(alpha = 0.75f))
+                            if (solidTint) drawRect(tint)
                         } else if (adaptiveOn) {
                             drawRect(adaptiveWash(aroundLum()).let { it.copy(alpha = it.alpha * 0.7f) })
                         }
