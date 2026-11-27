@@ -445,7 +445,13 @@ private fun Header(
                 )
                 if (ready != null) {
                     Text(
-                        listOf("PDF", androidx.compose.ui.res.pluralStringResource(R.plurals.preview_pages, ready.info.pages.size, ready.info.pages.size), formatSize(ready.size)).joinToString("  ·  "),
+                        // the file's own type (a workbook said "PDF · 1 page"); a sheet's rendered pages mean nothing
+                        listOfNotNull(
+                            com.chethan616.clearpdf.ui.desk.kindBadge(ready.name).first,
+                            androidx.compose.ui.res.pluralStringResource(R.plurals.preview_pages, ready.info.pages.size, ready.info.pages.size)
+                                .takeIf { com.chethan616.clearpdf.engine.DocumentTypes.kindOf(ready.name) != com.chethan616.clearpdf.engine.DocumentTypes.Kind.Sheets },
+                            formatSize(ready.size),
+                        ).joinToString("  ·  "),
                         style = ClearType.Caption, color = c.inkSoft, maxLines = 1,
                     )
                 }

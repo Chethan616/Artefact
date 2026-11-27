@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
@@ -685,7 +686,9 @@ fun SheetViewer(vm: AppViewModel, doc: OpenDocument) {
     var input by remember { mutableStateOf("") }
     var menuAt by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
     var fillMenuAt by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-    val topPx = with(density) { WindowInsets.statusBars.getTop(this) + 64.dp.toPx() } +
+    // the status bar's room whether or not it shows, so the sheet doesn't jump when it hides (#164)
+    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+    val topPx = with(density) { WindowInsets.statusBarsIgnoringVisibility.getTop(this) + 64.dp.toPx() } +
         with(density) { ((if (searching) 56.dp else 0.dp) + (if (grid.selected != null) 56.dp else 0.dp)).toPx() }
 
     // the chosen cell's contents, for the formula bar
@@ -738,13 +741,47 @@ fun SheetViewer(vm: AppViewModel, doc: OpenDocument) {
         }
     }
 
+    // Full screen while reading (#164), as the PDF viewer: the bars slide away as the sheet scrolls and
+    // a tap brings them back. They stay while a cell is chosen, typed in or searched for.
+    var barsShown by remember { mutableStateOf(true) }
+    val busy = searching || editing || grid.selected != null
+    LaunchedEffect(grid) {
+        var last = grid.pan
+        androidx.compose.runtime.snapshotFlow { grid.pan }.collect { p ->
+            if ((p - last).getDistance() > 6f && !busy) barsShown = false
+            last = p
+        }
+    }
+    LaunchedEffect(busy) { if (busy) barsShown = true }
+    val barsIn by androidx.compose.animation.core.animateFloatAsState(if (barsShown) 1f else 0f, com.chethan616.clearpdf.ui.glass.Fluid.quick(), label = "sheetBars")
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(barsShown) {
+        val window = (view.context as? android.app.Activity)?.window
+        if (window != null) {
+            val insets = androidx.core.view.WindowCompat.getInsetsController(window, view)
+            insets.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            if (barsShown) insets.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            else insets.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        }
+        onDispose {
+            (view.context as? android.app.Activity)?.window?.let {
+                androidx.core.view.WindowCompat.getInsetsController(it, view).show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            }
+        }
+    }
+
     val backdrop = rememberLayerBackdrop()
     val gridFocus = androidx.compose.ui.platform.LocalFocusManager.current
     Box(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) {
             SheetGrid(
                 grid, top = topPx,
-                onCell = { cell ->
+                onCell = onCell@{ cell ->
+                    // the bars away (full screen): a tap brings them back, and chooses nothing
+                    if (!barsShown) {
+                        barsShown = true
+                        return@onCell
+                    }
                     // a tap on the sheet takes the focus from the search field (and its cursor)
                     if (searching) gridFocus.clearFocus()
                     // a tap chooses the cell; a tap on the chosen cell opens it for typing
@@ -762,7 +799,7 @@ fun SheetViewer(vm: AppViewModel, doc: OpenDocument) {
             )
         }
         CompositionLocalProvider(LocalBackdrop provides backdrop, LocalGlassInk provides chrome.color) {
-            Column(Modifier.fillMaxWidth().align(Alignment.TopCenter)) {
+            Column(Modifier.fillMaxWidth().align(Alignment.TopCenter).graphicsLayer { translationY = -(1f - barsIn) * size.height; alpha = barsIn }) {
                 Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     GlassCircle(onClick = { vm.closeDocument() }, label = stringResource(R.string.common_back)) { GlassIcon(LucideIcons.ChevronLeft, null, Modifier.size(22.dp)) }
@@ -993,7 +1030,7 @@ fun SheetViewer(vm: AppViewModel, doc: OpenDocument) {
                 }
             }
 
-            Column(Modifier.fillMaxWidth().align(Alignment.BottomCenter).imePadding()) {
+            Column(Modifier.fillMaxWidth().align(Alignment.BottomCenter).graphicsLayer { translationY = (1f - barsIn) * size.height; alpha = barsIn }.imePadding()) {
                 // the sheets: glass tabs for a few, else a pill with the sheet's name that lists them all
                 val visible = grid.sheets.withIndex().filter { !it.value.hidden }
                 if (visible.size in 2..4) {
