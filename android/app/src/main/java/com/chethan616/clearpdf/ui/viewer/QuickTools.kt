@@ -70,26 +70,43 @@ import com.chethan616.clearpdf.ui.OpenDocument
 import com.chethan616.clearpdf.ui.pdfColors
 import kotlin.math.roundToInt
 
+/** The fixed groups of a PDF's More list, in the order they are always shown. */
+enum class ToolGroup(@StringRes val label: Int) {
+    EditAndMarkUp(R.string.tool_group_edit),
+    Pages(R.string.tool_group_pages),
+    Convert(R.string.tool_group_convert),
+    Security(R.string.tool_group_security),
+}
+
 /**
- * A tool that can sit on the viewer's bottom toolbar or in More tools: [label] on the bar,
- * [title] in More tools, [subTools] when it opens a row of sub-tools (the bar's corner mark).
+ * A tool that can sit on the viewer's bottom toolbar or in More: [label] on the bar, [title] in
+ * More, [subTools] when it opens a row of sub-tools (the bar's corner mark), and [group], the
+ * More list's section (null for the tools the header menu owns and for an office document's own).
  */
-enum class QuickTool(val id: String, @StringRes val label: Int, @StringRes val title: Int, val icon: ImageVector, val hue: Color, val subTools: Boolean = false) {
-    Edit("edit", R.string.common_tool_edit_pdf, R.string.common_tool_edit_pdf, LucideIcons.FilePenLine, ToolHues.edit),
-    Comment("comment", R.string.common_tool_comment, R.string.common_tool_comment, LucideIcons.MessageSquareText, ToolHues.comment, subTools = true),
-    Highlight("highlight", R.string.common_tool_highlight, R.string.common_tool_highlight, LucideIcons.Highlighter, ToolHues.text, subTools = true),
-    Draw("draw", R.string.common_tool_draw, R.string.common_tool_draw, LucideIcons.PenLine, ToolHues.sign),
-    FillSign("fillsign", R.string.common_tool_fill_sign, R.string.common_tool_fill_sign, LucideIcons.Signature, ToolHues.sign, subTools = true),
-    Export("export", R.string.common_tool_export, R.string.common_tool_export, LucideIcons.FileOutput, ToolHues.export),
-    Combine("combine", R.string.toolbar_label_combine, R.string.common_tool_combine, LucideIcons.Combine, ToolHues.combine),
-    Compress("compress", R.string.toolbar_label_compress, R.string.common_tool_compress, LucideIcons.FileArchive, ToolHues.compress),
-    Protect("protect", R.string.tool_encryption, R.string.tool_encryption, LucideIcons.FileLock2, ToolHues.protect),
-    Organize("organize", R.string.toolbar_label_organize, R.string.common_tool_organize, LucideIcons.LayoutGrid, ToolHues.organize),
-    Crop("crop", R.string.toolbar_label_crop, R.string.common_tool_crop, LucideIcons.Crop, ToolHues.crop),
-    Ocr("ocr", R.string.toolbar_label_recognize, R.string.common_tool_recognize_text, LucideIcons.ScanText, ToolHues.ocr),
-    Create("create", R.string.common_tool_create_pdf, R.string.common_tool_create_pdf, LucideIcons.FilePlus2, ToolHues.create),
-    Text("text", R.string.toolbar_label_add_text, R.string.toolbar_tool_text, LucideIcons.Type, ToolHues.text),
-    Scan("scan", R.string.common_tool_scan, R.string.common_tool_scan, LucideIcons.Camera, ToolHues.scan),
+enum class QuickTool(
+    val id: String,
+    @StringRes val label: Int,
+    @StringRes val title: Int,
+    val icon: ImageVector,
+    val hue: Color,
+    val subTools: Boolean = false,
+    val group: ToolGroup? = null,
+) {
+    Edit("edit", R.string.common_tool_edit_pdf, R.string.common_tool_edit_pdf, LucideIcons.FilePenLine, ToolHues.edit, group = ToolGroup.EditAndMarkUp),
+    Comment("comment", R.string.common_tool_comment, R.string.common_tool_comment, LucideIcons.MessageSquareText, ToolHues.comment, subTools = true, group = ToolGroup.EditAndMarkUp),
+    Highlight("highlight", R.string.common_tool_highlight, R.string.common_tool_highlight, LucideIcons.Highlighter, ToolHues.text, subTools = true, group = ToolGroup.EditAndMarkUp),
+    Draw("draw", R.string.common_tool_draw, R.string.common_tool_draw, LucideIcons.PenLine, ToolHues.sign, group = ToolGroup.EditAndMarkUp),
+    FillSign("fillsign", R.string.common_tool_fill_sign, R.string.common_tool_fill_sign, LucideIcons.Signature, ToolHues.sign, subTools = true, group = ToolGroup.EditAndMarkUp),
+    Export("export", R.string.common_tool_export, R.string.common_tool_export, LucideIcons.FileOutput, ToolHues.export, group = ToolGroup.Convert),
+    Combine("combine", R.string.toolbar_label_combine, R.string.common_tool_combine, LucideIcons.Combine, ToolHues.combine, group = ToolGroup.Pages),
+    Compress("compress", R.string.toolbar_label_compress, R.string.common_tool_compress, LucideIcons.FileArchive, ToolHues.compress, group = ToolGroup.Convert),
+    Protect("protect", R.string.tool_encryption, R.string.tool_encryption, LucideIcons.FileLock2, ToolHues.protect, group = ToolGroup.Security),
+    Organize("organize", R.string.toolbar_label_organize, R.string.common_tool_organize, LucideIcons.LayoutGrid, ToolHues.organize, group = ToolGroup.Pages),
+    Crop("crop", R.string.toolbar_label_crop, R.string.common_tool_crop, LucideIcons.Crop, ToolHues.crop, group = ToolGroup.Pages),
+    Ocr("ocr", R.string.toolbar_label_recognize, R.string.common_tool_recognize_text, LucideIcons.ScanText, ToolHues.ocr, group = ToolGroup.Convert),
+    Create("create", R.string.common_tool_create_pdf, R.string.common_tool_create_pdf, LucideIcons.FilePlus2, ToolHues.create, group = ToolGroup.Pages),
+    Text("text", R.string.toolbar_label_add_text, R.string.toolbar_tool_text, LucideIcons.Type, ToolHues.text, group = ToolGroup.EditAndMarkUp),
+    Scan("scan", R.string.common_tool_scan, R.string.common_tool_scan, LucideIcons.Camera, ToolHues.scan, group = ToolGroup.Pages),
     ReadAloud("readaloud", R.string.common_tool_read_aloud, R.string.common_tool_read_aloud, LucideIcons.Volume2, ToolHues.read),
 
     // office documents' own tools (their engines: WordCraft, DeckCraft)
@@ -108,19 +125,79 @@ enum class QuickTool(val id: String, @StringRes val label: Int, @StringRes val t
         /** A presentation's bar: a full-screen show first. */
         val SLIDES = listOf(Present, ReadAloud, ExportPdf, SaveAs, Print)
 
-        /** The bar for [doc]: an office document's own tools, else the PDF bar as arranged. */
-        fun barFor(doc: com.chethan616.clearpdf.ui.OpenDocument, arranged: List<QuickTool>): List<QuickTool> = when {
-            doc.isSlides -> SLIDES
-            doc.isOffice -> WORD
-            else -> arranged
+        /** The bar for [kind]: an office document's own tools, else the PDF bar as arranged. */
+        fun barFor(kind: ToolDocKind, arranged: List<QuickTool>): List<QuickTool> = when (kind) {
+            ToolDocKind.Slides -> SLIDES
+            ToolDocKind.Word -> WORD
+            ToolDocKind.Pdf -> arranged
         }
+
+        /** The bar for [doc]: an office document's own tools, else the PDF bar as arranged. */
+        fun barFor(doc: com.chethan616.clearpdf.ui.OpenDocument, arranged: List<QuickTool>): List<QuickTool> =
+            barFor(docKind(doc), arranged)
 
         fun of(id: String): QuickTool? = entries.firstOrNull { it.id == id }
     }
 }
 
-/** How many tools fit on the bar beside More tools at a screen [widthDp] wide. */
+/** What kind of document a tool list is being built for. */
+enum class ToolDocKind { Pdf, Word, Slides }
+
+fun docKind(doc: com.chethan616.clearpdf.ui.OpenDocument): ToolDocKind = when {
+    doc.isSlides -> ToolDocKind.Slides
+    doc.isOffice -> ToolDocKind.Word
+    else -> ToolDocKind.Pdf
+}
+
+/** Tools only an office document has: never in a PDF's dock or lists. */
+private val OfficeOnlyTools = setOf(QuickTool.Present, QuickTool.ExportPdf, QuickTool.SaveAs)
+
+/**
+ * The tools the header (More) menu owns. The dock may still hold them; a PDF's More list never
+ * does, so no action has two homes.
+ */
+private val HeaderOwnedTools = setOf(QuickTool.Edit, QuickTool.ReadAloud, QuickTool.Print)
+
+fun QuickTool.appliesTo(kind: ToolDocKind): Boolean = kind != ToolDocKind.Pdf || this !in OfficeOnlyTools
+
+/** The dock's tools: an office document's fixed bar, else the arranged one, as many as [slots] hold. */
+fun dockTools(kind: ToolDocKind, arranged: List<QuickTool>, slots: Int): List<QuickTool> =
+    QuickTool.barFor(kind, arranged).filter { it.appliesTo(kind) }.distinct().take(slots)
+
+/** The header menu's own tool rows, in a fixed order, without the tools the dock already shows. */
+fun headerTools(kind: ToolDocKind, dock: List<QuickTool>): List<QuickTool> = when (kind) {
+    ToolDocKind.Pdf -> listOf(QuickTool.Edit, QuickTool.ReadAloud, QuickTool.Print).filter { it !in dock }
+    else -> QuickTool.barFor(kind, emptyList()).filter { it !in dock }
+}
+
+/**
+ * A PDF's More list: every tool that applies, not on the dock and not in the header menu, in the
+ * fixed group order and, inside a group, in declaration order. Never the user's arrangement.
+ */
+fun moreTools(kind: ToolDocKind, arranged: List<QuickTool>, slots: Int): List<QuickTool> {
+    val dock = dockTools(kind, arranged, slots)
+    return when (kind) {
+        ToolDocKind.Pdf -> ToolGroup.entries.flatMap { group ->
+            QuickTool.entries.filter { it.group == group && it !in dock && it !in HeaderOwnedTools }
+        }
+        else -> QuickTool.barFor(kind, emptyList()).filter { it !in dock }
+    }
+}
+
+/** Where every tool of [kind] appears: the dock, the header menu's rows, and the More list. */
+class ToolLayout(val dock: List<QuickTool>, val header: List<QuickTool>, val more: List<QuickTool>)
+
+fun toolLayout(kind: ToolDocKind, arranged: List<QuickTool>, slots: Int): ToolLayout {
+    val dock = dockTools(kind, arranged, slots)
+    return ToolLayout(dock, headerTools(kind, dock), moreTools(kind, arranged, slots))
+}
+
+/** How many tools fit on the bar beside More at a screen [widthDp] wide. */
 fun toolbarSlots(widthDp: Int): Int = dockSlots(widthDp)
+
+/** The dock's room when its tools carry their names (Clean appearance needs a little more). */
+fun toolbarSlots(widthDp: Int, clean: Boolean): Int =
+    if (clean) ((widthDp - 24) / 76 - 1).coerceIn(1, 8) else dockSlots(widthDp)
 
 /** The bar's tools and More tools' order, as the user arranged them (kept in the app's preferences). */
 @Stable

@@ -1639,4 +1639,9 @@
     <string name="settings_reduce_transparency_detail">Vetro e barre mobili diventano opachi, non traspare nulla</string>
     <string name="qr_scanner">Scanner QR</string>
     <string name="qr_scan_prompt">Inquadra un codice QR</string>
+    <!-- The fixed sections of a PDF's More list -->
+    <string name="tool_group_edit">Modifica e annota</string>
+    <string name="tool_group_pages">Pagine</string>
+    <string name="tool_group_convert">Converti e condividi</string>
+    <string name="tool_group_security">Sicurezza</string>
 </resources>

@@ -1234,4 +1234,9 @@
     <string name="settings_reduce_transparency_detail">O vidro e as barras flutuantes ficam opacos, nada aparece por trás</string>
     <string name="qr_scanner">Leitor de QR</string>
     <string name="qr_scan_prompt">Aponte a câmera para um código QR</string>
+    <!-- The fixed sections of a PDF's More list -->
+    <string name="tool_group_edit">Editar e anotar</string>
+    <string name="tool_group_pages">Páginas</string>
+    <string name="tool_group_convert">Converter e compartilhar</string>
+    <string name="tool_group_security">Segurança</string>
 </resources>

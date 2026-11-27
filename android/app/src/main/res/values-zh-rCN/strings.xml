@@ -1690,4 +1690,9 @@
     <string name="thoughts_audios">音频</string>
     <string name="settings_reduce_transparency">降低透明度</string>
     <string name="settings_reduce_transparency_detail">玻璃与浮动栏变为不透明，不透出任何内容</string>
+    <!-- The fixed sections of a PDF's More list -->
+    <string name="tool_group_edit">编辑与标记</string>
+    <string name="tool_group_pages">页面</string>
+    <string name="tool_group_convert">转换与分享</string>
+    <string name="tool_group_security">安全</string>
 </resources>

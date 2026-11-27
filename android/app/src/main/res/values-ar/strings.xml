@@ -1306,4 +1306,9 @@
     <string name="settings_reduce_transparency_detail">يصبح الزجاج والأشرطة العائمة معتمًا، لا يظهر شيء من خلفها</string>
     <string name="qr_scanner">ماسح رموز QR</string>
     <string name="qr_scan_prompt">وجّه الكاميرا نحو رمز QR</string>
+    <!-- The fixed sections of a PDF's More list -->
+    <string name="tool_group_edit">التحرير والتمييز</string>
+    <string name="tool_group_pages">الصفحات</string>
+    <string name="tool_group_convert">التحويل والمشاركة</string>
+    <string name="tool_group_security">الأمان</string>
 </resources>

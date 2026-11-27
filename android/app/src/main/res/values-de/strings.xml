@@ -1648,4 +1648,9 @@
     <string name="settings_reduce_transparency_detail">Glas und schwebende Leisten werden deckend, nichts scheint durch</string>
     <string name="qr_scanner">QR-Scanner</string>
     <string name="qr_scan_prompt">Richte die Kamera auf einen QR-Code</string>
+    <!-- The fixed sections of a PDF's More list -->
+    <string name="tool_group_edit">Bearbeiten und markieren</string>
+    <string name="tool_group_pages">Seiten</string>
+    <string name="tool_group_convert">Konvertieren und teilen</string>
+    <string name="tool_group_security">Sicherheit</string>
 </resources>

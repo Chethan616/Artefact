@@ -1529,4 +1529,9 @@
     <string name="settings_reduce_transparency_detail">Le verre et les barres flottantes deviennent opaques, rien ne transparaît</string>
     <string name="qr_scanner">Scanner QR</string>
     <string name="qr_scan_prompt">Pointez la caméra vers un code QR</string>
+    <!-- The fixed sections of a PDF's More list -->
+    <string name="tool_group_edit">Modifier et annoter</string>
+    <string name="tool_group_pages">Pages</string>
+    <string name="tool_group_convert">Convertir et partager</string>
+    <string name="tool_group_security">Sécurité</string>
 </resources>

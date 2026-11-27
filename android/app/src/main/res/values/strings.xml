@@ -1708,4 +1708,9 @@
     <string name="settings_reduce_transparency_detail">Glass and floating bars go solid, nothing shows through</string>
     <string name="qr_scanner">QR Scanner</string>
     <string name="qr_scan_prompt">Point the camera at a QR code</string>
+    <!-- The fixed sections of a PDF's More list -->
+    <string name="tool_group_edit">Edit and mark up</string>
+    <string name="tool_group_pages">Pages</string>
+    <string name="tool_group_convert">Convert and share</string>
+    <string name="tool_group_security">Security</string>
 </resources>
