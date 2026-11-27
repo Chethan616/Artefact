@@ -376,7 +376,9 @@ internal fun LiquidMorphSurface(
             Modifier
                 .offset { IntOffset(stage.left.roundToInt(), stage.top.roundToInt()) }
                 .size(with(density) { stage.width.toDp() }, with(density) { stage.height.toDp() })
-                .graphicsLayer { alpha = fade.value * liquidIn() }
+                // (a solid button's liquid stays whole under the circle taking over: crossfaded, both half
+                // see-through, the page lightened the blue for a moment before the real button landed)
+                .graphicsLayer { alpha = fade.value * (if (solidTint) 1f else liquidIn()) }
                 .drawBackdrop(
                     backdrop = LocalBackdrop.current,
                     shape = { RectangleShape },
@@ -413,7 +415,11 @@ internal fun LiquidMorphSurface(
                         val menuWash = adaptiveWash(lum).glassTint(style).let { it.copy(alpha = (it.alpha + busyAlpha).coerceAtMost(0.75f)) }
                         val plain = menuWash.let { it.copy(alpha = it.alpha * w) }
                         val wash = when {
-                            tint.isSpecified -> androidx.compose.ui.graphics.lerp(tint.copy(alpha = if (solidTint) 1f else 0.75f), plain, w)
+                            // a solid button: fully its own colour for the whole last half of the fold, so the
+                            // circle that lands is already the button (a blue blended with the menu's milk came
+                            // back pale and jumped to solid at the hand-off)
+                            tint.isSpecified && solidTint -> androidx.compose.ui.graphics.lerp(tint, plain, ((w - 0.5f) * 2f).coerceIn(0f, 1f))
+                            tint.isSpecified -> androidx.compose.ui.graphics.lerp(tint.copy(alpha = 0.75f), plain, w)
                             // the adaptive button's own wash at its end, the menu's as it opens
                             adaptiveOn -> androidx.compose.ui.graphics.lerp(adaptiveWash(aroundLum()).let { it.copy(alpha = it.alpha * 0.7f) }, menuWash, w)
                             else -> plain
@@ -474,7 +480,8 @@ internal fun LiquidMorphSurface(
                 Modifier
                     .offset { IntOffset(local.left.roundToInt(), local.top.roundToInt()) }
                     .size(with(density) { local.width.toDp() }, with(density) { local.height.toDp() })
-                    .graphicsLayer { alpha = (1f - p.value / 0.22f).coerceIn(0f, 1f) },
+                    // (a solid button's white glyph is whole sooner, as its circle is: no pale glyph at the hand-off)
+                    .graphicsLayer { alpha = (1f - p.value / (if (solidTint) 0.4f else 0.22f)).coerceIn(0f, 1f) },
                 contentAlignment = Alignment.Center,
             ) { icon() }
             // the rows at the menu's resting place (a fixed node), clipped each frame to the glass's
