@@ -436,7 +436,7 @@ fun QuickToolbar(
     }
     menuAt?.let { anchor ->
         // the fixed group order, then the order the tools were declared in; never the user's own
-        val rows = overflow.sortedWith(compareBy({ it.group?.ordinal ?: Int.MAX_VALUE }, { it.ordinal }))
+        val rows = overflow.sortedWith(compareBy<QuickTool>({ it.group?.ordinal ?: Int.MAX_VALUE }, { it.ordinal }))
         GlassMenu(anchor, { menuAt = null }, rows.map { tool ->
             GlassMenuItem(
                 stringResource(tool.title), tool.icon,
