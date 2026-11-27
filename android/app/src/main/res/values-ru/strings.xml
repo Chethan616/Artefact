@@ -1272,4 +1272,6 @@
     <string name="tool_group_pages">Страницы</string>
     <string name="tool_group_convert">Конвертация и отправка</string>
     <string name="tool_group_security">Безопасность</string>
+    <!-- The dock's round button: the tools the dock has no room for -->
+    <string name="common_tool_more">Ещё</string>
 </resources>

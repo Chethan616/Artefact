@@ -1239,4 +1239,6 @@
     <string name="tool_group_pages">Páginas</string>
     <string name="tool_group_convert">Converter e partilhar</string>
     <string name="tool_group_security">Segurança</string>
+    <!-- The dock's round button: the tools the dock has no room for -->
+    <string name="common_tool_more">Mais</string>
 </resources>

@@ -1534,4 +1534,6 @@
     <string name="tool_group_pages">Pages</string>
     <string name="tool_group_convert">Convertir et partager</string>
     <string name="tool_group_security">Sécurité</string>
+    <!-- The dock's round button: the tools the dock has no room for -->
+    <string name="common_tool_more">Plus</string>
 </resources>

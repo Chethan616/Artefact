@@ -353,7 +353,7 @@ internal fun dockSlots(widthDp: Int): Int = when {
 /**
  * The floating dock, in the manner of the tools' own bars (Edit, Comment, Fill & Sign): the tools
  * the reader keeps there as glyphs on one glass capsule, the one just tapped on a blue disc for a
- * moment, and More tools as a blue glass circle beside it (where those bars keep Done). One capsule
+ * moment, and More as a blue glass circle beside it (where those bars keep Done). One capsule
  * is one piece of glass to draw, where a row of glass circles was one each.
  */
 @Composable
@@ -362,16 +362,16 @@ fun QuickToolbar(
     onTool: (QuickTool) -> Unit,
     /** Name each tool under its glyph (Settings ▸ Toolbar labels). */
     labels: Boolean = true,
-    moreTools: List<QuickTool> = emptyList(),
-    onCustomize: ((Rect) -> Unit)? = null,
+    /** Everything the dock has no room for, in the fixed order its groups go in. */
+    more: List<QuickTool> = emptyList(),
 ) {
     val width = LocalConfiguration.current.screenWidthDp
-    // Leave room for a readable label and keep the remaining actions in More tools.
-    val slots = if (clear.clean) ((width - 24) / 76 - 1).coerceIn(1, 8) else dockSlots(width)
+    // Leave room for a readable label and keep the remaining actions in More.
+    val slots = toolbarSlots(width, clear.clean)
     val shown = tools.take(slots)
-    // The four-dot control is an anchored action menu, not another bottom sheet.  Keep the
-    // clipped-off toolbar actions in the same menu so every action remains reachable on phones.
-    val overflow = remember(tools, moreTools, slots) { (tools.drop(slots) + moreTools).distinct() }
+    // The four-dot control is an anchored action menu, not another bottom sheet. Keep the
+    // tools the bar could not hold in the same menu so every action remains reachable on phones.
+    val overflow = remember(tools, more, slots) { (tools.drop(slots) + more).distinct() }
     var menuAt by remember { mutableStateOf<Rect?>(null) }
     var moreRect by remember { mutableStateOf(Rect.Zero) }
     val turn by androidx.compose.animation.core.animateFloatAsState(if (menuAt != null) 45f else 0f, GlassMotion.morph(), label = "more")
@@ -395,9 +395,9 @@ fun QuickToolbar(
                     onTool(tool)
                 }
             }
-            if (overflow.isNotEmpty() || onCustomize != null) {
+            if (overflow.isNotEmpty()) {
                 LabeledDockItem(
-                    LucideIcons.LayoutGrid, stringResource(R.string.common_tool_more_tools),
+                    LucideIcons.LayoutGrid, stringResource(R.string.common_tool_more),
                     Modifier.weight(1f).onGloballyPositioned { moreRect = it.boundsInWindow() }, menuAt != null, labels,
                 ) { menuAt = moreRect }
             }
@@ -422,22 +422,27 @@ fun QuickToolbar(
         }
         // Office documents have their own concise toolbar. PDFs use the menu for the remaining
         // tools rather than opening the old grid sheet.
-        if (overflow.isNotEmpty() || onCustomize != null) GlassCircle(
+        if (overflow.isNotEmpty()) GlassCircle(
             onClick = { menuAt = moreRect },
             size = 48.dp,
             tint = Candy.Sky,
             // solid, not blended over the page: a washed-out blue lost its white glyph on white (#158)
             solid = true,
-            label = stringResource(R.string.common_tool_more_tools),
+            label = stringResource(R.string.common_tool_more),
             modifier = Modifier.onGloballyPositioned { moreRect = it.boundsInWindow() },
         ) {
             GlassIcon(LucideIcons.LayoutGrid, null, Modifier.size(22.dp).androidxRotate(turn))
         }
     }
     menuAt?.let { anchor ->
-        GlassMenu(anchor, { menuAt = null }, buildList {
-            overflow.forEach { tool -> add(GlassMenuItem(stringResource(tool.title), tool.icon) { onTool(tool) }) }
-            if (onCustomize != null) add(GlassMenuItem(stringResource(R.string.toolbar_customize), LucideIcons.SlidersHorizontal) { onCustomize(anchor) })
+        // the fixed group order, then the order the tools were declared in; never the user's own
+        val rows = overflow.sortedWith(compareBy({ it.group?.ordinal ?: Int.MAX_VALUE }, { it.ordinal }))
+        GlassMenu(anchor, { menuAt = null }, rows.map { tool ->
+            GlassMenuItem(
+                stringResource(tool.title), tool.icon,
+                section = tool.group?.let { stringResource(it.label) },
+                trail = if (tool.subTools) MenuTrail.Chevron else MenuTrail.None,
+            ) { onTool(tool) }
         })
     }
 }

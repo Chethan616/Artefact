@@ -1311,4 +1311,6 @@
     <string name="tool_group_pages">الصفحات</string>
     <string name="tool_group_convert">التحويل والمشاركة</string>
     <string name="tool_group_security">الأمان</string>
+    <!-- The dock's round button: the tools the dock has no room for -->
+    <string name="common_tool_more">المزيد</string>
 </resources>

@@ -1695,4 +1695,6 @@
     <string name="tool_group_pages">页面</string>
     <string name="tool_group_convert">转换与分享</string>
     <string name="tool_group_security">安全</string>
+    <!-- The dock's round button: the tools the dock has no room for -->
+    <string name="common_tool_more">更多</string>
 </resources>

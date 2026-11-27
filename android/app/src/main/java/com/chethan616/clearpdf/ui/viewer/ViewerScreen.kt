@@ -483,13 +483,13 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
                             tools = QuickTool.barFor(doc, vm.quickToolbar.bar),
                             onTool = { vm.runQuickTool(doc, it) },
                             labels = vm.toolbarLabels,
-                            moreTools = if (doc.isOffice) emptyList() else vm.quickToolbar.grid,
-                            // Rearranging is deliberately kept as its dedicated editor; every
-                            // normal command now comes straight from the anchored GlassMenu.
-                            onCustomize = if (doc.isOffice) null else ({ anchor ->
-                                moreToolsMenuAnchor = anchor
-                                ctl.sheet = ViewerSheet.MoreTools
-                            }),
+                            more = moreTools(
+                                docKind(doc), vm.quickToolbar.bar,
+                                toolbarSlots(
+                                    androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp,
+                                    com.chethan616.clearpdf.ui.theme.clear.clean,
+                                ),
+                            ),
                         )
                     } else {
                         ToolSubToolbar(vm, doc)

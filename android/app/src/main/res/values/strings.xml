@@ -1713,4 +1713,6 @@
     <string name="tool_group_pages">Pages</string>
     <string name="tool_group_convert">Convert and share</string>
     <string name="tool_group_security">Security</string>
+    <!-- The dock's round button: the tools the dock has no room for -->
+    <string name="common_tool_more">More</string>
 </resources>
