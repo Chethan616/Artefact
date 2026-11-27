@@ -167,7 +167,6 @@ internal class Label(
     var font: Int = 0,
 ) : Mark()
 
-internal const val LABEL_FONTS = 4
 internal const val LABEL_STYLES = 3
 
 /** The marks follow the picture as it turns a quarter clockwise. */
@@ -289,12 +288,7 @@ private fun boxPass(src: IntArray, dst: IntArray, w: Int, h: Int, r: Int, across
     }
 }
 
-internal fun labelFont(i: Int): Typeface = when (i) {
-    1 -> Typeface.create(Typeface.SERIF, Typeface.BOLD)
-    2 -> Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-    3 -> Typeface.create("cursive", Typeface.BOLD)
-    else -> Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
-}
+internal fun labelFont(i: Int): Typeface = LabelFonts.typeface(i)
 
 private fun light(color: Int): Boolean {
     val r = android.graphics.Color.red(color)
@@ -483,4 +477,109 @@ internal fun paintMarks(canvas: Canvas, place: Placement, marks: List<Mark>, fx:
         }
     }
     for (l in marks) if (l is Label) drawLabel(canvas, place, l, l === chosen)
+}
+
+/**
+ * The fonts words on a picture can take (#174): the system's sans (the default, as before) and
+ * monospace, the fonts Artefact carries (each one different on every phone; the system's serif and
+ * cursive used to be, but many phones draw all of them in the same face, so choosing did nothing),
+ * then the user's own .ttf / .otf files, kept in the app. Indexes are stable: the user's fonts only
+ * ever come after the rest, in the order they were added.
+ */
+internal object LabelFonts {
+    private class Builtin(val name: String, val res: Int?, val system: Typeface?, val variable: Boolean)
+
+    private val builtins = listOf(
+        Builtin("Sans", null, Typeface.SANS_SERIF, false),
+        Builtin("DM Serif", com.chethan616.clearpdf.R.font.dm_serif, null, false),
+        Builtin("Mono", null, Typeface.MONOSPACE, false),
+        Builtin("Bricolage", com.chethan616.clearpdf.R.font.bricolage, null, true),
+        Builtin("Outfit", com.chethan616.clearpdf.R.font.outfit, null, true),
+        Builtin("Jakarta", com.chethan616.clearpdf.R.font.jakarta, null, true),
+        Builtin("Fraunces", com.chethan616.clearpdf.R.font.fraunces, null, true),
+        Builtin("Doto", com.chethan616.clearpdf.R.font.doto, null, true),
+    )
+
+    private var app: android.content.Context? = null
+
+    /** The user's own fonts, in the order they were added (Compose state: the font list follows). */
+    private val custom = androidx.compose.runtime.mutableStateListOf<java.io.File>()
+    private val typefaces = HashMap<Int, Typeface>()
+    private val families = HashMap<Int, androidx.compose.ui.text.font.FontFamily>()
+
+    fun init(context: android.content.Context) {
+        if (app != null) return
+        app = context.applicationContext
+        val dir = dir(context)
+        // added order: the file names start with the time they were added
+        custom.addAll(dir.listFiles { f -> f.isFile }.orEmpty().sortedBy { it.name })
+    }
+
+    private fun dir(context: android.content.Context) = java.io.File(context.filesDir, "label_fonts").apply { mkdirs() }
+
+    val count: Int get() = builtins.size + custom.size
+
+    fun name(i: Int): String =
+        builtins.getOrNull(i)?.name ?: custom.getOrNull(i - builtins.size)?.name?.substringAfter('_')?.substringBeforeLast('.') ?: builtins[0].name
+
+    /** The bold face for drawing on the picture (Paint). */
+    fun typeface(i: Int): Typeface = typefaces.getOrPut(i) {
+        val context = app
+        val b = builtins.getOrNull(i)
+        val base = when {
+            b?.system != null -> b.system
+            b?.res != null && context != null -> runCatching { androidx.core.content.res.ResourcesCompat.getFont(context, b.res) }.getOrNull()
+            b == null -> custom.getOrNull(i - builtins.size)?.let { runCatching { Typeface.createFromFile(it) }.getOrNull() }
+            else -> null
+        } ?: Typeface.SANS_SERIF
+        Typeface.create(base, Typeface.BOLD)
+    }
+
+    /** The same face for the editor's own text (Compose). */
+    fun family(i: Int): androidx.compose.ui.text.font.FontFamily = families.getOrPut(i) {
+        val b = builtins.getOrNull(i)
+        val bold = androidx.compose.ui.text.font.FontWeight.Bold
+        when {
+            b?.system == Typeface.MONOSPACE -> androidx.compose.ui.text.font.FontFamily.Monospace
+            b?.system != null -> androidx.compose.ui.text.font.FontFamily.SansSerif
+            b?.res != null && b.variable -> androidx.compose.ui.text.font.FontFamily(
+                androidx.compose.ui.text.font.Font(
+                    b.res, bold,
+                    variationSettings = androidx.compose.ui.text.font.FontVariation.Settings(androidx.compose.ui.text.font.FontVariation.weight(700)),
+                ),
+            )
+            b?.res != null -> androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Font(b.res, bold))
+            else -> custom.getOrNull(i - builtins.size)
+                ?.let { androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Font(it, bold)) }
+                ?: androidx.compose.ui.text.font.FontFamily.SansSerif
+        }
+    }
+
+    /**
+     * Copies a font the user picked into the app and adds it to the list: its index, or null when
+     * the file is not a font Android can draw with (nothing is kept then).
+     */
+    suspend fun add(context: android.content.Context, uri: android.net.Uri): Int? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        init(context)
+        val shown = runCatching {
+            context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0) else null
+            }
+        }.getOrNull() ?: "Font.ttf"
+        val safe = shown.replace(Regex("[^A-Za-z0-9 ._-]"), "").trim().ifEmpty { "Font.ttf" }.take(60)
+        val file = java.io.File(dir(context), "${System.currentTimeMillis()}_$safe")
+        val copied = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { input -> file.outputStream().use { out -> input.copyTo(out, 1 shl 16) } } != null
+        }.getOrDefault(false)
+        // a font Android can draw with, and not too big to be one (64 MB)
+        val usable = copied && file.length() in 1..(64L shl 20) && runCatching { Typeface.Builder(file).build() }.getOrNull() != null
+        if (!usable) {
+            file.delete()
+            return@withContext null
+        }
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            custom.add(file)
+            count - 1
+        }
+    }
 }

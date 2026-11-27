@@ -1087,6 +1087,9 @@
     <string name="photo_shape_original">Оригинал</string>
     <string name="photo_mirror">Отразить</string>
     <string name="photo_font_sample">Aa</string>
+    <string name="photo_font_choose">Шрифт</string>
+    <string name="photo_font_add">Добавить шрифт…</string>
+    <string name="photo_font_unusable">Этот файл не является шрифтом, который может использовать Artefact</string>
     <string name="photo_not_saved">Не удалось сохранить изображение.</string>
     <string name="msg_busy_removing_password">Снятие пароля…</string>
     <string name="msg_unlock_failed">Защиту этого файла снять нельзя</string>
@@ -1252,7 +1255,7 @@
     <string name="app_style_glass_detail">По умолчанию · Полупрозрачные панели</string>
     <string name="app_style_clean_detail">Непрозрачные панели</string>
     <string name="settings_reduce_transparency">Уменьшить прозрачность</string>
-    <string name="settings_reduce_transparency_detail">Панели над страницами и списками остаются непрозрачными, без размытия за ними</string>
+    <string name="settings_reduce_transparency_detail">Стекло и плавающие панели становятся непрозрачными, ничего не просвечивает</string>
     <string name="qr_scanner">QR-сканер</string>
     <string name="qr_scan_prompt">Наведите камеру на QR-код</string>
 </resources>

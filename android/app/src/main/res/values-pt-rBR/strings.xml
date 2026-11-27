@@ -1057,6 +1057,9 @@
     <string name="photo_shape_original">Original</string>
     <string name="photo_mirror">Espelhar</string>
     <string name="photo_font_sample">Aa</string>
+    <string name="photo_font_choose">Fonte</string>
+    <string name="photo_font_add">Adicionar uma fonte…</string>
+    <string name="photo_font_unusable">Esse arquivo não é uma fonte que o Artefact possa usar</string>
     <string name="photo_not_saved">Não foi possível salvar a imagem.</string>
     <string name="msg_busy_removing_password">Removendo a senha…</string>
     <string name="msg_unlock_failed">Não é possível remover a proteção deste arquivo</string>
@@ -1219,7 +1222,7 @@
     <string name="app_style_glass_detail">Padrão · Superfícies translúcidas</string>
     <string name="app_style_clean_detail">Superfícies opacas</string>
     <string name="settings_reduce_transparency">Reduzir transparência</string>
-    <string name="settings_reduce_transparency_detail">As barras sobre páginas e listas ficam opacas, sem desfoque por trás</string>
+    <string name="settings_reduce_transparency_detail">O vidro e as barras flutuantes ficam opacos, nada aparece por trás</string>
     <string name="qr_scanner">Leitor de QR</string>
     <string name="qr_scan_prompt">Aponte a câmera para um código QR</string>
 </resources>
