@@ -49,7 +49,6 @@
     <string name="common_tool_crop">اقتصاص الصفحات</string>
     <string name="common_tool_fill_sign">تعبئة وتوقيع</string>
     <string name="common_tool_scan">مسح ضوئي</string>
-    <string name="common_tool_more_tools">المزيد من الأدوات</string>
     <string name="common_tool_recognize_text">التعرّف على النص</string>
     <string name="common_tool_comment">تعليق</string>
     <string name="common_tool_highlight">تمييز</string>
@@ -451,7 +450,6 @@
     <string name="sheet_bookmark_removed">تمت إزالة الإشارة المرجعية %1$s</string>
     <string name="sheet_delete_all">حذف الكل</string>
     <string name="sheet_page">الصفحة %1$d</string>
-    <string name="sheet_customize_toolbar">تخصيص شريط الأدوات</string>
     <plurals name="sheet_size_bytes">
         <item quantity="zero">صفر بايت</item>
         <item quantity="one">بايت واحد</item>
@@ -522,19 +520,13 @@
     <string name="toolbar_label_recognize">التعرّف</string>
     <string name="toolbar_label_add_text">إضافة نص</string>
     <string name="toolbar_tool_text">نص</string>
-    <string name="toolbar_customize">تخصيص شريط الأدوات</string>
     <string name="toolbar_save">حفظ شريط الأدوات</string>
     <plurals name="toolbar_customize_hint">
-        <item quantity="zero">اسحب الأدوات بين شريط الأدوات والأدوات الإضافية. يتسع الشريط لـ %1$d.</item>
-        <item quantity="one">اسحب الأدوات بين شريط الأدوات والأدوات الإضافية. يتسع الشريط لـ %1$d.</item>
-        <item quantity="two">اسحب الأدوات بين شريط الأدوات والأدوات الإضافية. يتسع الشريط لـ %1$d.</item>
-        <item quantity="few">اسحب الأدوات بين شريط الأدوات والأدوات الإضافية. يتسع الشريط لـ %1$d.</item>
-        <item quantity="many">اسحب الأدوات بين شريط الأدوات والأدوات الإضافية. يتسع الشريط لـ %1$d.</item>
-        <item quantity="other">اسحب الأدوات بين شريط الأدوات والأدوات الإضافية. يتسع الشريط لـ %1$d.</item>
+        <item quantity="one">اسحب لإعادة الترتيب. يتسع الشريط لـ %1$d.</item>
+        <item quantity="other">اسحب لإعادة الترتيب. يتسع الشريط لـ %1$d.</item>
     </plurals>
     <string name="toolbar_section_toolbar">شريط الأدوات</string>
     <string name="toolbar_tool_on_bar">%1$s، في شريط الأدوات</string>
-    <string name="toolbar_tool_in_more_tools">%1$s، في المزيد من الأدوات</string>
     <string name="toolbar_strikethrough">شطب</string>
     <string name="toolbar_no_text_to_mark">لا يوجد نص قابل للتحديد في هذه الصفحة. استخدم التعرّف على النص أولًا من «المزيد من الأدوات».</string>
     <string name="toolbar_draw_freeform">رسم حر</string>
@@ -1313,4 +1305,8 @@
     <string name="tool_group_security">الأمان</string>
     <!-- The dock's round button: the tools the dock has no room for -->
     <string name="common_tool_more">المزيد</string>
+    <!-- The dock's editor in Settings, and the tools it does not hold -->
+    <string name="settings_customize_dock">تخصيص الشريط</string>
+    <string name="settings_off_the_dock">خارج الشريط</string>
+    <string name="toolbar_tool_off_dock">%1$s، خارج الشريط</string>
 </resources>

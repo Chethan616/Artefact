@@ -199,32 +199,31 @@ fun toolbarSlots(widthDp: Int): Int = dockSlots(widthDp)
 fun toolbarSlots(widthDp: Int, clean: Boolean): Int =
     if (clean) ((widthDp - 24) / 76 - 1).coerceIn(1, 8) else dockSlots(widthDp)
 
-/** The bar's tools and More tools' order, as the user arranged them (kept in the app's preferences). */
+/** The dock's tools, in the order the user arranged them (kept in the app's preferences). */
 @Stable
 class QuickToolbarPrefs(context: Context) {
     private val prefs = context.getSharedPreferences("quick_toolbar", Context.MODE_PRIVATE)
 
-    var bar by mutableStateOf(read("bar") ?: QuickTool.DEFAULT_BAR)
+    var bar by mutableStateOf(validBar(read()))
         private set
 
-    /** More tools' order: every tool not on the bar. */
-    var grid by mutableStateOf(complete(read("grid").orEmpty(), bar))
-        private set
+    private fun read(): List<QuickTool> =
+        prefs.getString("bar", null)?.let { csv ->
+            csv.split(',').filter { it.isNotBlank() }.mapNotNull(QuickTool::of)
+        }.orEmpty()
 
-    private fun read(key: String): List<QuickTool>? =
-        prefs.getString(key, null)?.let { csv -> csv.split(',').filter { it.isNotBlank() }.mapNotNull(QuickTool::of).distinct() }
-
-    fun save(newBar: List<QuickTool>, newGrid: List<QuickTool>) {
-        bar = newBar.distinct()
-        grid = complete(newGrid, bar)
-        prefs.edit().putString("bar", bar.joinToString(",") { it.id }).putString("grid", grid.joinToString(",") { it.id }).apply()
+    fun save(newBar: List<QuickTool>) {
+        bar = validBar(newBar)
+        // a layout saved before the More list was derived kept a "grid" order: it is never read
+        // again, so drop it once rather than leaving it to confuse a later version
+        prefs.edit().putString("bar", bar.joinToString(",") { it.id }).remove("grid").apply()
     }
 
     companion object {
-        /** [order] without the bar's tools, followed by any tool it is missing. */
-        fun complete(order: List<QuickTool>, bar: List<QuickTool>): List<QuickTool> {
-            val g = order.filter { it !in bar }.distinct()
-            return g + QuickTool.entries.filter { it !in bar && it !in g }
+        /** [order] without office-only tools or repeats; empty, the dock's default tools. */
+        fun validBar(order: List<QuickTool>): List<QuickTool> {
+            val tools = order.filter { it.appliesTo(ToolDocKind.Pdf) }.distinct()
+            return tools.ifEmpty { QuickTool.DEFAULT_BAR }
         }
     }
 }
@@ -264,56 +263,44 @@ fun AppViewModel.runQuickTool(doc: OpenDocument, tool: QuickTool) {
 }
 
 /**
- * Customize toolbar: the bar's tools on top and the rest below, as More tools holds them. A tool
- * is dragged (or tapped) from one to the other; dropped on a full bar it pushes the bar's last
- * tool down. The tick keeps the new arrangement, the cross leaves the old one.
+ * Customize dock: the tools the bottom bar holds, in the order it holds them. Drag one along the
+ * capsule to move it, tap one to take it off; tap a tool below to put it on. A full dock makes
+ * room by dropping its last tool. The tick keeps the arrangement, the cross leaves it.
+ *
+ * Only the dock is arranged. The More list is derived from it in a fixed order, so nothing here
+ * can reorder it.
  */
 @Composable
-fun CustomizeToolbar(vm: AppViewModel, onDone: () -> Unit) {
+fun CustomizeDock(vm: AppViewModel, onDone: () -> Unit) {
     val c = pdfColors
     val prefs = vm.quickToolbar
-    val slots = toolbarSlots(LocalConfiguration.current.screenWidthDp)
+    val slots = toolbarSlots(LocalConfiguration.current.screenWidthDp, c.clean)
     val bar = remember { prefs.bar.take(slots).toMutableStateList() }
-    val grid = remember { mutableStateListOf<QuickTool>().apply { addAll(QuickToolbarPrefs.complete(prefs.grid + prefs.bar.drop(slots), bar)) } }
+    // every tool that could sit on the dock, in the app's own order: never arranged here
+    val rest = QuickTool.entries.filter { it.appliesTo(ToolDocKind.Pdf) && it !in bar }
     val rects = remember { mutableStateMapOf<QuickTool, Rect>() }
     var barRect by remember { mutableStateOf(Rect.Zero) }
-    var gridRect by remember { mutableStateOf(Rect.Zero) }
     var origin by remember { mutableStateOf(Offset.Zero) }
     var dragging by remember { mutableStateOf<QuickTool?>(null) }
     var dragPos by remember { mutableStateOf(Offset.Zero) }
 
-    fun toBar(t: QuickTool, index: Int) {
-        bar.remove(t)
-        grid.remove(t)
-        bar.add(index.coerceIn(0, bar.size), t)
-        while (bar.size > slots) grid.add(0, bar.removeAt(bar.lastIndex))
+    fun put(t: QuickTool) {
+        if (t in bar) return
+        if (bar.size >= slots) bar.removeAt(bar.lastIndex)
+        bar.add(t)
     }
 
-    fun toGrid(t: QuickTool, index: Int) {
+    fun move(t: QuickTool, at: Offset) {
+        if (!barRect.contains(at)) return
         bar.remove(t)
-        grid.remove(t)
-        grid.add(index.coerceIn(0, grid.size), t)
-    }
-
-    fun drop(t: QuickTool, at: Offset) {
-        when {
-            barRect.contains(at) -> toBar(t, bar.count { it != t && (rects[it]?.center?.x ?: 0f) < at.x })
-            gridRect.contains(at) -> {
-                // before the nearest tile, or after it when dropped on its right half
-                val near = grid.filter { it != t }.minByOrNull { (rects[it]?.center ?: Offset.Infinite).minus(at).getDistanceSquared() }
-                val others = grid.filter { it != t }
-                val i = near?.let { n -> others.indexOf(n) + if (at.x > (rects[n]?.center?.x ?: 0f)) 1 else 0 } ?: others.size
-                toGrid(t, i)
-            }
-        }
+        bar.add(bar.count { (rects[it]?.center?.x ?: 0f) < at.x }.coerceIn(0, bar.size), t)
     }
 
     val wobble by rememberInfiniteTransition(label = "jiggle").animateFloat(-1.5f, 1.5f, infiniteRepeatable(tween(140), RepeatMode.Reverse), label = "angle")
 
     @Composable
-    fun Draggable(t: QuickTool, content: @Composable () -> Unit) {
-        val title = stringResource(t.title)
-        val description = if (t in bar) stringResource(R.string.toolbar_tool_on_bar, title) else stringResource(R.string.toolbar_tool_in_more_tools, title)
+    fun DockTool(t: QuickTool) {
+        val description = stringResource(R.string.toolbar_tool_on_bar, stringResource(t.title))
         Box(
             Modifier
                 .onGloballyPositioned { rects[t] = it.boundsInRoot() }
@@ -330,30 +317,31 @@ fun CustomizeToolbar(vm: AppViewModel, onDone: () -> Unit) {
                             dragPos += amount
                         },
                         onDragEnd = {
-                            drop(t, dragPos)
+                            move(t, dragPos)
                             dragging = null
                         },
                         onDragCancel = { dragging = null },
                     )
                 }
-                .clickable(role = Role.Button) { if (t in bar) toGrid(t, 0) else toBar(t, bar.size) }
+                // a tap takes it off the dock: the More list takes it back in its own group
+                .clickable(role = Role.Button) { bar.remove(t) }
                 .semantics { contentDescription = description },
-        ) { content() }
+        ) { BarGlyph(t.icon, menuInk()) }
     }
 
     Box(Modifier.fillMaxWidth().onGloballyPositioned { origin = it.boundsInRoot().topLeft }) {
         Column {
-            // as More tools' header: its title, a glass close, and the blue tick that keeps the arrangement
+            // as the menus' headers: the title, a glass close, and the blue tick that keeps the dock
             val ink = menuInk()
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.toolbar_customize), style = com.chethan616.clearpdf.ui.theme.ClearType.Title.copy(fontSize = 18.sp), color = ink, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.settings_customize_dock), style = com.chethan616.clearpdf.ui.theme.ClearType.Title.copy(fontSize = 18.sp), color = ink, modifier = Modifier.weight(1f))
                 com.chethan616.clearpdf.ui.glass.GlassCircle(onDone, size = 36.dp, label = stringResource(R.string.common_cancel)) {
                     com.chethan616.clearpdf.ui.glass.GlassIcon(LucideIcons.X, null, Modifier.size(18.dp))
                 }
                 Spacer(Modifier.width(8.dp))
                 com.chethan616.clearpdf.ui.glass.GlassCircle({
-                    prefs.save(bar.toList(), grid.toList())
+                    prefs.save(bar.toList())
                     onDone()
                 }, size = 36.dp, tint = com.chethan616.clearpdf.ui.theme.Candy.Sky, label = stringResource(R.string.toolbar_save)) {
                     com.chethan616.clearpdf.ui.glass.GlassIcon(LucideIcons.Check, null, Modifier.size(18.dp))
@@ -368,7 +356,7 @@ fun CustomizeToolbar(vm: AppViewModel, onDone: () -> Unit) {
                 stringResource(R.string.toolbar_section_toolbar).uppercase(), style = com.chethan616.clearpdf.ui.theme.ClearType.Eyebrow, color = ink.copy(alpha = 0.55f),
                 modifier = Modifier.padding(start = 20.dp, top = 18.dp, bottom = 8.dp),
             )
-            // the toolbar as it looks on the page: a capsule of its glyphs, the blue More tools circle at its end
+            // the dock as it looks on the page: a capsule of its glyphs, the blue More circle at its end
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(60.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -382,25 +370,35 @@ fun CustomizeToolbar(vm: AppViewModel, onDone: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
-                    for (t in bar) Draggable(t) { BarGlyph(t.icon, ink) }
-                    // room left on the bar: faint places to drop a tool
+                    for (t in bar) DockTool(t)
+                    // room left on the dock: faint places to drop a tool
                     repeat(slots - bar.size) { Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) { Box(Modifier.size(8.dp).clip(androidx.compose.foundation.shape.CircleShape).background(ink.copy(alpha = 0.18f))) } }
                 }
                 Spacer(Modifier.width(10.dp))
-                // More tools always ends the bar
+                // More always ends the dock
                 Box(Modifier.size(52.dp).clip(androidx.compose.foundation.shape.CircleShape).background(com.chethan616.clearpdf.ui.theme.Candy.Sky), contentAlignment = Alignment.Center) {
                     Icon(LucideIcons.LayoutGrid, null, tint = Color.White, modifier = Modifier.size(24.dp))
                 }
             }
             Text(
-                stringResource(R.string.common_tool_more_tools).uppercase(), style = com.chethan616.clearpdf.ui.theme.ClearType.Eyebrow, color = ink.copy(alpha = 0.55f),
-                modifier = Modifier.padding(start = 20.dp, top = 18.dp, bottom = 4.dp),
+                stringResource(R.string.settings_off_the_dock).uppercase(), style = com.chethan616.clearpdf.ui.theme.ClearType.Eyebrow, color = ink.copy(alpha = 0.55f),
+                modifier = Modifier.padding(start = 20.dp, top = 18.dp, bottom = 6.dp),
             )
-            // More tools' own tiles, four to a row
-            Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp).heightIn(min = 96.dp).onGloballyPositioned { gridRect = it.boundsInRoot() }) {
-                grid.chunked(4).forEach { row ->
+            // the tools that are not on the dock, four to a row, in the app's own order
+            Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
+                rest.chunked(4).forEach { row ->
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                        row.forEach { t -> Box(Modifier.weight(1f), contentAlignment = Alignment.TopCenter) { Draggable(t) { ToolTileFace(t.icon, stringResource(t.title), t.hue) } } }
+                        row.forEach { t ->
+                            val title = stringResource(t.title)
+                            val description = stringResource(R.string.toolbar_tool_off_dock, title)
+                            Box(
+                                Modifier.weight(1f), contentAlignment = Alignment.TopCenter,
+                            ) {
+                                Box(
+                                    Modifier.clickable(role = Role.Button) { put(t) }.semantics { contentDescription = description },
+                                ) { ToolTileFace(t.icon, title, t.hue) }
+                            }
+                        }
                         repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                     Spacer(Modifier.height(6.dp))

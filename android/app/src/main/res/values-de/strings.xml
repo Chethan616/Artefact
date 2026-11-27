@@ -51,7 +51,6 @@
     <string name="common_tool_crop">Seiten zuschneiden</string>
     <string name="common_tool_fill_sign">Ausfüllen und unterschreiben</string>
     <string name="common_tool_scan">Scannen</string>
-    <string name="common_tool_more_tools">Weitere Tools</string>
     <string name="common_tool_recognize_text">Text erkennen</string>
     <string name="common_tool_comment">Kommentieren</string>
     <string name="common_tool_highlight">Hervorheben</string>
@@ -658,7 +657,6 @@
     <string name="sheet_page">Seite %1$d</string>
 
     <!-- Viewer sheets: More tools -->
-    <string name="sheet_customize_toolbar">Symbolleiste anpassen</string>
 
     <!-- Viewer sheets: file sizes -->
     <plurals name="sheet_size_bytes">
@@ -756,19 +754,17 @@
     <string name="toolbar_tool_text">Text</string>
 
     <!-- Customize toolbar: moving tools between the bottom toolbar and More tools -->
-    <string name="toolbar_customize">Symbolleiste anpassen</string>
     <string name="toolbar_save">Symbolleiste speichern</string>
     <!-- Note: %1$d is how many tools fit on the toolbar (6 to 8) -->
     <plurals name="toolbar_customize_hint">
-        <item quantity="one">Ziehe Werkzeuge zwischen die Symbolleiste und „Weitere Werkzeuge“. Auf die Symbolleiste passt %1$d Werkzeug.</item>
-        <item quantity="other">Ziehe Werkzeuge zwischen die Symbolleiste und „Weitere Werkzeuge“. Auf die Symbolleiste passen %1$d Werkzeuge.</item>
+        <item quantity="one">Zum Umsortieren ziehen. Das Dock fasst %1$d.</item>
+        <item quantity="other">Zum Umsortieren ziehen. Das Dock fasst %1$d.</item>
     </plurals>
     <!-- Note: heading over the tools that are on the bottom toolbar -->
     <string name="toolbar_section_toolbar">Symbolleiste</string>
     <!-- Note: spoken for a tool tile; %1$s is the tool's name -->
     <string name="toolbar_tool_on_bar">%1$s, in der Symbolleiste</string>
     <!-- Note: spoken for a tool tile; %1$s is the tool's name -->
-    <string name="toolbar_tool_in_more_tools">%1$s, unter „Weitere Werkzeuge“</string>
 
     <!-- Highlight tool: marking text -->
     <string name="toolbar_strikethrough">Durchstreichen</string>
@@ -1655,4 +1651,8 @@
     <string name="tool_group_security">Sicherheit</string>
     <!-- The dock's round button: the tools the dock has no room for -->
     <string name="common_tool_more">Mehr</string>
+    <!-- The dock's editor in Settings, and the tools it does not hold -->
+    <string name="settings_customize_dock">Dock anpassen</string>
+    <string name="settings_off_the_dock">Nicht im Dock</string>
+    <string name="toolbar_tool_off_dock">%1$s, nicht im Dock</string>
 </resources>

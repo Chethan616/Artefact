@@ -551,64 +551,6 @@ object ToolHues {
     val redact = Color(0xFFF2615C)
 }
 
-/** More tools: the tools that aren't on the bar, as a grid of tiles, and Customize toolbar. */
-@Composable
-fun MoreToolsSheet(vm: AppViewModel, doc: OpenDocument, anchor: Rect) {
-    val ctl = doc.controller
-    var customizing by remember { mutableStateOf(false) }
-    val config = androidx.compose.ui.platform.LocalConfiguration.current
-    val width = (config.screenWidthDp.dp - 24.dp).coerceAtLeast(236.dp).coerceAtMost(480.dp)
-    val maxHeight = (config.screenHeightDp.dp - 112.dp).coerceAtLeast(400.dp)
-    val slots = toolbarSlots(config.screenWidthDp)
-    val prefs = vm.quickToolbar
-    val tools = if (doc.isOffice) emptyList() else prefs.bar.drop(slots) + prefs.grid
-    com.chethan616.clearpdf.ui.glass.GlassMenuLayout(
-        anchor = anchor,
-        onDismiss = { if (customizing) customizing = false else ctl.sheet = ViewerSheet.None },
-        width = width,
-        maxHeight = maxHeight,
-    ) {
-        if (customizing) {
-            CustomizeToolbar(vm) { customizing = false }
-        } else {
-            Spacer(Modifier.height(6.dp))
-            Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 14.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.common_tool_more_tools), style = ClearType.Title.copy(fontSize = 18.sp), color = menuInk(), modifier = Modifier.weight(1f))
-                com.chethan616.clearpdf.ui.glass.GlassCircle(onClick = { ctl.sheet = ViewerSheet.None }, size = 36.dp, label = stringResource(R.string.ui_close_sheet)) {
-                    com.chethan616.clearpdf.ui.glass.GlassIcon(LucideIcons.X, null, Modifier.size(18.dp))
-                }
-            }
-            // Preserve the existing toolbar's four-column tool grid inside the same frosted menu card.
-            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 2.dp)) {
-                val perRow = if (maxWidth >= 560.dp) 6 else if (maxWidth >= 400.dp) 5 else 4
-                val cell = maxWidth / perRow
-                Column {
-                    tools.chunked(perRow).forEach { row ->
-                        Row(verticalAlignment = Alignment.Top) {
-                            row.forEach { t ->
-                                ToolTile(t.icon, stringResource(t.title), t.hue, Modifier.width(cell)) {
-                                    ctl.sheet = ViewerSheet.None
-                                    vm.runQuickTool(doc, t)
-                                }
-                            }
-                        }
-                        Spacer(Modifier.height(10.dp))
-                    }
-                }
-            }
-            com.chethan616.clearpdf.ui.glass.GlassPill(
-                onClick = { customizing = true }, modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(), height = 48.dp,
-                label = stringResource(R.string.sheet_customize_toolbar),
-            ) {
-                Icon(LucideIcons.SlidersHorizontal, null, tint = menuInk(), modifier = Modifier.size(18.dp))
-                Text(stringResource(R.string.sheet_customize_toolbar), style = ClearType.BodyStrong, color = menuInk())
-            }
-            Spacer(Modifier.height(12.dp))
-        }
-    }
-}
-
-
 /** Save as: the formats the document's engine writes, each saved to Downloads. */
 /**
  * What the document is, as a card about it: its first page and name up top with what kind of file it

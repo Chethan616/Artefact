@@ -44,7 +44,6 @@
     <string name="common_tool_crop">Recortar páginas</string>
     <string name="common_tool_fill_sign">Preencher e assinar</string>
     <string name="common_tool_scan">Digitalizar</string>
-    <string name="common_tool_more_tools">Mais ferramentas</string>
     <string name="common_tool_recognize_text">Reconhecer texto</string>
     <string name="common_tool_comment">Comentar</string>
     <string name="common_tool_highlight">Realçar</string>
@@ -428,7 +427,6 @@
     <string name="sheet_bookmark_removed">Marcador %1$s removido</string>
     <string name="sheet_delete_all">Eliminar tudo</string>
     <string name="sheet_page">Página %1$d</string>
-    <string name="sheet_customize_toolbar">Personalizar barra de ferramentas</string>
     <plurals name="sheet_size_bytes">
         <item quantity="one">%1$d byte</item>
         <item quantity="other">%1$d bytes</item>
@@ -491,15 +489,13 @@
     <string name="toolbar_label_recognize">Reconhecer</string>
     <string name="toolbar_label_add_text">Adicionar texto</string>
     <string name="toolbar_tool_text">Texto</string>
-    <string name="toolbar_customize">Personalizar barra de ferramentas</string>
     <string name="toolbar_save">Guardar barra de ferramentas</string>
     <plurals name="toolbar_customize_hint">
-        <item quantity="one">Arraste ferramentas entre a barra e Mais ferramentas. A barra leva %1$d.</item>
-        <item quantity="other">Arraste ferramentas entre a barra e Mais ferramentas. A barra leva %1$d.</item>
+        <item quantity="one">Arrasta para reordenar. O dock tem %1$d.</item>
+        <item quantity="other">Arrasta para reordenar. O dock tem %1$d.</item>
     </plurals>
     <string name="toolbar_section_toolbar">Barra de ferramentas</string>
     <string name="toolbar_tool_on_bar">%1$s, na barra de ferramentas</string>
-    <string name="toolbar_tool_in_more_tools">%1$s, em Mais ferramentas</string>
     <string name="toolbar_strikethrough">Rasurado</string>
     <string name="toolbar_no_text_to_mark">Esta página não tem texto para marcar. Reconheça primeiro o texto (Mais ferramentas ▸ Reconhecer texto).</string>
     <string name="toolbar_draw_freeform">Desenhar à mão livre</string>
@@ -1241,4 +1237,8 @@
     <string name="tool_group_security">Segurança</string>
     <!-- The dock's round button: the tools the dock has no room for -->
     <string name="common_tool_more">Mais</string>
+    <!-- The dock's editor in Settings, and the tools it does not hold -->
+    <string name="settings_customize_dock">Personalizar dock</string>
+    <string name="settings_off_the_dock">Fora do dock</string>
+    <string name="toolbar_tool_off_dock">%1$s, fora do dock</string>
 </resources>

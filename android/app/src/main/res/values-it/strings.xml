@@ -61,7 +61,6 @@
     <string name="common_tool_crop">Ritaglia pagine</string>
     <string name="common_tool_fill_sign">Compila e firma</string>
     <string name="common_tool_scan">Scansiona</string>
-    <string name="common_tool_more_tools">Altri strumenti</string>
     <string name="common_tool_recognize_text">Riconosci testo</string>
     <string name="common_tool_comment">Commenta</string>
     <string name="common_tool_highlight">Evidenzia</string>
@@ -649,7 +648,6 @@
 
     <!-- Altri strumenti -->
 
-    <string name="sheet_customize_toolbar">Personalizza barra degli strumenti</string>
 
     <!-- Dimensioni dei file -->
 
@@ -744,15 +742,13 @@
 
     <!-- Personalizzazione della barra degli strumenti -->
 
-    <string name="toolbar_customize">Personalizza barra degli strumenti</string>
     <string name="toolbar_save">Salva barra degli strumenti</string>
     <plurals name="toolbar_customize_hint">
-        <item quantity="one">Trascina gli strumenti tra la barra e Altri strumenti. La barra può contenerne %1$d.</item>
-        <item quantity="other">Trascina gli strumenti tra la barra e Altri strumenti. La barra può contenerne %1$d.</item>
+        <item quantity="one">Trascina per riordinare. Il dock ne contiene %1$d.</item>
+        <item quantity="other">Trascina per riordinare. Il dock ne contiene %1$d.</item>
     </plurals>
     <string name="toolbar_section_toolbar">Barra degli strumenti</string>
     <string name="toolbar_tool_on_bar">%1$s, nella barra degli strumenti</string>
-    <string name="toolbar_tool_in_more_tools">%1$s, in Altri strumenti</string>
 
     <!-- Evidenziazione e marcatura del testo -->
 
@@ -1646,4 +1642,8 @@
     <string name="tool_group_security">Sicurezza</string>
     <!-- The dock's round button: the tools the dock has no room for -->
     <string name="common_tool_more">Altro</string>
+    <!-- The dock's editor in Settings, and the tools it does not hold -->
+    <string name="settings_customize_dock">Personalizza dock</string>
+    <string name="settings_off_the_dock">Fuori dal dock</string>
+    <string name="toolbar_tool_off_dock">%1$s, fuori dal dock</string>
 </resources>

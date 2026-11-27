@@ -51,7 +51,6 @@
     <string name="common_tool_crop">Rogner les pages</string>
     <string name="common_tool_fill_sign">Remplir et signer</string>
     <string name="common_tool_scan">Numériser</string>
-    <string name="common_tool_more_tools">Plus d\'outils</string>
     <string name="common_tool_recognize_text">Reconnaître le texte</string>
     <string name="common_tool_comment">Commenter</string>
     <string name="common_tool_highlight">Surligner</string>
@@ -603,7 +602,6 @@
     <string name="sheet_page">Page %1$d</string>
 
     <!-- Viewer sheets: More tools -->
-    <string name="sheet_customize_toolbar">Personnaliser la barre d\'outils</string>
 
     <!-- Viewer sheets: file sizes -->
     <plurals name="sheet_size_bytes">
@@ -689,15 +687,13 @@
     <string name="toolbar_tool_text">Texte</string>
 
     <!-- Customize toolbar: moving tools between the bottom toolbar and More tools -->
-    <string name="toolbar_customize">Personnaliser la barre d\'outils</string>
     <string name="toolbar_save">Enregistrer la barre d\'outils</string>
     <plurals name="toolbar_customize_hint">
-        <item quantity="one">Faites glisser les outils entre la barre d\'outils et Plus d\'outils. La barre d\'outils en contient %1$d.</item>
-        <item quantity="other">Faites glisser les outils entre la barre d\'outils et Plus d\'outils. La barre d\'outils en contient %1$d.</item>
+        <item quantity="one">Faites glisser pour réordonner. Le dock en contient %1$d.</item>
+        <item quantity="other">Faites glisser pour réordonner. Le dock en contient %1$d.</item>
     </plurals>
     <string name="toolbar_section_toolbar">Barre d\'outils</string>
     <string name="toolbar_tool_on_bar">%1$s, dans la barre d\'outils</string>
-    <string name="toolbar_tool_in_more_tools">%1$s, dans Plus d\'outils</string>
 
     <!-- Highlight tool: marking text -->
     <string name="toolbar_strikethrough">Barré</string>
@@ -1536,4 +1532,8 @@
     <string name="tool_group_security">Sécurité</string>
     <!-- The dock's round button: the tools the dock has no room for -->
     <string name="common_tool_more">Plus</string>
+    <!-- The dock's editor in Settings, and the tools it does not hold -->
+    <string name="settings_customize_dock">Personnaliser le dock</string>
+    <string name="settings_off_the_dock">Hors du dock</string>
+    <string name="toolbar_tool_off_dock">%1$s, hors du dock</string>
 </resources>

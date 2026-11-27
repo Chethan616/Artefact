@@ -44,7 +44,6 @@
     <string name="common_tool_crop">Обрезать страницы</string>
     <string name="common_tool_fill_sign">Заполнить и подписать</string>
     <string name="common_tool_scan">Сканировать</string>
-    <string name="common_tool_more_tools">Другие инструменты</string>
     <string name="common_tool_recognize_text">Распознать текст</string>
     <string name="common_tool_comment">Комментарий</string>
     <string name="common_tool_highlight">Выделить</string>
@@ -438,7 +437,6 @@
     <string name="sheet_bookmark_removed">Закладка «%1$s» удалена</string>
     <string name="sheet_delete_all">Удалить все</string>
     <string name="sheet_page">Страница %1$d</string>
-    <string name="sheet_customize_toolbar">Настроить панель</string>
     <plurals name="sheet_size_bytes">
         <item quantity="one">%1$d байт</item>
         <item quantity="few">%1$d байта</item>
@@ -505,17 +503,13 @@
     <string name="toolbar_label_recognize">Распознать</string>
     <string name="toolbar_label_add_text">Добавить текст</string>
     <string name="toolbar_tool_text">Текст</string>
-    <string name="toolbar_customize">Настроить панель</string>
     <string name="toolbar_save">Сохранить панель</string>
     <plurals name="toolbar_customize_hint">
-        <item quantity="one">Перетаскивайте инструменты между панелью и «Другими инструментами». На панели помещается %1$d.</item>
-        <item quantity="few">Перетаскивайте инструменты между панелью и «Другими инструментами». На панели помещается %1$d.</item>
-        <item quantity="many">Перетаскивайте инструменты между панелью и «Другими инструментами». На панели помещается %1$d.</item>
-        <item quantity="other">Перетаскивайте инструменты между панелью и «Другими инструментами». На панели помещается %1$d.</item>
+        <item quantity="one">Перетащите, чтобы изменить порядок. На панели: %1$d.</item>
+        <item quantity="other">Перетащите, чтобы изменить порядок. На панели: %1$d.</item>
     </plurals>
     <string name="toolbar_section_toolbar">Панель</string>
     <string name="toolbar_tool_on_bar">%1$s, на панели</string>
-    <string name="toolbar_tool_in_more_tools">%1$s, в «Других инструментах»</string>
     <string name="toolbar_strikethrough">Зачеркнуть</string>
     <string name="toolbar_no_text_to_mark">На этой странице нет текста для пометок. Сначала распознайте текст («Другие инструменты» ▸ «Распознать текст»).</string>
     <string name="toolbar_draw_freeform">Рисовать от руки</string>
@@ -1274,4 +1268,8 @@
     <string name="tool_group_security">Безопасность</string>
     <!-- The dock's round button: the tools the dock has no room for -->
     <string name="common_tool_more">Ещё</string>
+    <!-- The dock's editor in Settings, and the tools it does not hold -->
+    <string name="settings_customize_dock">Настроить панель</string>
+    <string name="settings_off_the_dock">Не на панели</string>
+    <string name="toolbar_tool_off_dock">%1$s, не на панели</string>
 </resources>

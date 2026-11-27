@@ -19,14 +19,15 @@ class QuickToolbarTest {
     }
 
     @Test
-    fun moreToolsHoldsEveryToolNotOnTheBar() {
-        val bar = listOf(QuickTool.Comment, QuickTool.Scan)
-        val grid = QuickToolbarPrefs.complete(listOf(QuickTool.ReadAloud, QuickTool.Scan, QuickTool.ReadAloud), bar)
-        // the saved order first, without the bar's tools or repeats, then the rest
-        assertEquals(QuickTool.ReadAloud, grid.first())
-        assertEquals(QuickTool.entries.size - bar.size, grid.size)
-        assertTrue(grid.none { it in bar })
-        assertEquals(grid.size, grid.toSet().size)
+    fun theDockDropsOfficeToolsAndRepeats() {
+        // an old layout may name a tool a PDF does not have, or name one twice
+        assertEquals(
+            listOf(QuickTool.Scan),
+            QuickToolbarPrefs.validBar(listOf(QuickTool.Scan, QuickTool.Present, QuickTool.Scan)),
+        )
+        // nothing left: the dock's default tools
+        assertEquals(QuickTool.DEFAULT_BAR, QuickToolbarPrefs.validBar(emptyList()))
+        assertEquals(QuickTool.DEFAULT_BAR, QuickToolbarPrefs.validBar(listOf(QuickTool.Present)))
     }
 
     @Test

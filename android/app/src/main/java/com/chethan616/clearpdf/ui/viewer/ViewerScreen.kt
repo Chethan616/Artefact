@@ -103,7 +103,6 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
     // More opened from its circle: the circle itself becomes the menu (MorphButtonSurface), hidden in the bar meanwhile
     var moreFromButton by remember { mutableStateOf(false) }
     var moreMorphUp by remember { mutableStateOf(false) }
-    var moreToolsMenuAnchor by remember { mutableStateOf(Rect.Zero) }
 
     // The system bars go with the viewer's bars.
     val statusBar = vm.statusBarInDocuments
@@ -522,7 +521,6 @@ fun ViewerScreen(vm: AppViewModel, doc: OpenDocument) {
                 ViewerSheet.Bookmarks -> BookmarksSheet(vm, doc)
                 ViewerSheet.Attachments -> AttachmentsSheet(vm, doc)
                 ViewerSheet.Comments -> Unit
-                ViewerSheet.MoreTools -> MoreToolsSheet(vm, doc, moreToolsMenuAnchor)
                 ViewerSheet.SaveAs -> SaveAsSheet(vm, doc)
                 ViewerSheet.SlideNotes -> SlideNotesSheet(vm, doc)
                 ViewerSheet.Info -> DocumentInfoSheet(vm, doc)

@@ -58,7 +58,6 @@
     <string name="common_tool_crop">Recortar páginas</string>
     <string name="common_tool_fill_sign">Rellenar y firmar</string>
     <string name="common_tool_scan">Escanear</string>
-    <string name="common_tool_more_tools">Más herramientas</string>
     <string name="common_tool_recognize_text">Reconocer texto</string>
     <string name="common_tool_comment">Comentar</string>
     <string name="common_tool_highlight">Resaltar</string>
@@ -665,7 +664,6 @@
     <string name="sheet_page">Página %1$d</string>
 
     <!-- Viewer sheets: More tools -->
-    <string name="sheet_customize_toolbar">Personalizar barra de herramientas</string>
 
     <!-- Viewer sheets: file sizes -->
     <plurals name="sheet_size_bytes">
@@ -764,19 +762,17 @@
     <string name="toolbar_tool_text">Texto</string>
 
     <!-- Customize toolbar: moving tools between the bottom toolbar and More tools -->
-    <string name="toolbar_customize">Personalizar barra de herramientas</string>
     <string name="toolbar_save">Guardar barra</string>
     <!-- Note: %1$d is how many tools fit on the toolbar (6 to 8) -->
     <plurals name="toolbar_customize_hint">
-        <item quantity="one">Arrastra herramientas entre la barra y Más herramientas. La barra admite %1$d.</item>
-        <item quantity="other">Arrastra herramientas entre la barra y Más herramientas. La barra admite %1$d.</item>
+        <item quantity="one">Arrastra para reordenar. El dock admite %1$d.</item>
+        <item quantity="other">Arrastra para reordenar. El dock admite %1$d.</item>
     </plurals>
     <!-- Note: heading over the tools that are on the bottom toolbar -->
     <string name="toolbar_section_toolbar">Barra de herramientas</string>
     <!-- Note: spoken for a tool tile; %1$s is the tool's name -->
     <string name="toolbar_tool_on_bar">%1$s, en la barra</string>
     <!-- Note: spoken for a tool tile; %1$s is the tool's name -->
-    <string name="toolbar_tool_in_more_tools">%1$s, en Más herramientas</string>
 
     <!-- Highlight tool: marking text -->
     <string name="toolbar_strikethrough">Tachar</string>
@@ -1664,4 +1660,8 @@
     <string name="tool_group_security">Seguridad</string>
     <!-- The dock's round button: the tools the dock has no room for -->
     <string name="common_tool_more">Más</string>
+    <!-- The dock's editor in Settings, and the tools it does not hold -->
+    <string name="settings_customize_dock">Personalizar el dock</string>
+    <string name="settings_off_the_dock">Fuera del dock</string>
+    <string name="toolbar_tool_off_dock">%1$s, fuera del dock</string>
 </resources>

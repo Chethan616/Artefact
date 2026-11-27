@@ -51,7 +51,6 @@
     <string name="common_tool_crop">Crop pages</string>
     <string name="common_tool_fill_sign">Fill &amp; Sign</string>
     <string name="common_tool_scan">Scan</string>
-    <string name="common_tool_more_tools">More tools</string>
     <string name="common_tool_recognize_text">Recognize text</string>
     <string name="common_tool_comment">Comment</string>
     <string name="common_tool_highlight">Highlight</string>
@@ -711,7 +710,6 @@
     <string name="sheet_page">Page %1$d</string>
 
     <!-- Viewer sheets: More tools -->
-    <string name="sheet_customize_toolbar">Customize toolbar</string>
 
     <!-- Viewer sheets: file sizes -->
     <plurals name="sheet_size_bytes">
@@ -818,19 +816,17 @@
     <string name="toolbar_tool_text">Text</string>
 
     <!-- Customize toolbar: moving tools between the bottom toolbar and More tools -->
-    <string name="toolbar_customize">Customize toolbar</string>
     <string name="toolbar_save">Save toolbar</string>
     <!-- Note: %1$d is how many tools fit on the toolbar (6 to 8) -->
     <plurals name="toolbar_customize_hint">
-        <item quantity="one">Drag tools between the toolbar and More tools. The toolbar holds %1$d.</item>
-        <item quantity="other">Drag tools between the toolbar and More tools. The toolbar holds %1$d.</item>
+        <item quantity="one">Drag to reorder. The dock holds %1$d.</item>
+        <item quantity="other">Drag to reorder. The dock holds %1$d.</item>
     </plurals>
     <!-- Note: heading over the tools that are on the bottom toolbar -->
     <string name="toolbar_section_toolbar">Toolbar</string>
     <!-- Note: spoken for a tool tile; %1$s is the tool's name -->
     <string name="toolbar_tool_on_bar">%1$s, on the toolbar</string>
     <!-- Note: spoken for a tool tile; %1$s is the tool's name -->
-    <string name="toolbar_tool_in_more_tools">%1$s, in More tools</string>
 
     <!-- Highlight tool: marking text -->
     <string name="toolbar_strikethrough">Strikethrough</string>
@@ -1715,4 +1711,8 @@
     <string name="tool_group_security">Security</string>
     <!-- The dock's round button: the tools the dock has no room for -->
     <string name="common_tool_more">More</string>
+    <!-- The dock's editor in Settings, and the tools it does not hold -->
+    <string name="settings_customize_dock">Customize dock</string>
+    <string name="settings_off_the_dock">Off the dock</string>
+    <string name="toolbar_tool_off_dock">%1$s, off the dock</string>
 </resources>
