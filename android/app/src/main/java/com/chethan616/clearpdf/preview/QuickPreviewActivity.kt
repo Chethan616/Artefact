@@ -146,10 +146,10 @@ class QuickPreviewActivity : ComponentActivity() {
                     withContext(Dispatchers.IO) {
                         val f = copy ?: files.workingCopy(u).also { copy = it }
                         require(f.length() < 8L shl 20)
-                        val doc = com.chethan616.clearpdf.ui.notes.mindFromOpml(f.readText()) ?: error(getString(R.string.msg_not_opml))
+                        val doc = com.chethan616.clearpdf.ui.notes.mindFromFile(f.readText()) ?: error(getString(R.string.msg_not_map))
                         PreviewState.Map(doc, pictureName, files.size(u) ?: f.length())
                     }
-                }.getOrElse { PreviewState.Failed(getString(R.string.msg_not_opml)) }
+                }.getOrElse { PreviewState.Failed(getString(R.string.msg_not_map)) }
                 return@launch
             }
             if (pictureName != null && (com.chethan616.clearpdf.engine.DocumentTypes.isImageName(pictureName) || mime in com.chethan616.clearpdf.engine.DocumentTypes.IMAGES)) {

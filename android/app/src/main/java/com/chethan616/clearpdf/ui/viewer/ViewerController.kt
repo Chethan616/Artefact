@@ -27,6 +27,9 @@ enum class ViewerTool {
 
     /** Edit PDF: the page's own text and images. */
     Edit,
+
+    /** Measure (#159): distances, perimeters and areas at the page's scale, and setting that scale. */
+    Measure,
 }
 
 /** The text-markup sub-tools, in the sub-toolbar's order. */
@@ -51,6 +54,10 @@ class ViewerController {
     var tool by mutableStateOf(ViewerTool.None)
     var markup by mutableStateOf(TextMarkup.Highlight)
     var commentMode by mutableStateOf(CommentMode.Text)
+
+    /** What the Measure tool takes, and the points it has so far. */
+    var measureMode by mutableStateOf(MeasureMode.Distance)
+    val measure = MeasureState()
 
     var sheet by mutableStateOf(ViewerSheet.None)
 

@@ -50,7 +50,8 @@ object DocumentTypes {
     val IMAGES = arrayOf("image/jpeg", "image/png")
 
     /** Mind maps saved as OPML outlines (by Artefact or a desktop outliner): they open as a map. */
-    val MIND_MAPS = arrayOf("text/x-opml", "application/x-opml")
+    /** OPML outlines, and Excalidraw drawings (#162), opened as maps. */
+    val MIND_MAPS = arrayOf("text/x-opml", "application/x-opml", "application/vnd.excalidraw+json")
 
     /**
      * What the Open picker offers: everything the app opens, and files typed only as generic
@@ -67,7 +68,7 @@ object DocumentTypes {
     private val SHEET_EXTENSIONS = setOf("xlsx", "xlsm", "xltx", "xltm", "xlsb", "xls", "xlt", "ods", "csv", "tsv")
     private val TEXT_EXTENSIONS = setOf("txt", "md", "markdown")
     private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png")
-    private val MAP_EXTENSIONS = setOf("opml")
+    private val MAP_EXTENSIONS = setOf("opml", "excalidraw")
 
     /** The kinds a file list can be narrowed to (Files ▸ ⋯). */
     enum class Kind(val label: Int, val icon: androidx.compose.ui.graphics.vector.ImageVector, val short: Int = label) {
@@ -140,6 +141,7 @@ object DocumentTypes {
         "jpg", "jpeg" -> "image/jpeg"
         "png" -> "image/png"
         "opml" -> MIND_MAPS[0]
+        "excalidraw" -> MIND_MAPS[2]
         else -> PDF
     }
 }

@@ -76,6 +76,18 @@ import com.chethan616.clearpdf.ui.theme.clear
 import com.chethan616.clearpdf.ui.glass.Capsule
 import kotlinx.coroutines.delay
 
+/** "No Word documents" and the like: what an empty list of [kind] is called. */
+private fun noneOf(kind: com.chethan616.clearpdf.engine.DocumentTypes.Kind): Int = when (kind) {
+    com.chethan616.clearpdf.engine.DocumentTypes.Kind.All -> R.string.files_none_all
+    com.chethan616.clearpdf.engine.DocumentTypes.Kind.Pdf -> R.string.files_none_pdf
+    com.chethan616.clearpdf.engine.DocumentTypes.Kind.Word -> R.string.files_none_word
+    com.chethan616.clearpdf.engine.DocumentTypes.Kind.Slides -> R.string.files_none_slides
+    com.chethan616.clearpdf.engine.DocumentTypes.Kind.Sheets -> R.string.files_none_sheets
+    com.chethan616.clearpdf.engine.DocumentTypes.Kind.Text -> R.string.files_none_text
+    com.chethan616.clearpdf.engine.DocumentTypes.Kind.Images -> R.string.files_none_images
+    com.chethan616.clearpdf.engine.DocumentTypes.Kind.MindMaps -> R.string.files_none_maps
+}
+
 /** At most this many rows share one panel, so a long folder isn't one giant item. */
 private const val PanelRows = 20
 
@@ -178,6 +190,25 @@ fun FilesScreen(vm: AppViewModel, onBrowse: () -> Unit) {
                 if (rows.isEmpty()) item(key = "noresults") { EmptyHero(stringResource(R.string.home_no_results), stringResource(R.string.home_no_results_body), accent = Candy.Sky) }
                 else panels(vm, "results", resultsTitle, rows, recent = false)
             }
+            // a file type picked from ⋯ and none of it here, though there are other files: say which
+            // type, and offer them all again (it used to say "No recent files", or "No PDFs" for any type)
+            rows.isEmpty() && kind != com.chethan616.clearpdf.engine.DocumentTypes.Kind.All && !(tab == 2 && !vm.hasFileAccess) && !(tab == 2 && vm.scanning) -> {
+                item(key = "nokind") {
+                    EmptyHero(
+                        stringResource(noneOf(kind)),
+                        stringResource(
+                            when (tab) {
+                                0 -> R.string.files_none_kind_recent
+                                1 -> R.string.files_none_kind_starred
+                                else -> R.string.files_none_kind_device
+                            },
+                        ),
+                        stringResource(R.string.files_show_all_types), Candy.Sky,
+                    ) { kind = com.chethan616.clearpdf.engine.DocumentTypes.Kind.All }
+                }
+                // Recent keeps its other places, as it does with files in it
+                if (tab == 0) item(key = "places") { Places(vm, onBrowse) { tab = 2 } }
+            }
             tab == 0 -> {
                 if (rows.isEmpty()) {
                     item(key = "empty0") { EmptyHero(stringResource(R.string.home_no_recent_title), stringResource(R.string.home_no_recent_body), stringResource(R.string.home_open_file), Candy.Tomato, onBrowse) }
@@ -196,11 +227,12 @@ fun FilesScreen(vm: AppViewModel, onBrowse: () -> Unit) {
             else -> {
                 when {
                     !vm.hasFileAccess && rows.isEmpty() -> item(key = "noaccess") {
-                        EmptyHero(stringResource(R.string.home_device_files_title), stringResource(R.string.home_device_files_body_long), stringResource(R.string.home_add_folder), Candy.Sky) { vm.requestFileAccess() }
+                        EmptyHero(stringResource(R.string.home_device_files_title), stringResource(R.string.files_device_body), stringResource(R.string.home_add_folder), Candy.Sky) { vm.requestFileAccess() }
                     }
+                    // every file Artefact opens is listed here, not only PDFs
                     rows.isEmpty() -> item(key = "nopdfs") {
-                        if (vm.scanning) EmptyHero(stringResource(R.string.home_looking_for_pdfs), "", accent = Candy.Sky)
-                        else EmptyHero(stringResource(R.string.home_no_pdfs_title), stringResource(R.string.home_no_pdfs_body), stringResource(R.string.home_add_folder), Candy.Sky) { vm.requestFileAccess() }
+                        if (vm.scanning) EmptyHero(stringResource(R.string.files_looking), "", accent = Candy.Sky)
+                        else EmptyHero(stringResource(R.string.files_none_device_title), stringResource(R.string.files_none_device_body), stringResource(R.string.home_add_folder), Candy.Sky) { vm.requestFileAccess() }
                     }
                     else -> {
                         for ((folder, list) in rows.groupBy { it.location }) panels(vm, "f$folder", folder.ifEmpty { internal }, list, recent = false)

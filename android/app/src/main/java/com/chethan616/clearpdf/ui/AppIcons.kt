@@ -17,6 +17,15 @@ object LucideIcons {
     val AArrowUp: ImageVector get() = Icons.Rounded.TextIncrease
     val ALargeSmall: ImageVector get() = Icons.Rounded.FormatSize
     val AlignCenter: ImageVector get() = Icons.Rounded.FormatAlignCenter
+    /** A line stepped in, or out (the mind map's outline, #156): mirrored in a right-to-left language. */
+    val IndentMore: ImageVector get() = Icons.AutoMirrored.Rounded.FormatIndentIncrease
+    val IndentLess: ImageVector get() = Icons.AutoMirrored.Rounded.FormatIndentDecrease
+    /** A map as a nested list. */
+    val OutlineList: ImageVector get() = Icons.AutoMirrored.Rounded.FormatListBulleted
+    /** How a map is set out. */
+    val MapLayout: ImageVector get() = Icons.Rounded.AccountTree
+    /** Which way words read. */
+    val TextDirection: ImageVector get() = Icons.Rounded.FormatTextdirectionRToL
     val AlignJustify: ImageVector get() = Icons.Rounded.FormatAlignJustify
     val AlignLeft: ImageVector get() = Icons.AutoMirrored.Rounded.FormatAlignLeft
     val AlignRight: ImageVector get() = Icons.AutoMirrored.Rounded.FormatAlignRight
@@ -45,6 +54,12 @@ object LucideIcons {
     val Compass: ImageVector get() = Icons.Rounded.Explore
     val Copy: ImageVector get() = Icons.Rounded.ContentCopy
     val Crop: ImageVector get() = Icons.Rounded.Crop
+    val Scissors: ImageVector get() = Icons.Rounded.ContentCut
+    /** The Measure tool (#159): a ruler, a closed path, a filled shape, and the scale's calibration. */
+    val Ruler: ImageVector get() = Icons.Rounded.Straighten
+    val Perimeter: ImageVector get() = Icons.Rounded.Polyline
+    val AreaShape: ImageVector get() = Icons.Rounded.Pentagon
+    val Calibrate: ImageVector get() = Icons.Rounded.SquareFoot
     val Ellipsis: ImageVector get() = Icons.Rounded.MoreHoriz
     val EllipsisVertical: ImageVector get() = Icons.Rounded.MoreVert
     val ExternalLink: ImageVector get() = Icons.AutoMirrored.Rounded.OpenInNew

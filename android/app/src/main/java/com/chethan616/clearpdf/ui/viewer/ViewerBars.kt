@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chethan616.clearpdf.R
 import com.chethan616.clearpdf.ui.LucideIcons
+import com.chethan616.clearpdf.ui.screenColumn
 import com.chethan616.clearpdf.ui.glass.GlassCircle
 import com.chethan616.clearpdf.ui.glass.BarGlyphButton
 import com.chethan616.clearpdf.ui.glass.GlassIcon
@@ -386,7 +387,7 @@ fun QuickToolbar(
     }
     if (clear.clean) {
         Row(
-            Modifier.fillMaxWidth().height(BottomBarHeight).padding(horizontal = 12.dp, vertical = 4.dp)
+            Modifier.fillMaxWidth().screenColumn().height(BottomBarHeight).padding(horizontal = 12.dp, vertical = 4.dp)
                 .cleanFloatingSurface(RoundedRectangle(16.dp)).padding(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -404,7 +405,8 @@ fun QuickToolbar(
             }
         }
     } else Row(
-        Modifier.fillMaxWidth().height(BottomBarHeight).padding(horizontal = 12.dp, vertical = 8.dp),
+        // a phone's dock in the middle of a larger screen (#157), its tools not spread across it
+        Modifier.fillMaxWidth().screenColumn().height(BottomBarHeight).padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {

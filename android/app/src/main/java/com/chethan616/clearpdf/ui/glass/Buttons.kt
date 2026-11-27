@@ -336,7 +336,7 @@ fun HeaderGlassButton(onClick: () -> Unit, label: String, modifier: Modifier = M
 
 /** Material's rounded arrow_back_ios_new, the old app's Back glyph. */
 val BackArrow: ImageVector by lazy {
-    ImageVector.Builder("BackArrow", 24.dp, 24.dp, 24f, 24f).addPath(
+    ImageVector.Builder("BackArrow", 24.dp, 24.dp, 24f, 24f, autoMirror = true).addPath(
         PathParser().parsePathString(
             "M16.62,2.99c-0.49,-0.49 -1.28,-0.49 -1.77,0L6.54,11.3c-0.39,0.39 -0.39,1.02 0,1.41l8.31,8.31c0.49,0.49 1.28,0.49 1.77,0 0.49,-0.49 0.49,-1.28 0,-1.77L9.38,12l7.25,-7.25c0.48,-0.48 0.48,-1.28 -0.01,-1.76z"
         ).toNodes(),
@@ -398,7 +398,7 @@ fun GlassCircle(
         val r = at
         if (r != null) {
             MorphAnchors.register(r) { CompositionLocalProvider(LocalGlassInk provides inkNow) { glyph() } }
-            MorphAnchors.setTint(r, tint)
+            MorphAnchors.setTint(r, tint, solid)
             MorphAnchors.setSurround(r, around[0])
         }
         onDispose { if (r != null) { MorphAnchors.unregister(r); MorphAnchors.setSurround(r, null) } }

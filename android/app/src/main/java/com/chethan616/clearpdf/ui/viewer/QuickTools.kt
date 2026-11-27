@@ -108,6 +108,7 @@ enum class QuickTool(
     Text("text", R.string.toolbar_label_add_text, R.string.toolbar_tool_text, LucideIcons.Type, ToolHues.text, group = ToolGroup.EditAndMarkUp),
     Scan("scan", R.string.common_tool_scan, R.string.common_tool_scan, LucideIcons.Camera, ToolHues.scan, group = ToolGroup.Pages),
     ReadAloud("readaloud", R.string.common_tool_read_aloud, R.string.common_tool_read_aloud, LucideIcons.Volume2, ToolHues.read),
+    Measure("measure", R.string.measure_tool, R.string.measure_tool, LucideIcons.Ruler, ToolHues.crop, subTools = true),
 
     // office documents' own tools (their engines: WordCraft, DeckCraft)
     Present("present", R.string.office_present, R.string.office_present, LucideIcons.Presentation, ToolHues.read),
@@ -257,6 +258,7 @@ fun AppViewModel.runQuickTool(doc: OpenDocument, tool: QuickTool) {
         QuickTool.Create -> openCreate()
         QuickTool.Scan -> startScan()
         QuickTool.ReadAloud -> startReadAloud(doc)
+        QuickTool.Measure -> enterTool(doc, ViewerTool.Measure)
         QuickTool.Present -> presenting = doc
         QuickTool.ExportPdf -> exportOffice(doc, "pdf")
         QuickTool.SaveAs -> doc.controller.sheet = ViewerSheet.SaveAs
