@@ -1304,4 +1304,31 @@
     <string name="files_none_device_body">Здесь появятся PDF, документы, презентации, таблицы и изображения из добавленных папок.</string>
     <string name="files_looking">Поиск файлов…</string>
     <string name="files_device_body">Выберите папки, из которых показывать ваши файлы, например Documents или папку внутри Download (Android не даёт приложениям показывать всю папку Download). Artefact видит только выбранные папки, а файлы, открытые откуда угодно, остаются в «Недавних».</string>
+    <string name="tool_split">Разделить</string>
+    <string name="home_about_split">Один PDF на несколько файлов</string>
+    <string name="tools_split_action">Разделить</string>
+    <string name="tools_split_how">Как разделить</string>
+    <string name="tools_split_pages">Каждая страница — отдельный файл</string>
+    <string name="tools_split_every">Каждые %1$d страниц</string>
+    <string name="tools_split_fewer">Меньше страниц</string>
+    <string name="tools_split_more">Больше страниц</string>
+    <string name="tools_split_bookmarks">По закладкам</string>
+    <string name="tools_split_bookmarks_desc">Файл для каждой закладки верхнего уровня, с её названием</string>
+    <string name="tools_split_then">Затем</string>
+    <string name="tools_split_save">Сохранить в «Загрузки»</string>
+    <string name="tools_split_one_page">В этом PDF всего одна страница.</string>
+    <string name="msg_busy_splitting">Разделение…</string>
+    <string name="msg_split_pdf_only">Разделение работает с PDF</string>
+    <plurals name="tools_split_files">
+        <item quantity="one">%d файл</item>
+        <item quantity="few">%d файла</item>
+        <item quantity="many">%d файлов</item>
+        <item quantity="other">%d файлов</item>
+    </plurals>
+    <plurals name="msg_split_saved">
+        <item quantity="one">%d файл сохранён в «Загрузки»</item>
+        <item quantity="few">%d файла сохранено в «Загрузки»</item>
+        <item quantity="many">%d файлов сохранено в «Загрузки»</item>
+        <item quantity="other">%d файлов сохранено в «Загрузки»</item>
+    </plurals>
 </resources>

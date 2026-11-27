@@ -1271,4 +1271,27 @@
     <string name="files_none_device_body">Os PDFs, documentos, apresentações, folhas e imagens das pastas que adicionou aparecem aqui.</string>
     <string name="files_looking">A procurar ficheiros…</string>
     <string name="files_device_body">Escolha pastas de onde listar os seus ficheiros, como Documents ou uma pasta dentro de Download (o Android não deixa as apps listar a pasta Download inteira). O Artefact só vê as pastas que escolher, e os ficheiros que abrir de qualquer lado ficam em Recentes.</string>
+    <string name="tool_split">Dividir</string>
+    <string name="home_about_split">Um PDF em vários ficheiros</string>
+    <string name="tools_split_action">Dividir</string>
+    <string name="tools_split_how">Como dividir</string>
+    <string name="tools_split_pages">Cada página num ficheiro</string>
+    <string name="tools_split_every">A cada %1$d páginas</string>
+    <string name="tools_split_fewer">Menos páginas</string>
+    <string name="tools_split_more">Mais páginas</string>
+    <string name="tools_split_bookmarks">Em cada marcador</string>
+    <string name="tools_split_bookmarks_desc">Um ficheiro por marcador principal, com o nome dele</string>
+    <string name="tools_split_then">Depois</string>
+    <string name="tools_split_save">Guardar em Transferências</string>
+    <string name="tools_split_one_page">Este PDF só tem uma página.</string>
+    <string name="msg_busy_splitting">A dividir…</string>
+    <string name="msg_split_pdf_only">Dividir funciona com PDFs</string>
+    <plurals name="tools_split_files">
+        <item quantity="one">%d ficheiro</item>
+        <item quantity="other">%d ficheiros</item>
+    </plurals>
+    <plurals name="msg_split_saved">
+        <item quantity="one">%d ficheiro guardado em Transferências</item>
+        <item quantity="other">%d ficheiros guardados em Transferências</item>
+    </plurals>
 </resources>

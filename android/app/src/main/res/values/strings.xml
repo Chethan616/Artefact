@@ -1745,4 +1745,27 @@
     <string name="files_none_device_body">PDFs, documents, slides, sheets and images in the folders you added will appear here.</string>
     <string name="files_looking">Looking for files…</string>
     <string name="files_device_body">Choose folders to list your files from, such as Documents or a folder inside Download (Android doesn\'t let apps list the whole Download folder). Artefact sees only the folders you choose, and files you open from anywhere stay in Recent.</string>
+    <string name="tool_split">Split</string>
+    <string name="home_about_split">One PDF into several files</string>
+    <string name="tools_split_action">Split</string>
+    <string name="tools_split_how">How to split</string>
+    <string name="tools_split_pages">Every page its own file</string>
+    <string name="tools_split_every">Every %1$d pages</string>
+    <string name="tools_split_fewer">Fewer pages</string>
+    <string name="tools_split_more">More pages</string>
+    <string name="tools_split_bookmarks">At each bookmark</string>
+    <string name="tools_split_bookmarks_desc">A file for each top-level bookmark, named after it</string>
+    <string name="tools_split_then">Then</string>
+    <string name="tools_split_save">Save to Downloads</string>
+    <string name="tools_split_one_page">This PDF has only one page.</string>
+    <string name="msg_busy_splitting">Splitting…</string>
+    <string name="msg_split_pdf_only">Split works on PDFs</string>
+    <plurals name="tools_split_files">
+        <item quantity="one">%d file</item>
+        <item quantity="other">%d files</item>
+    </plurals>
+    <plurals name="msg_split_saved">
+        <item quantity="one">%d file saved to Downloads</item>
+        <item quantity="other">%d files saved to Downloads</item>
+    </plurals>
 </resources>

@@ -1685,4 +1685,27 @@
     <string name="files_none_device_body">PDFs, Dokumente, Präsentationen, Tabellen und Bilder aus deinen Ordnern erscheinen hier.</string>
     <string name="files_looking">Dateien werden gesucht…</string>
     <string name="files_device_body">Wähle Ordner, aus denen deine Dateien aufgelistet werden, etwa Documents oder einen Ordner in Download (Android lässt Apps nicht den ganzen Download-Ordner auflisten). Artefact sieht nur die gewählten Ordner, und überall geöffnete Dateien bleiben unter „Zuletzt“.</string>
+    <string name="tool_split">Teilen</string>
+    <string name="home_about_split">Ein PDF in mehrere Dateien</string>
+    <string name="tools_split_action">Teilen</string>
+    <string name="tools_split_how">Wie teilen</string>
+    <string name="tools_split_pages">Jede Seite eine eigene Datei</string>
+    <string name="tools_split_every">Alle %1$d Seiten</string>
+    <string name="tools_split_fewer">Weniger Seiten</string>
+    <string name="tools_split_more">Mehr Seiten</string>
+    <string name="tools_split_bookmarks">An jedem Lesezeichen</string>
+    <string name="tools_split_bookmarks_desc">Eine Datei je Lesezeichen der obersten Ebene, nach ihm benannt</string>
+    <string name="tools_split_then">Danach</string>
+    <string name="tools_split_save">In Downloads speichern</string>
+    <string name="tools_split_one_page">Dieses PDF hat nur eine Seite.</string>
+    <string name="msg_busy_splitting">Wird geteilt…</string>
+    <string name="msg_split_pdf_only">Teilen geht mit PDFs</string>
+    <plurals name="tools_split_files">
+        <item quantity="one">%d Datei</item>
+        <item quantity="other">%d Dateien</item>
+    </plurals>
+    <plurals name="msg_split_saved">
+        <item quantity="one">%d Datei in Downloads gespeichert</item>
+        <item quantity="other">%d Dateien in Downloads gespeichert</item>
+    </plurals>
 </resources>

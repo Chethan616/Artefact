@@ -1343,4 +1343,35 @@
     <string name="files_none_device_body">ستظهر هنا ملفات PDF والمستندات والعروض والجداول والصور الموجودة في المجلدات التي أضفتها.</string>
     <string name="files_looking">جارٍ البحث عن الملفات…</string>
     <string name="files_device_body">اختر مجلدات لعرض ملفاتك منها، مثل Documents أو مجلد داخل Download (لا يسمح Android للتطبيقات بعرض مجلد Download كاملًا). لا يرى Artefact إلا المجلدات التي تختارها، وتبقى الملفات التي تفتحها من أي مكان في «الأخيرة».</string>
+    <string name="tool_split">تقسيم</string>
+    <string name="home_about_split">ملف PDF واحد إلى عدة ملفات</string>
+    <string name="tools_split_action">تقسيم</string>
+    <string name="tools_split_how">طريقة التقسيم</string>
+    <string name="tools_split_pages">كل صفحة في ملف</string>
+    <string name="tools_split_every">كل %1$d صفحات</string>
+    <string name="tools_split_fewer">صفحات أقل</string>
+    <string name="tools_split_more">صفحات أكثر</string>
+    <string name="tools_split_bookmarks">عند كل إشارة مرجعية</string>
+    <string name="tools_split_bookmarks_desc">ملف لكل إشارة مرجعية رئيسية، باسمها</string>
+    <string name="tools_split_then">ثم</string>
+    <string name="tools_split_save">حفظ في التنزيلات</string>
+    <string name="tools_split_one_page">هذا الملف صفحة واحدة فقط.</string>
+    <string name="msg_busy_splitting">جارٍ التقسيم…</string>
+    <string name="msg_split_pdf_only">التقسيم يعمل على ملفات PDF</string>
+    <plurals name="tools_split_files">
+        <item quantity="one">ملف واحد</item>
+        <item quantity="zero">%d ملفات</item>
+        <item quantity="two">%d ملفات</item>
+        <item quantity="few">%d ملفات</item>
+        <item quantity="many">%d ملفات</item>
+        <item quantity="other">%d ملفات</item>
+    </plurals>
+    <plurals name="msg_split_saved">
+        <item quantity="one">حُفظ ملف واحد في التنزيلات</item>
+        <item quantity="zero">حُفظت %d ملفات في التنزيلات</item>
+        <item quantity="two">حُفظت %d ملفات في التنزيلات</item>
+        <item quantity="few">حُفظت %d ملفات في التنزيلات</item>
+        <item quantity="many">حُفظت %d ملفات في التنزيلات</item>
+        <item quantity="other">حُفظت %d ملفات في التنزيلات</item>
+    </plurals>
 </resources>

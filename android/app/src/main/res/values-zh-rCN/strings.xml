@@ -1727,4 +1727,27 @@
     <string name="files_none_device_body">你添加的文件夹中的 PDF、文档、演示文稿、表格和图片会显示在这里。</string>
     <string name="files_looking">正在查找文件…</string>
     <string name="files_device_body">选择要列出文件的文件夹，例如 Documents 或 Download 中的某个文件夹（Android 不允许应用列出整个 Download 文件夹）。Artefact 只能看到你选择的文件夹，从任何地方打开的文件都会保留在“最近”中。</string>
+    <string name="tool_split">拆分</string>
+    <string name="home_about_split">将一个 PDF 拆成多个文件</string>
+    <string name="tools_split_action">拆分</string>
+    <string name="tools_split_how">拆分方式</string>
+    <string name="tools_split_pages">每页一个文件</string>
+    <string name="tools_split_every">每 %1$d 页</string>
+    <string name="tools_split_fewer">更少页</string>
+    <string name="tools_split_more">更多页</string>
+    <string name="tools_split_bookmarks">按书签</string>
+    <string name="tools_split_bookmarks_desc">每个顶级书签一个文件，以书签命名</string>
+    <string name="tools_split_then">然后</string>
+    <string name="tools_split_save">保存到下载</string>
+    <string name="tools_split_one_page">此 PDF 只有一页。</string>
+    <string name="msg_busy_splitting">正在拆分…</string>
+    <string name="msg_split_pdf_only">拆分仅适用于 PDF</string>
+    <plurals name="tools_split_files">
+        <item quantity="one">%d 个文件</item>
+        <item quantity="other">%d 个文件</item>
+    </plurals>
+    <plurals name="msg_split_saved">
+        <item quantity="one">%d 个文件已保存到下载</item>
+        <item quantity="other">%d 个文件已保存到下载</item>
+    </plurals>
 </resources>

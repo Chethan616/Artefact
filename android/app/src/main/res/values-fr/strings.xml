@@ -1566,4 +1566,27 @@
     <string name="files_none_device_body">Les PDF, documents, présentations, tableurs et images des dossiers ajoutés apparaîtront ici.</string>
     <string name="files_looking">Recherche de fichiers…</string>
     <string name="files_device_body">Choisissez les dossiers dont lister vos fichiers, comme Documents ou un dossier dans Download (Android ne laisse pas les applis lister tout le dossier Download). Artefact ne voit que les dossiers choisis, et les fichiers ouverts depuis n\'importe où restent dans Récents.</string>
+    <string name="tool_split">Diviser</string>
+    <string name="home_about_split">Un PDF en plusieurs fichiers</string>
+    <string name="tools_split_action">Diviser</string>
+    <string name="tools_split_how">Comment diviser</string>
+    <string name="tools_split_pages">Chaque page dans son fichier</string>
+    <string name="tools_split_every">Toutes les %1$d pages</string>
+    <string name="tools_split_fewer">Moins de pages</string>
+    <string name="tools_split_more">Plus de pages</string>
+    <string name="tools_split_bookmarks">À chaque signet</string>
+    <string name="tools_split_bookmarks_desc">Un fichier par signet principal, à son nom</string>
+    <string name="tools_split_then">Ensuite</string>
+    <string name="tools_split_save">Enregistrer dans Téléchargements</string>
+    <string name="tools_split_one_page">Ce PDF n\'a qu\'une page.</string>
+    <string name="msg_busy_splitting">Division…</string>
+    <string name="msg_split_pdf_only">La division fonctionne avec les PDF</string>
+    <plurals name="tools_split_files">
+        <item quantity="one">%d fichier</item>
+        <item quantity="other">%d fichiers</item>
+    </plurals>
+    <plurals name="msg_split_saved">
+        <item quantity="one">%d fichier enregistré dans Téléchargements</item>
+        <item quantity="other">%d fichiers enregistrés dans Téléchargements</item>
+    </plurals>
 </resources>

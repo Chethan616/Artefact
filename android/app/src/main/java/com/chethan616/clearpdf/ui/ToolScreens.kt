@@ -107,7 +107,7 @@ fun ToolScaffold(
 ) {
     BackHandler(onBack = onBack)
     GlassToolBackground {
-        Column(Modifier.fillMaxSize().safeTopPadding().navigationBarsPadding().imePadding()) {
+        Column(Modifier.fillMaxSize().screenColumn().safeTopPadding().navigationBarsPadding().imePadding()) {
             Row(
                 Modifier.fillMaxWidth().height(com.chethan616.clearpdf.ui.viewer.TopBarHeight).padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -185,7 +185,8 @@ fun ToolPage(
     BackHandler(onBack = onBack)
     // the keyboard covers the pill rather than lifting it, as the reference's does
     GlassToolBackground {
-        Column(Modifier.fillMaxSize().safeTopPadding().navigationBarsPadding()) {
+        // a phone-width column in the middle of a larger screen (#157); the full width on a phone
+        Column(Modifier.fillMaxSize().screenColumn().safeTopPadding().navigationBarsPadding()) {
             Row(Modifier.fillMaxWidth().height(com.chethan616.clearpdf.ui.viewer.TopBarHeight).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 GlassBack(onBack)
                 Spacer(Modifier.weight(1f))
@@ -455,6 +456,43 @@ fun ExportScreen(vm: AppViewModel, doc: OpenDocument) {
 }
 
 /**
+ * Split (#170): one PDF into several: every page its own file, every few pages, or a file for each
+ * top-level bookmark. The parts are saved to Downloads, or shared.
+ */
+@Composable
+fun SplitScreen(vm: AppViewModel, doc: OpenDocument) {
+    val c = pdfColors
+    val pages = doc.pageCount
+    var mode by remember { mutableStateOf(0) }
+    var every by remember { mutableStateOf(2.coerceAtMost(pages.coerceAtLeast(1))) }
+    var share by remember { mutableStateOf(false) }
+    // how many files "every N pages" makes, shown on that row whichever is chosen
+    val parts = (pages + every - 1) / every.coerceAtLeast(1)
+    ToolPage(stringResource(R.string.tool_split), { vm.toolScreen = null }, stringResource(R.string.tools_split_action), pages > 1, {
+        vm.splitDocument(doc, if (mode == 0) 1 else every, bookmarks = mode == 2, share = share)
+    }) {
+        OutlinedFileCard(vm, doc)
+        Text(stringResource(R.string.tools_split_how), color = c.label, fontSize = 15.sp, modifier = Modifier.padding(start = 24.dp, top = 28.dp, bottom = 4.dp))
+        ToolChoice(mode == 0, stringResource(R.string.tools_split_pages), androidx.compose.ui.res.pluralStringResource(R.plurals.tools_split_files, pages, pages)) { mode = 0 }
+        ToolChoice(mode == 1, stringResource(R.string.tools_split_every, every), androidx.compose.ui.res.pluralStringResource(R.plurals.tools_split_files, parts.coerceAtLeast(1), parts.coerceAtLeast(1))) { mode = 1 }
+        if (mode == 1) Row(Modifier.padding(start = 56.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            com.chethan616.clearpdf.ui.glass.GlassCircle(onClick = { if (every > 1) every-- }, size = 44.dp, label = stringResource(R.string.tools_split_fewer)) {
+                com.chethan616.clearpdf.ui.glass.GlassIcon(LucideIcons.Minus, null, Modifier.size(18.dp))
+            }
+            Text(every.toString(), color = c.label, fontSize = 18.sp, modifier = Modifier.padding(horizontal = 18.dp))
+            com.chethan616.clearpdf.ui.glass.GlassCircle(onClick = { if (every < pages - 1) every++ }, size = 44.dp, label = stringResource(R.string.tools_split_more)) {
+                com.chethan616.clearpdf.ui.glass.GlassIcon(LucideIcons.Plus, null, Modifier.size(18.dp))
+            }
+        }
+        ToolChoice(mode == 2, stringResource(R.string.tools_split_bookmarks), stringResource(R.string.tools_split_bookmarks_desc)) { mode = 2 }
+        Text(stringResource(R.string.tools_split_then), color = c.label, fontSize = 15.sp, modifier = Modifier.padding(start = 24.dp, top = 22.dp, bottom = 4.dp))
+        ToolChoice(!share, stringResource(R.string.tools_split_save), null) { share = false }
+        ToolChoice(share, stringResource(R.string.common_share), null) { share = true }
+        if (pages <= 1) Text(stringResource(R.string.tools_split_one_page), color = c.red, fontSize = 14.sp, modifier = Modifier.padding(20.dp))
+    }
+}
+
+/**
  * Create PDF's first page: where the files come from (the photos, or any file through the
  * system's picker), and a scan to make a new one. Choosing closes this page.
  */
@@ -517,6 +555,7 @@ fun ToolScreenHost(vm: AppViewModel, screen: ToolScreen) {
         is ToolScreen.Protect -> ProtectScreen(vm, screen.doc)
         is ToolScreen.Crop -> CropScreen(vm, screen.doc)
         is ToolScreen.Export -> ExportScreen(vm, screen.doc)
+        is ToolScreen.Split -> SplitScreen(vm, screen.doc)
         ToolScreen.Scan -> ScanScreen(vm)
         ToolScreen.Create -> CreateSourcesScreen(vm)
     }

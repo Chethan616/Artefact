@@ -54,6 +54,7 @@ object LucideIcons {
     val Compass: ImageVector get() = Icons.Rounded.Explore
     val Copy: ImageVector get() = Icons.Rounded.ContentCopy
     val Crop: ImageVector get() = Icons.Rounded.Crop
+    val Scissors: ImageVector get() = Icons.Rounded.ContentCut
     val Ellipsis: ImageVector get() = Icons.Rounded.MoreHoriz
     val EllipsisVertical: ImageVector get() = Icons.Rounded.MoreVert
     val ExternalLink: ImageVector get() = Icons.AutoMirrored.Rounded.OpenInNew
